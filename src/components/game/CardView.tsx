@@ -7,6 +7,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck } from 'lucide-react';
+import { motion, useSpring, useTransform } from 'framer-motion';
+import React, { useEffect } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -22,6 +24,55 @@ interface CardViewProps {
   isOpponentCard?: boolean;
   inBattleArena?: boolean;
   isPlayerTurnForThisCard?: boolean;
+}
+
+interface AnimatedNumberProps {
+  value: number;
+}
+
+function AnimatedNumber({ value }: AnimatedNumberProps) {
+  const spring = useSpring(value, {
+    mass: 0.2, 
+    stiffness: 120, 
+    damping: 18, 
+    restDelta: 0.01 
+  });
+  const display = useTransform(spring, (current) => Math.round(current));
+
+  useEffect(() => {
+    spring.set(value);
+  }, [value, spring]);
+
+  return <motion.span>{display}</motion.span>;
+}
+
+
+interface StatDisplayProps {
+  icon: React.ReactNode;
+  currentValue: number;
+  maxValue?: number;
+  label: string;
+  isSingleValue?: boolean;
+  animate?: boolean; // New prop to control animation
+}
+
+function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animate = false }: StatDisplayProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center space-x-1 cursor-default" aria-label={`${label}: ${currentValue}${!isSingleValue && maxValue !== undefined ? `/${maxValue}` : ''}`}>
+          {icon}
+          <span className="font-semibold">
+            {animate ? <AnimatedNumber value={currentValue} /> : currentValue}
+            {!isSingleValue && maxValue !== undefined && `/${maxValue}`}
+          </span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" align="center">
+        <p>{label}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function CardView({ 
@@ -81,12 +132,12 @@ export function CardView({
       <TooltipProvider delayDuration={300}>
         <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-0.5 text-[10px] md:text-xs" : "text-xs")}>
           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-            <StatDisplay icon={<Sparkles className="w-3 h-3 text-blue-400" />} value={card.magic} label="Magic" />
-            <StatDisplay icon={<Swords className="w-3 h-3 text-red-400" />} value={card.melee} label="Melee" />
-            <StatDisplay icon={<ShieldHalf className="w-3 h-3 text-green-400" />} value={card.defense} label="Defense" />
-            <StatDisplay icon={<Heart className="w-3 h-3 text-pink-400" />} value={`${card.hp}/${card.maxHp}`} label="HP" />
+            <StatDisplay icon={<Sparkles className="w-3 h-3 text-blue-400" />} currentValue={card.magic} label="Magic" isSingleValue={true} animate={inBattleArena} />
+            <StatDisplay icon={<Swords className="w-3 h-3 text-red-400" />} currentValue={card.melee} label="Melee" isSingleValue={true} animate={inBattleArena} />
+            <StatDisplay icon={<ShieldHalf className="w-3 h-3 text-green-400" />} currentValue={card.defense} label="Defense" isSingleValue={true} animate={inBattleArena} />
+            <StatDisplay icon={<Heart className="w-3 h-3 text-pink-400" />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animate={inBattleArena} />
           </div>
-          { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className="w-3 h-3 text-yellow-400" />} value={`${card.shield}/${card.maxShield}`} label="Shield" /> }
+          { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className="w-3 h-3 text-yellow-400" />} currentValue={card.shield} maxValue={card.maxShield} label="Shield" animate={inBattleArena} /> }
         </CardContent>
       </TooltipProvider>
       
@@ -98,26 +149,3 @@ export function CardView({
     </Card>
   );
 }
-
-interface StatDisplayProps {
-  icon: React.ReactNode;
-  value: string | number;
-  label: string;
-}
-
-function StatDisplay({ icon, value, label }: StatDisplayProps) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="flex items-center space-x-1 cursor-default" aria-label={`${label}: ${value}`}>
-          {icon}
-          <span className="font-semibold">{value}</span>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" align="center">
-        <p>{label}</p>
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-

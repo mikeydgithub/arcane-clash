@@ -12,11 +12,11 @@ interface BattleArenaProps {
   player1Card?: CardData;
   player2Card?: CardData;
   showClashAnimation?: boolean;
-  turnLogMessages: string[];
-  gamePhase: string; // To help manage log display
+  gameLogMessages: string[]; // Changed from turnLogMessages
+  gamePhase: string; 
 }
 
-export function BattleArena({ player1Card, player2Card, showClashAnimation, turnLogMessages, gamePhase }: BattleArenaProps) {
+export function BattleArena({ player1Card, player2Card, showClashAnimation, gameLogMessages, gamePhase }: BattleArenaProps) {
   const cardVariants = {
     hidden: { opacity: 0, scale: 0.5, y: 50 },
     visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.5, type: 'spring' } },
@@ -25,30 +25,58 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, turn
 
   const [displayedLogEntries, setDisplayedLogEntries] = useState<string[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const entriesToAnimateRef = useRef<string[]>([]);
+
 
   useEffect(() => {
-    // Reset displayed log when a new turn starts (indicated by player1_select_card phase or gamePhase change to combat_animation/resolution)
-    // Or when turnLogMessages becomes very short (e.g. initial turn message)
-    if (gamePhase === 'player1_select_card' || gamePhase === 'initial' || gamePhase === 'loading_art') {
-      setDisplayedLogEntries(turnLogMessages || []);
+    // Clear previous animation timeout if effect re-runs
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+    }
+  
+    // If it's a new game or art loading, reset the displayed log immediately
+    if (gamePhase === 'initial' || gamePhase === 'loading_art') {
+      setDisplayedLogEntries(gameLogMessages || []);
+      entriesToAnimateRef.current = []; // Clear any pending animations
       return;
     }
-
-    if (gamePhase === 'combat_summary' || gamePhase === 'combat_animation' || gamePhase === 'combat_resolution') {
-      setDisplayedLogEntries([]); // Clear previous log for combat sequence
-      let currentEntryIndex = 0;
-      const intervalId = setInterval(() => {
-        if (currentEntryIndex < turnLogMessages.length) {
-          setDisplayedLogEntries(prev => [...prev, turnLogMessages[currentEntryIndex]]);
-          currentEntryIndex++;
-        } else {
-          clearInterval(intervalId);
-        }
-      }, 700); // Adjust delay as needed (e.g., 700ms)
-
-      return () => clearInterval(intervalId);
+  
+    // Determine new messages to animate
+    // Compare gameLogMessages with currently displayed + queued messages
+    const currentFullDisplayCandidateLength = displayedLogEntries.length + entriesToAnimateRef.current.length;
+    const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
+  
+    if (newMessages.length > 0) {
+      entriesToAnimateRef.current.push(...newMessages);
     }
-  }, [turnLogMessages, gamePhase]);
+  
+    const animateNextEntry = () => {
+      if (entriesToAnimateRef.current.length > 0) {
+        const nextEntry = entriesToAnimateRef.current.shift();
+        if (nextEntry) {
+          setDisplayedLogEntries(prev => [...prev, nextEntry]);
+        }
+        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); // Adjust delay as needed
+      } else {
+        animationTimeoutRef.current = null; // No more entries to animate
+      }
+    };
+  
+    // If there are entries to animate and no animation is currently scheduled
+    if (entriesToAnimateRef.current.length > 0 && !animationTimeoutRef.current) {
+      animateNextEntry();
+    }
+  
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+    };
+  }, [gameLogMessages, gamePhase]); // Rerun when log messages or game phase changes
+  
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -56,14 +84,12 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, turn
 
   return (
     <div className="flex-grow flex flex-col justify-between items-center relative p-1 md:p-2 min-h-0 w-full h-full">
-      {/* Top section for cards */}
-      <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[60%]"> {/* Ensure card area has enough space */}
-        {/* Player 1 Card Slot (Left side of Arena) */}
+      <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[60%]">
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player1Card && (
               <motion.div
-                key={`p1-${player1Card.id}-${player1Card.hp}-${player1Card.shield}`} // Key change forces re-render on stat change
+                key={`p1-${player1Card.id}-${player1Card.hp}-${player1Card.shield}`} 
                 variants={cardVariants}
                 initial="hidden"
                 animate="visible"
@@ -76,7 +102,6 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, turn
           </AnimatePresence>
         </div>
 
-        {/* Clash Animation / Battle Message */}
         {showClashAnimation && (
           <motion.div
             key="clash-text"
@@ -90,12 +115,11 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, turn
           </motion.div>
         )}
         
-        {/* Player 2 Card Slot (Right side of Arena) */}
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player2Card && (
               <motion.div
-                key={`p2-${player2Card.id}-${player2Card.hp}-${player2Card.shield}`} // Key change forces re-render on stat change
+                key={`p2-${player2Card.id}-${player2Card.hp}-${player2Card.shield}`} 
                 variants={cardVariants}
                 initial="hidden"
                 animate="visible"
@@ -109,17 +133,16 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, turn
         </div>
       </div>
 
-      {/* Bottom section for combat log */}
       <div className="w-full max-w-xl h-[30%] max-h-48 md:max-h-56 mt-2 mb-1 md:mb-2">
         <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
           {displayedLogEntries.length === 0 && (gamePhase === 'player1_select_card' || gamePhase === 'player2_select_card') && (
             <p className="text-sm md:text-base text-center text-muted-foreground italic">
-              {turnLogMessages[0] || "Waiting for action..."}
+              Waiting for action...
             </p>
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={index}
+              key={index} // Using index as key here is acceptable as log entries are append-only and order matters
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
