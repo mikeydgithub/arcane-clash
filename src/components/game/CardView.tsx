@@ -15,12 +15,19 @@ interface CardViewProps {
   isPlayable?: boolean;
   isOpponentCard?: boolean;
   inBattleArena?: boolean;
+  isPlayerTurnForThisCard?: boolean; // Added to control fading based on turn
 }
 
-export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard = false, inBattleArena = false }: CardViewProps) {
-  // Reduced card sizes for inBattleArena state
-  const baseCardSize = inBattleArena ? "w-44 h-60 md:w-48 md:h-64" : "w-40 h-56 md:w-48 md:h-64"; // Further reduced arena card size
-  // Allow hover effect for opponent cards if they are playable (i.e. it's their turn and user is controlling them)
+export function CardView({ 
+  card, 
+  onClick, 
+  isSelected, 
+  isPlayable, 
+  isOpponentCard = false, 
+  inBattleArena = false,
+  isPlayerTurnForThisCard = false 
+}: CardViewProps) {
+  const baseCardSize = inBattleArena ? "w-36 h-52 md:w-40 md:h-56" : "w-40 h-56 md:w-48 md:h-64";
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
 
   return (
@@ -29,23 +36,21 @@ export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard
         "flex flex-col overflow-hidden shadow-xl",
         baseCardSize,
         cardHoverEffect,
-        // Allow selection ring for opponent cards if selected
         isSelected ? "ring-2 ring-accent shadow-accent" : "",
-        isOpponentCard && !inBattleArena && !isSelected ? "opacity-70" : "", // Dim opponent card if not selected and in hand
+        // Updated Fading Logic: Fade opponent card if not selected, not in arena, AND it's not their turn.
+        isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
         inBattleArena ? "animate-fadeIn" : ""
       )}
-      // Allow click for opponent cards if they are playable
       onClick={isPlayable ? onClick : undefined}
       aria-label={`Card: ${card.title}`}
-      // Adjust role and tabIndex based on playability
       role={isPlayable ? "button" : "img"}
       tabIndex={isPlayable ? 0 : -1}
     >
-      <CardHeader className={cn("p-2 text-center", inBattleArena ? "pb-1 pt-2" : "pb-1")}> {/* Adjusted padding for smaller arena cards */}
-        <CardTitle className={cn("truncate", inBattleArena ? "text-sm md:text-base" : "text-sm")}>{card.title}</CardTitle> {/* Adjusted title size for smaller arena cards */}
+      <CardHeader className={cn("p-2 text-center", inBattleArena ? "pb-0.5 pt-1 text-xs md:text-sm" : "pb-1")}>
+        <CardTitle className={cn("truncate", inBattleArena ? "text-xs md:text-sm" : "text-sm")}>{card.title}</CardTitle>
       </CardHeader>
       
-      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-28 md:h-32" : "h-24 md:h-32")}> {/* Adjusted image height for smaller arena cards */}
+      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-24 md:h-28" : "h-24 md:h-32")}>
         {card.isLoadingArt ? (
           <Skeleton className="w-full h-full rounded-none" />
         ) : card.artUrl ? (
@@ -69,8 +74,8 @@ export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard
         )}
       </div>
 
-      <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-0.5 text-xs md:text-sm" : "text-xs")}> {/* Adjusted spacing and text size for smaller arena cards */}
-        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5"> {/* Reduced gap-y */}
+      <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-0.5 text-xs" : "text-xs")}>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
           <StatDisplay icon={<Sparkles className="w-3 h-3 text-blue-400" />} value={card.magic} label="Magic" />
           <StatDisplay icon={<Swords className="w-3 h-3 text-red-400" />} value={card.melee} label="Melee" />
           <StatDisplay icon={<ShieldHalf className="w-3 h-3 text-green-400" />} value={card.defense} label="Defense" />
