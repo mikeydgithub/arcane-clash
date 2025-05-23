@@ -19,6 +19,8 @@ export interface PlayerData {
   name: string;
   hp: number;
   hand: CardData[];
+  deck: CardData[];
+  discardPile: CardData[];
 }
 
 export type GamePhase = 
@@ -32,8 +34,6 @@ export type GamePhase =
 
 export interface GameState {
   players: [PlayerData, PlayerData];
-  deck: CardData[];
-  discardPile: CardData[];
   currentPlayerIndex: 0 | 1;
   gamePhase: GamePhase;
   selectedCardP1?: CardData;
@@ -41,3 +41,4 @@ export interface GameState {
   winner?: PlayerData;
   battleMessage?: string;
 }
+

@@ -1,3 +1,4 @@
+
 import type { CardData } from '@/types';
 import { CARD_TITLES } from './card-definitions';
 
@@ -6,13 +7,18 @@ const getRandomInt = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
+// Generates a pool of 40 unique-ish cards
 export const generateInitialCards = (): CardData[] => {
-  return CARD_TITLES.map((title, index) => {
+  if (CARD_TITLES.length < 40) {
+    console.warn("Not enough unique card titles to generate 40 unique cards. Duplicates might occur or deck sizes will be smaller.");
+  }
+  // Ensure we generate up to 40 cards, even if titles repeat for the purpose of generation.
+  // In a real game, you'd have truly unique cards or allow duplicates by design.
+  return CARD_TITLES.slice(0, 40).map((title, index) => {
     const magic = getRandomInt(0, 15);
     const melee = getRandomInt(0, 15);
     const totalAttack = magic + melee;
     
-    // Ensure card has some attack power
     const finalMagic = totalAttack === 0 ? getRandomInt(1,8) : magic;
     const finalMelee = totalAttack === 0 && finalMagic === magic ? getRandomInt(1,8) : melee;
 
@@ -20,10 +26,10 @@ export const generateInitialCards = (): CardData[] => {
     const maxShield = getRandomInt(0, 15);
     
     return {
-      id: `card-${index}-${Date.now()}`,
+      id: `card-${index}-${Date.now()}-${Math.random().toString(36).substring(7)}`, // More unique ID
       title,
       isLoadingArt: true,
-      artUrl: undefined, // Will be filled by AI
+      artUrl: undefined,
       magic: finalMagic,
       melee: finalMelee,
       defense: getRandomInt(1, 10),
@@ -31,7 +37,7 @@ export const generateInitialCards = (): CardData[] => {
       maxHp,
       shield: maxShield,
       maxShield,
-      description: `A formidable ${title}.`, // Basic description
+      description: `A formidable ${title}.`,
     };
   });
 };
@@ -45,8 +51,11 @@ export const shuffleDeck = (deck: CardData[]): CardData[] => {
   return shuffled;
 };
 
+// Deals cards from a specific player's deck
 export const dealCards = (deck: CardData[], count: number): { dealtCards: CardData[], remainingDeck: CardData[] } => {
-  const dealtCards = deck.slice(0, count);
-  const remainingDeck = deck.slice(count);
+  const cardsToDeal = Math.min(count, deck.length);
+  const dealtCards = deck.slice(0, cardsToDeal);
+  const remainingDeck = deck.slice(cardsToDeal);
   return { dealtCards, remainingDeck };
 };
+
