@@ -15,18 +15,22 @@ export function CoinFlipAnimation({ winningPlayerName, player1Name, player2Name,
   const [isFlipping, setIsFlipping] = useState(true);
   const [showWinner, setShowWinner] = useState(false);
 
-  const coinTextP1 = player1Name;
-  const coinTextP2 = player2Name;
+  const coinTextP1 = player1Name.substring(0, 10); // Max 10 chars for coin face
+  const coinTextP2 = player2Name.substring(0, 10); // Max 10 chars for coin face
+
 
   useEffect(() => {
+    const flipDuration = 3000; // Duration of coin spinning animation (ms)
+    const postFlipDelay = 1500; // Delay after coin settles before calling onAnimationComplete (ms)
+
     const flipTimer = setTimeout(() => {
       setIsFlipping(false);
       setShowWinner(true);
       const completeTimer = setTimeout(() => {
         onAnimationComplete();
-      }, 1500); // Hold the result for 1.5s
+      }, postFlipDelay); 
       return () => clearTimeout(completeTimer);
-    }, 3000); // Flip for 3 seconds
+    }, flipDuration); 
 
     return () => clearTimeout(flipTimer);
   }, [onAnimationComplete]);
@@ -34,7 +38,7 @@ export function CoinFlipAnimation({ winningPlayerName, player1Name, player2Name,
   const coinVariants = {
     flipping: {
       rotateY: [0, 360 * 3 + (winningPlayerName === player2Name ? 180 : 0)], // Spin multiple times and land on winner
-      transition: { duration: 3, ease: 'linear' },
+      transition: { duration: 3, ease: 'linear' }, // Corresponds to flipDuration
     },
     still: {
       rotateY: winningPlayerName === player2Name ? 180 : 0,
@@ -44,10 +48,8 @@ export function CoinFlipAnimation({ winningPlayerName, player1Name, player2Name,
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full">
-      <p className="text-xl font-semibold mb-6 text-foreground animate-pulse">
-        Flipping coin to decide who goes first...
-      </p>
-      <div style={{ perspective: '1000px' }}>
+      {/* Message is now handled by GameBoard's gameLogMessages, shown in BattleArena's log */}
+      <div style={{ perspective: '1000px' }} className="mt-4 mb-4 md:mt-6 md:mb-6">
         <motion.div
           className="relative w-32 h-32 md:w-40 md:h-40 rounded-full bg-yellow-400 shadow-xl"
           style={{ transformStyle: 'preserve-3d' }}
@@ -57,30 +59,21 @@ export function CoinFlipAnimation({ winningPlayerName, player1Name, player2Name,
         >
           {/* Player 1 Face */}
           <motion.div
-            className="absolute w-full h-full rounded-full bg-primary flex items-center justify-center text-center text-primary-foreground font-bold text-lg md:text-xl p-2"
+            className="absolute w-full h-full rounded-full bg-primary flex items-center justify-center text-center text-primary-foreground font-bold text-base md:text-lg p-1"
             style={{ backfaceVisibility: 'hidden' }}
           >
             {coinTextP1}
           </motion.div>
           {/* Player 2 Face */}
           <motion.div
-            className="absolute w-full h-full rounded-full bg-accent flex items-center justify-center text-center text-accent-foreground font-bold text-lg md:text-xl p-2"
+            className="absolute w-full h-full rounded-full bg-accent flex items-center justify-center text-center text-accent-foreground font-bold text-base md:text-lg p-1"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
             {coinTextP2}
           </motion.div>
         </motion.div>
       </div>
-      {showWinner && !isFlipping && (
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="mt-6 text-2xl font-bold text-accent"
-        >
-          {(winningPlayerName === player1Name ? player1Name : player2Name)} wins the toss!
-        </motion.p>
-      )}
+      {/* Winner announcement is now part of the game log messages */}
     </div>
   );
 }

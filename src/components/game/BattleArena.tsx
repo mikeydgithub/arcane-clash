@@ -3,7 +3,7 @@
 
 import type { CardData } from '@/types';
 import { CardView } from './CardView';
-import { CoinFlipAnimation } from './CoinFlipAnimation'; // Import CoinFlipAnimation
+import { CoinFlipAnimation } from './CoinFlipAnimation';
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,8 @@ interface BattleArenaProps {
   gameLogMessages: string[];
   gamePhase: string;
   onProceedToNextTurn?: () => void;
-  onCoinFlipAnimationComplete?: () => void; // New prop
-  winningPlayerNameForCoinFlip?: string; // New prop
+  onCoinFlipAnimationComplete?: () => void;
+  winningPlayerNameForCoinFlip?: string;
 }
 
 export function BattleArena({
@@ -40,18 +40,18 @@ export function BattleArena({
     visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
     clashP1: {
       opacity: 1,
-      x: ['0%', '60%', '0%'],
-      rotate: [0, -2, 0],
-      scale: [1, 1.05, 1],
-      zIndex: [0, 10, 0],
+      x: ['0%', '60%', '0%'], // Move right, then back
+      rotate: [0, -2, 0],    // Slight tilt
+      scale: [1, 1.05, 1],   // Slightly enlarge on impact
+      zIndex: [0, 10, 0],     // Bring to front during clash
       transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
     clashP2: {
       opacity: 1,
-      x: ['0%', '-60%', '0%'],
-      rotate: [0, 2, 0],
-      scale: [1, 1.05, 1],
-      zIndex: [0, 5, 0],
+      x: ['0%', '-60%', '0%'], // Move left, then back
+      rotate: [0, 2, 0],     // Slight tilt
+      scale: [1, 1.05, 1],    // Slightly enlarge on impact
+      zIndex: [0, 5, 0],      // Behind P1 card during clash
       transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
     exit: { opacity: 0, scale: 0.5, y: -50, x: 0, transition: { duration: 0.3 } },
@@ -67,14 +67,27 @@ export function BattleArena({
       clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
     }
-
-    // If it's the start of these phases, reset displayed logs and animation queue
-    if (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') {
-      setDisplayedLogEntries(gameLogMessages || []);
-      entriesToAnimateRef.current = [];
-      return;
-    }
     
+    // If it's the start of these phases, reset displayed logs and animation queue
+    if (gamePhase === 'initial' || gamePhase === 'loading_art') {
+        setDisplayedLogEntries(gameLogMessages || []);
+        entriesToAnimateRef.current = [];
+        return;
+    }
+    // If it's the coin flip animation, show initial messages and then the specific coin flip message.
+    if (gamePhase === 'coin_flip_animation') {
+        const coinFlipMessages = gameLogMessages.filter(msg => msg.toLowerCase().includes("coin"));
+        if(gameLogMessages.length > 0 && !gameLogMessages[gameLogMessages.length -1].toLowerCase().includes("coin")){
+             // Only show the "flipping coin" type message for this phase
+            setDisplayedLogEntries(prev => [...prev, ...coinFlipMessages.filter(cfm => !prev.includes(cfm))]);
+        } else {
+            setDisplayedLogEntries(coinFlipMessages);
+        }
+        entriesToAnimateRef.current = []; // No further animation for logs here
+        return;
+    }
+
+
     const currentFullDisplayCandidateLength = displayedLogEntries.length + entriesToAnimateRef.current.length;
 
     if (gameLogMessages.length > currentFullDisplayCandidateLength) {
@@ -93,7 +106,7 @@ export function BattleArena({
         if (nextEntry) {
           setDisplayedLogEntries(prev => [...prev, nextEntry]);
         }
-        animationTimeoutRef.current = setTimeout(animateNextEntry, 700);
+        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); // Animation speed for log entries
       } else {
         animationTimeoutRef.current = null;
       }
@@ -111,9 +124,11 @@ export function BattleArena({
     };
   }, [gameLogMessages, gamePhase]);
 
+
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [displayedLogEntries]);
+
 
   if (gamePhase === 'coin_flip_animation' && onCoinFlipAnimationComplete && winningPlayerNameForCoinFlip) {
     return (
@@ -124,6 +139,23 @@ export function BattleArena({
           player2Name={player2Name}
           onAnimationComplete={onCoinFlipAnimationComplete}
         />
+         {/* Log area for coin flip phase, can be minimal or show specific messages */}
+        <div className="w-full max-w-xl h-[30%] max-h-40 md:max-h-48 mb-1 md:mb-2 mt-4">
+          <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
+            {displayedLogEntries.map((entry, index) => (
+              <motion.p
+                key={`coin-log-${index}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-[10px] md:text-xs text-foreground mb-1 last:mb-0 text-center"
+              >
+                {entry}
+              </motion.p>
+            ))}
+            <div ref={logEndRef} />
+          </ScrollArea>
+        </div>
       </div>
     );
   }
