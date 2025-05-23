@@ -11,7 +11,7 @@ import { BattleArena } from './BattleArena';
 import { GameOverModal } from './GameOverModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Layers3, Trash2, Play } from 'lucide-react';
+import { Loader2, Layers3, Trash2 } from 'lucide-react';
 
 const INITIAL_PLAYER_HP = 100;
 const CARDS_IN_HAND = 5;
@@ -23,7 +23,7 @@ export function GameBoard() {
   const { toast } = useToast();
 
   const initializeGame = useCallback(() => {
-    const allGeneratedCards = generateInitialCards(); 
+    const allGeneratedCards = generateInitialCards(); // Generates 40 cards
     const shuffledAllCards = shuffleDeck(allGeneratedCards);
 
     const player1DeckFull = shuffledAllCards.slice(0, INITIAL_DECK_SIZE_PER_PLAYER);
@@ -31,8 +31,9 @@ export function GameBoard() {
 
     const { dealtCards: p1InitialHand, remainingDeck: p1DeckAfterDeal } = dealCards(player1DeckFull, CARDS_IN_HAND);
     const { dealtCards: p2InitialHand, remainingDeck: p2DeckAfterDeal } = dealCards(player2DeckFull, CARDS_IN_HAND);
-
+    
     const initialGameLog = ["Let the arcane clash begin!"];
+
     setGameState({
       players: [
         { id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP, hand: p1InitialHand, deck: p1DeckAfterDeal, discardPile: [] },
@@ -257,7 +258,7 @@ export function GameBoard() {
         }
       };
 
-      if (p1Data.hand.find(c => c.id === card1InCombat.id && c.hp > 0) === undefined ) { // Card defeated or not found (if somehow removed)
+      if (p1Data.hand.find(c => c.id === card1InCombat.id && c.hp > 0) === undefined ) { 
          drawCardForPlayer(p1Data, p1Data.name);
       }
       if (p2Data.hand.find(c => c.id === card2InCombat.id && c.hp > 0) === undefined ) {
@@ -304,7 +305,7 @@ export function GameBoard() {
         ...prev,
         selectedCardP1: undefined,
         selectedCardP2: undefined,
-        gameLogMessages: [...prev.gameLogMessages, `${nextPlayerName}, select your champion!`],
+        gameLogMessages: [...prev.gameLogMessages, `A new round begins! ${nextPlayerName}, select your champion!`],
         currentPlayerIndex: 0,
         gamePhase: 'player1_select_card',
       };
@@ -386,12 +387,8 @@ export function GameBoard() {
           showClashAnimation={gamePhase === 'combat_animation' && !!selectedCardP1 && !!selectedCardP2}
           gameLogMessages={gameLogMessages}
           gamePhase={gamePhase}
+          onProceedToNextTurn={handleProceedToNextTurn}
         />
-        {gamePhase === 'combat_summary' && (
-          <Button onClick={handleProceedToNextTurn} className="mt-2 bg-accent hover:bg-accent/90">
-            <Play className="mr-2 h-4 w-4" /> Continue
-          </Button>
-        )}
       </div>
       
       <div className="w-1/4 flex flex-col items-center p-1 md:p-2 space-y-2 md:space-y-3 flex-shrink-0">
@@ -428,3 +425,5 @@ export function GameBoard() {
     </div>
   );
 }
+
+    

@@ -7,8 +7,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck } from 'lucide-react';
-import { motion, useSpring, useTransform } from 'framer-motion';
-import React, { useEffect } from 'react';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import React, { useEffect, useRef } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -30,20 +30,28 @@ interface AnimatedNumberProps {
   value: number;
 }
 
-function AnimatedNumber({ value }: AnimatedNumberProps) {
-  const spring = useSpring(value, {
-    mass: 0.2, 
-    stiffness: 120, 
-    damping: 18, 
-    restDelta: 0.01 
-  });
-  const display = useTransform(spring, (current) => Math.round(current));
+function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
+  const numberMotionValue = useMotionValue(targetValue);
+  const prevTargetValueRef = useRef(targetValue);
 
   useEffect(() => {
-    spring.set(value);
-  }, [value, spring]);
+    const previousValue = prevTargetValueRef.current;
+    // Set the motion value to the previous prop value before starting animation
+    numberMotionValue.set(previousValue);
 
-  return <motion.span>{display}</motion.span>;
+    const controls = animate(numberMotionValue, targetValue, {
+      duration: Math.max(0.2, Math.abs(targetValue - previousValue) * 0.15), // 150ms per unit change, min 200ms
+      type: "tween",
+      ease: "linear", 
+    });
+    
+    prevTargetValueRef.current = targetValue; // Update ref for the next change
+
+    return () => controls.stop();
+  }, [targetValue, numberMotionValue]);
+
+  const displayTransformed = useTransform(numberMotionValue, v => Math.round(v));
+  return <motion.span>{displayTransformed}</motion.span>;
 }
 
 
@@ -53,7 +61,7 @@ interface StatDisplayProps {
   maxValue?: number;
   label: string;
   isSingleValue?: boolean;
-  animate?: boolean; // New prop to control animation
+  animate?: boolean; 
 }
 
 function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animate = false }: StatDisplayProps) {
@@ -84,7 +92,8 @@ export function CardView({
   inBattleArena = false,
   isPlayerTurnForThisCard = false 
 }: CardViewProps) {
-  const baseCardSize = inBattleArena ? "w-36 h-52 md:w-40 md:h-56" : "w-40 h-56 md:w-48 md:h-64";
+  // Adjusted sizes: smaller in arena
+  const baseCardSize = inBattleArena ? "w-32 h-48 md:w-36 md:h-52" : "w-40 h-56 md:w-48 md:h-64";
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
 
   return (
@@ -102,11 +111,11 @@ export function CardView({
       role={isPlayable ? "button" : "img"}
       tabIndex={isPlayable ? 0 : -1}
     >
-      <CardHeader className={cn("p-2 text-center", inBattleArena ? "pb-0.5 pt-1 text-xs md:text-sm" : "pb-1")}>
-        <CardTitle className={cn("truncate", inBattleArena ? "text-xs md:text-sm" : "text-sm")}>{card.title}</CardTitle>
+      <CardHeader className={cn("p-2 text-center", inBattleArena ? "pb-0.5 pt-1 text-[10px] md:text-xs" : "pb-1")}>
+        <CardTitle className={cn("truncate", inBattleArena ? "text-[10px] md:text-xs" : "text-sm")}>{card.title}</CardTitle>
       </CardHeader>
       
-      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-20 md:h-24" : "h-24 md:h-32")}>
+      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-16 md:h-20" : "h-24 md:h-32")}>
         {card.isLoadingArt ? (
           <Skeleton className="w-full h-full rounded-none" />
         ) : card.artUrl ? (
@@ -130,7 +139,7 @@ export function CardView({
         )}
       </div>
       <TooltipProvider delayDuration={300}>
-        <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-0.5 text-[10px] md:text-xs" : "text-xs")}>
+        <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-0.5 text-[9px] md:text-[10px]" : "text-xs")}>
           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
             <StatDisplay icon={<Sparkles className="w-3 h-3 text-blue-400" />} currentValue={card.magic} label="Magic" isSingleValue={true} animate={inBattleArena} />
             <StatDisplay icon={<Swords className="w-3 h-3 text-red-400" />} currentValue={card.melee} label="Melee" isSingleValue={true} animate={inBattleArena} />
@@ -149,3 +158,5 @@ export function CardView({
     </Card>
   );
 }
+
+    
