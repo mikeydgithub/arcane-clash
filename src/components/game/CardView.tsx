@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -5,7 +6,7 @@ import type { CardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart } from 'lucide-react'; // Using ShieldHalf as there's no explicit shield icon like that
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck } from 'lucide-react'; // Using ShieldHalf as there's no explicit shield icon like that
 
 interface CardViewProps {
   card: CardData;
