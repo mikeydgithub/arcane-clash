@@ -21,9 +21,23 @@ interface BattleArenaProps {
 
 export function BattleArena({ player1Card, player2Card, showClashAnimation, gameLogMessages, gamePhase, onProceedToNextTurn }: BattleArenaProps) {
   const cardVariants = {
-    hidden: { opacity: 0, scale: 0.5, y: 50 },
-    visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.5, type: 'spring' } },
-    exit: { opacity: 0, scale: 0.5, y: -50, transition: { duration: 0.3 } }
+    hidden: { opacity: 0, scale: 0.5, y: 50, x: 0 },
+    visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
+    clashP1: {
+      x: ['0%', '15%', '0%'], // Move right, then back
+      rotate: [0, -3, 0],     // Slight rotation
+      scale: [1, 1.03, 1],    // Slightly larger
+      zIndex: [0, 1, 0],
+      transition: { duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
+    },
+    clashP2: {
+      x: ['0%', '-15%', '0%'], // Move left, then back
+      rotate: [0, 3, 0],      // Slight rotation
+      scale: [1, 1.03, 1],     // Slightly larger
+      zIndex: [0, 1, 0],
+      transition: { duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
+    },
+    exit: { opacity: 0, scale: 0.5, y: -50, x: 0, transition: { duration: 0.3 } }
   };
 
   const [displayedLogEntries, setDisplayedLogEntries] = useState<string[]>([]);
@@ -38,15 +52,18 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
       animationTimeoutRef.current = null;
     }
   
+    // If game phase indicates initial loading or art loading, just set the log directly
     if (gamePhase === 'initial' || gamePhase === 'loading_art') {
       setDisplayedLogEntries(gameLogMessages || []);
-      entriesToAnimateRef.current = []; 
+      entriesToAnimateRef.current = []; // Clear any pending animations
       return;
     }
     
+    // Calculate how many entries *could* be on screen if all pending animations finished
     const currentFullDisplayCandidateLength = displayedLogEntries.length + entriesToAnimateRef.current.length;
 
     if (gameLogMessages.length > currentFullDisplayCandidateLength) {
+      // New messages have been added to gameLogMessages that aren't displayed or queued
       const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
       entriesToAnimateRef.current.push(...newMessages);
     } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) { // Reset if log is cleared (e.g. new game)
@@ -60,23 +77,26 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
         if (nextEntry) {
           setDisplayedLogEntries(prev => [...prev, nextEntry]);
         }
-        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); 
+        // Schedule next animation
+        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); // Adjust delay as needed
       } else {
-        animationTimeoutRef.current = null; 
+        animationTimeoutRef.current = null; // No more entries to animate
       }
     };
   
+    // If there are entries to animate and no animation is currently scheduled, start it
     if (entriesToAnimateRef.current.length > 0 && !animationTimeoutRef.current) {
       animateNextEntry();
     }
   
+    // Cleanup function to clear timeout if component unmounts or dependencies change
     return () => {
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
         animationTimeoutRef.current = null;
       }
     };
-  }, [gameLogMessages, gamePhase]); 
+  }, [gameLogMessages, gamePhase]); // Re-run when gameLogMessages or gamePhase changes
   
 
   useEffect(() => {
@@ -91,7 +111,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
           initial={{ opacity: 0, scale: 0.5, y: -20 }}
           animate={{ opacity: 1, scale: [1, 1.03, 1], y: 0, transition: { duration: 0.5, type: 'spring', stiffness: 180 } }}
           exit={{ opacity: 0, scale: 0.5, y: -20, transition: { duration: 0.3 } }}
-          className="text-2xl md:text-3xl font-bold text-destructive uppercase tracking-wider my-2 text-center"
+          className="text-xl md:text-2xl font-bold text-destructive uppercase tracking-wider my-1 md:my-2 text-center"
           style={{ textShadow: '1px 1px 0px var(--background), 1px 1px 0px hsl(var(--primary))' }}
         >
           Clash!
@@ -105,9 +125,8 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
                 key={`p1-${player1Card.id}`} 
                 variants={cardVariants}
                 initial="hidden"
-                animate="visible"
+                animate={showClashAnimation ? "clashP1" : "visible"}
                 exit="exit"
-                className={cn(showClashAnimation ? "animate-clash-p1" : "")}
               >
                 <CardView card={player1Card} inBattleArena={true} />
               </motion.div>
@@ -122,9 +141,8 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
                 key={`p2-${player2Card.id}`} 
                 variants={cardVariants}
                 initial="hidden"
-                animate="visible"
+                animate={showClashAnimation ? "clashP2" : "visible"}
                 exit="exit"
-                className={cn(showClashAnimation ? "animate-clash-p2" : "")}
               >
                 <CardView card={player2Card} inBattleArena={true} isOpponentCard={true}/>
               </motion.div>
@@ -150,7 +168,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={index} 
+              key={index} // Using index as key is fine here as log entries are append-only within a turn display
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -162,21 +180,6 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
           <div ref={logEndRef} />
         </ScrollArea>
       </div>
-
-      <style jsx>{`
-        @keyframes clash-p1 {
-          0% { transform: translateX(0) rotate(0deg); }
-          50% { transform: translateX(5px) rotate(-1deg) scale(1.01); } 
-          100% { transform: translateX(0) rotate(0deg); }
-        }
-        @keyframes clash-p2 {
-          0% { transform: translateX(0) rotate(0deg); }
-          50% { transform: translateX(-5px) rotate(1deg) scale(1.01); } 
-          100% { transform: translateX(0) rotate(0deg); }
-        }
-        .animate-clash-p1 { animation: clash-p1 0.5s ease-in-out; } 
-        .animate-clash-p2 { animation: clash-p2 0.5s ease-in-out; } 
-      `}</style>
     </div>
   );
 }
