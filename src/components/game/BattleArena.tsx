@@ -46,10 +46,10 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, batt
           <motion.div
             key="clash-text"
             initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: [1, 1.2, 1], transition: { duration: 0.8, type: 'spring', stiffness: 300 } }} // Slightly reduced scale from 1.5 to 1.2
+            animate={{ opacity: 1, scale: [1, 1.1, 1], transition: { duration: 0.7, type: 'spring', stiffness: 250 } }} // Further reduced scale and adjusted animation
             exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-            className="absolute text-5xl md:text-7xl font-bold text-destructive z-10 uppercase tracking-wider" // Slightly reduced text size
-            style={{ textShadow: '2px 2px 0px var(--background), 3px 3px 0px hsl(var(--primary))' }} // Slightly reduced shadow
+            className="absolute text-4xl md:text-5xl font-bold text-destructive z-10 uppercase tracking-wider" // Further reduced text size
+            style={{ textShadow: '2px 2px 0px var(--background), 2px 2px 0px hsl(var(--primary))' }} // Slightly reduced shadow
           >
             Clash!
           </motion.div>
@@ -59,7 +59,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, batt
             key="battle-message"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0, transition: { duration: 0.5 } }}
-            className="absolute text-center text-base md:text-lg font-semibold text-foreground bg-background/80 p-2 rounded-md shadow-lg z-10 max-w-sm" // Reduced text size, Added max-w-sm
+            className="absolute text-center text-sm md:text-base font-semibold text-foreground bg-background/80 p-2 rounded-md shadow-lg z-10 max-w-xs md:max-w-sm" // Reduced text size, adjusted max-width
           >
             {battleMessage}
           </motion.div>
@@ -86,16 +86,16 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, batt
       <style jsx>{`
         @keyframes clash-p1 {
           0% { transform: translateX(0) rotate(0deg); }
-          50% { transform: translateX(10px) rotate(-3deg) scale(1.05); } /* Reduced translate, rotate, scale */
+          50% { transform: translateX(8px) rotate(-2deg) scale(1.03); } /* Further reduced translate, rotate, scale */
           100% { transform: translateX(0) rotate(0deg); }
         }
         @keyframes clash-p2 {
           0% { transform: translateX(0) rotate(0deg); }
-          50% { transform: translateX(-10px) rotate(3deg) scale(1.05); } /* Reduced translate, rotate, scale */
+          50% { transform: translateX(-8px) rotate(2deg) scale(1.03); } /* Further reduced translate, rotate, scale */
           100% { transform: translateX(0) rotate(0deg); }
         }
-        .animate-clash-p1 { animation: clash-p1 0.8s ease-in-out; }
-        .animate-clash-p2 { animation: clash-p2 0.8s ease-in-out; }
+        .animate-clash-p1 { animation: clash-p1 0.7s ease-in-out; } /* Adjusted animation duration */
+        .animate-clash-p2 { animation: clash-p2 0.7s ease-in-out; } /* Adjusted animation duration */
         
         @keyframes fadeIn {
           from { opacity: 0; transform: scale(0.9); }

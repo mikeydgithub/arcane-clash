@@ -19,7 +19,7 @@ interface CardViewProps {
 
 export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard = false, inBattleArena = false }: CardViewProps) {
   // Reduced card sizes for inBattleArena state
-  const baseCardSize = inBattleArena ? "w-52 h-72 md:w-60 md:h-80" : "w-40 h-56 md:w-48 md:h-64";
+  const baseCardSize = inBattleArena ? "w-44 h-60 md:w-48 md:h-64" : "w-40 h-56 md:w-48 md:h-64"; // Further reduced arena card size
   // Allow hover effect for opponent cards if they are playable (i.e. it's their turn and user is controlling them)
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
 
@@ -41,11 +41,11 @@ export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard
       role={isPlayable ? "button" : "img"}
       tabIndex={isPlayable ? 0 : -1}
     >
-      <CardHeader className={cn("p-2 text-center", inBattleArena ? "pb-1" : "pb-1")}>
-        <CardTitle className={cn("truncate", inBattleArena ? "text-base md:text-lg" : "text-sm")}>{card.title}</CardTitle> {/* Adjusted title size for smaller arena cards */}
+      <CardHeader className={cn("p-2 text-center", inBattleArena ? "pb-1 pt-2" : "pb-1")}> {/* Adjusted padding for smaller arena cards */}
+        <CardTitle className={cn("truncate", inBattleArena ? "text-sm md:text-base" : "text-sm")}>{card.title}</CardTitle> {/* Adjusted title size for smaller arena cards */}
       </CardHeader>
       
-      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-36 md:h-40" : "h-24 md:h-32")}> {/* Adjusted image height for smaller arena cards */}
+      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-28 md:h-32" : "h-24 md:h-32")}> {/* Adjusted image height for smaller arena cards */}
         {card.isLoadingArt ? (
           <Skeleton className="w-full h-full rounded-none" />
         ) : card.artUrl ? (
@@ -69,14 +69,14 @@ export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard
         )}
       </div>
 
-      <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-1 text-sm md:text-base" : "text-xs")}> {/* Adjusted spacing and text size for smaller arena cards */}
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-          <StatDisplay icon={<Sparkles className="w-3 h-3 md:w-4 md:h-4 text-blue-400" />} value={card.magic} label="Magic" />
-          <StatDisplay icon={<Swords className="w-3 h-3 md:w-4 md:h-4 text-red-400" />} value={card.melee} label="Melee" />
-          <StatDisplay icon={<ShieldHalf className="w-3 h-3 md:w-4 md:h-4 text-green-400" />} value={card.defense} label="Defense" />
-          <StatDisplay icon={<Heart className="w-3 h-3 md:w-4 md:h-4 text-pink-400" />} value={`${card.hp}/${card.maxHp}`} label="HP" />
+      <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-0.5 text-xs md:text-sm" : "text-xs")}> {/* Adjusted spacing and text size for smaller arena cards */}
+        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5"> {/* Reduced gap-y */}
+          <StatDisplay icon={<Sparkles className="w-3 h-3 text-blue-400" />} value={card.magic} label="Magic" />
+          <StatDisplay icon={<Swords className="w-3 h-3 text-red-400" />} value={card.melee} label="Melee" />
+          <StatDisplay icon={<ShieldHalf className="w-3 h-3 text-green-400" />} value={card.defense} label="Defense" />
+          <StatDisplay icon={<Heart className="w-3 h-3 text-pink-400" />} value={`${card.hp}/${card.maxHp}`} label="HP" />
         </div>
-         { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className="w-3 h-3 md:w-4 md:h-4 text-yellow-400" />} value={`${card.shield}/${card.maxShield}`} label="Shield" /> }
+         { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className="w-3 h-3 text-yellow-400" />} value={`${card.shield}/${card.maxShield}`} label="Shield" /> }
       </CardContent>
       
       {card.description && !inBattleArena && (
