@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { CardData } from '@/types';
@@ -20,7 +21,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, batt
   };
 
   return (
-    <div className="flex-grow flex flex-col justify-center items-center relative p-4 min-h-[300px] md:min-h-[450px]">
+    <div className="flex-grow flex flex-col justify-center items-center relative p-4 min-h-0">
       <div className="flex justify-around items-center w-full max-w-3xl h-full relative">
         {/* Player 1 Card Slot (Bottom/Left) */}
         <div className="w-1/2 flex justify-center items-center h-full">
@@ -105,3 +106,5 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, batt
     </div>
   );
 }
+
+    

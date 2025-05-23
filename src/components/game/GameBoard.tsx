@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -278,20 +279,21 @@ export function GameBoard() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground p-2 md:p-4">
       {/* Player 2 Area (Top) */}
-      <div className="flex justify-between items-start mb-2 md:mb-4">
-        <PlayerStatusDisplay player={player2} isCurrentPlayer={currentPlayerIndex === 1 && gamePhase === 'player2_select_card'} isOpponent={true}/>
-        {/* Optionally show a message or deck count here */}
-        <div className="text-right">
-          <p className="text-sm text-muted-foreground">Deck: {deck.length}</p>
+      <div className="flex-shrink-0 flex flex-col">
+        <div className="flex justify-between items-start mb-2 md:mb-4">
+          <PlayerStatusDisplay player={player2} isCurrentPlayer={currentPlayerIndex === 1 && gamePhase === 'player2_select_card'} isOpponent={true}/>
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Deck: {deck.length}</p>
+          </div>
         </div>
+        <PlayerHand 
+          cards={player2.hand} 
+          onCardSelect={handleCardSelect} 
+          isPlayerTurn={currentPlayerIndex === 1 && gamePhase === 'player2_select_card'}
+          isOpponent={true}
+          selectedCardId={selectedCardP2?.id}
+        />
       </div>
-      <PlayerHand 
-        cards={player2.hand} 
-        onCardSelect={handleCardSelect} 
-        isPlayerTurn={currentPlayerIndex === 1 && gamePhase === 'player2_select_card'}
-        isOpponent={true}
-        selectedCardId={selectedCardP2?.id}
-      />
 
       {/* Battle Arena (Middle) */}
       <BattleArena 
@@ -302,15 +304,16 @@ export function GameBoard() {
       />
 
       {/* Player 1 Area (Bottom) */}
-      <PlayerHand 
-        cards={player1.hand} 
-        onCardSelect={handleCardSelect} 
-        isPlayerTurn={currentPlayerIndex === 0 && gamePhase === 'player1_select_card'}
-        selectedCardId={selectedCardP1?.id}
-      />
-      <div className="flex justify-between items-end mt-2 md:mt-4">
-         <PlayerStatusDisplay player={player1} isCurrentPlayer={currentPlayerIndex === 0 && gamePhase === 'player1_select_card'} />
-         {/* Other controls or info */}
+      <div className="flex-shrink-0 flex flex-col">
+        <PlayerHand 
+          cards={player1.hand} 
+          onCardSelect={handleCardSelect} 
+          isPlayerTurn={currentPlayerIndex === 0 && gamePhase === 'player1_select_card'}
+          selectedCardId={selectedCardP1?.id}
+        />
+        <div className="flex justify-between items-end mt-2 md:mt-4">
+           <PlayerStatusDisplay player={player1} isCurrentPlayer={currentPlayerIndex === 0 && gamePhase === 'player1_select_card'} />
+        </div>
       </div>
       
       <GameOverModal 
@@ -321,3 +324,5 @@ export function GameBoard() {
     </div>
   );
 }
+
+    
