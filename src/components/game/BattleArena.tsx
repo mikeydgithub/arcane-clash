@@ -40,18 +40,18 @@ export function BattleArena({
     visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
     clashP1: {
       opacity: 1,
-      x: ['0%', '60%', '0%'], // Move right, then back
-      rotate: [0, -2, 0],    // Slight tilt
-      scale: [1, 1.05, 1],   // Slightly enlarge on impact
-      zIndex: [0, 10, 0],     // Bring to front during clash
+      x: ['0%', '60%', '0%'], 
+      rotate: [0, -2, 0],    
+      scale: [1, 1.05, 1],   
+      zIndex: [0, 10, 0],     
       transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
     clashP2: {
       opacity: 1,
-      x: ['0%', '-60%', '0%'], // Move left, then back
-      rotate: [0, 2, 0],     // Slight tilt
-      scale: [1, 1.05, 1],    // Slightly enlarge on impact
-      zIndex: [0, 5, 0],      // Behind P1 card during clash
+      x: ['0%', '-60%', '0%'], 
+      rotate: [0, 2, 0],     
+      scale: [1, 1.05, 1],   
+      zIndex: [0, 5, 0],      
       transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
     exit: { opacity: 0, scale: 0.5, y: -50, x: 0, transition: { duration: 0.3 } },
@@ -91,8 +91,9 @@ export function BattleArena({
       const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
       entriesToAnimateRef.current.push(...newMessages);
     } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) {
+      // If gameLogMessages becomes shorter (e.g. reset to just the initial message), update displayedLogEntries
       setDisplayedLogEntries(gameLogMessages.slice(0, gameLogMessages.length));
-      entriesToAnimateRef.current = [];
+      entriesToAnimateRef.current = []; // Clear any pending animation queue
     }
 
 
@@ -112,10 +113,11 @@ export function BattleArena({
       animateNextEntry();
     }
 
+    // Cleanup function
     return () => {
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
-        animationTimeoutRef.current = null;
+        animationTimeoutRef.current = null; // Important to nullify to prevent issues on re-render
       }
     };
   }, [gameLogMessages, gamePhase]);
@@ -236,7 +238,7 @@ export function BattleArena({
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={index}
+              key={index} // Use a unique key, e.g., message content + index if messages can repeat
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
