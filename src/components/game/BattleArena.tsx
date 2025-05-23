@@ -15,7 +15,7 @@ interface BattleArenaProps {
   player2Card?: CardData;
   showClashAnimation?: boolean;
   gameLogMessages: string[];
-  gamePhase: string; 
+  gamePhase: string;
   onProceedToNextTurn?: () => void;
 }
 
@@ -25,19 +25,19 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
     visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
     clashP1: {
       opacity: 1,
-      x: ['0%', '60%', '0%'], // Increased horizontal movement
-      rotate: [0, -2, 0],     // Subtle rotation
-      scale: [1, 1.05, 1],    // Slightly larger at impact
-      zIndex: [0, 10, 0],     // P1 card on top during clash
-      transition: { duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
+      x: ['0%', '60%', '0%'],
+      rotate: [0, -2, 0],
+      scale: [1, 1.05, 1],
+      zIndex: [0, 10, 0],
+      transition: { delay: 0.5, duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
     },
     clashP2: {
       opacity: 1,
-      x: ['0%', '-60%', '0%'], // Increased horizontal movement
-      rotate: [0, 2, 0],      // Subtle rotation
-      scale: [1, 1.05, 1],     // Slightly larger at impact
-      zIndex: [0, 5, 0],      // P2 card below P1 during clash
-      transition: { duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
+      x: ['0%', '-60%', '0%'],
+      rotate: [0, 2, 0],
+      scale: [1, 1.05, 1],
+      zIndex: [0, 5, 0],
+      transition: { delay: 0.5, duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
     },
     exit: { opacity: 0, scale: 0.5, y: -50, x: 0, transition: { duration: 0.3 } }
   };
@@ -53,47 +53,47 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
       clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
     }
-  
+
     if (gamePhase === 'initial' || gamePhase === 'loading_art') {
       setDisplayedLogEntries(gameLogMessages || []);
-      entriesToAnimateRef.current = []; 
+      entriesToAnimateRef.current = [];
       return;
     }
-    
+
     const currentFullDisplayCandidateLength = displayedLogEntries.length + entriesToAnimateRef.current.length;
 
     if (gameLogMessages.length > currentFullDisplayCandidateLength) {
       const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
       entriesToAnimateRef.current.push(...newMessages);
-    } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) { 
+    } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) {
       setDisplayedLogEntries(gameLogMessages.slice(0, gameLogMessages.length));
       entriesToAnimateRef.current = [];
     }
-  
+
     const animateNextEntry = () => {
       if (entriesToAnimateRef.current.length > 0) {
         const nextEntry = entriesToAnimateRef.current.shift();
         if (nextEntry) {
           setDisplayedLogEntries(prev => [...prev, nextEntry]);
         }
-        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); 
+        animationTimeoutRef.current = setTimeout(animateNextEntry, 700);
       } else {
-        animationTimeoutRef.current = null; 
+        animationTimeoutRef.current = null;
       }
     };
-  
+
     if (entriesToAnimateRef.current.length > 0 && !animationTimeoutRef.current) {
       animateNextEntry();
     }
-  
+
     return () => {
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
         animationTimeoutRef.current = null;
       }
     };
-  }, [gameLogMessages, gamePhase]); 
-  
+  }, [gameLogMessages, gamePhase]);
+
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -105,7 +105,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
         <motion.div
           key="clash-text-top"
           initial={{ opacity: 0, scale: 0.5, y: -20 }}
-          animate={{ opacity: 1, scale: [1, 1.03, 1], y: 0, transition: { duration: 0.5, type: 'spring', stiffness: 180 } }}
+          animate={{ opacity: 1, scale: [1, 1.03, 1], y: 0, transition: { delay: 0.5, duration: 0.5, type: 'spring', stiffness: 180 } }}
           exit={{ opacity: 0, scale: 0.5, y: -20, transition: { duration: 0.3 } }}
           className="text-xl md:text-2xl font-bold text-destructive uppercase tracking-wider my-1 md:my-2 text-center"
           style={{ textShadow: '1px 1px 0px var(--background), 1px 1px 0px hsl(var(--primary))' }}
@@ -118,7 +118,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
           <AnimatePresence>
             {player1Card && (
               <motion.div
-                key={`p1-${player1Card.id}`} 
+                key={`p1-${player1Card.id}`}
                 variants={cardVariants}
                 initial="hidden"
                 animate={showClashAnimation ? "clashP1" : "visible"}
@@ -130,12 +130,12 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
             )}
           </AnimatePresence>
         </div>
-        
+
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player2Card && (
               <motion.div
-                key={`p2-${player2Card.id}`} 
+                key={`p2-${player2Card.id}`}
                 variants={cardVariants}
                 initial="hidden"
                 animate={showClashAnimation ? "clashP2" : "visible"}
@@ -166,7 +166,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={index} 
+              key={index}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
