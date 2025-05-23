@@ -24,6 +24,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
     hidden: { opacity: 0, scale: 0.5, y: 50, x: 0 },
     visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
     clashP1: {
+      opacity: 1, // Ensure card is visible during clash
       x: ['0%', '15%', '0%'], // Move right, then back
       rotate: [0, -3, 0],     // Slight rotation
       scale: [1, 1.03, 1],    // Slightly larger
@@ -31,6 +32,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
       transition: { duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
     },
     clashP2: {
+      opacity: 1, // Ensure card is visible during clash
       x: ['0%', '-15%', '0%'], // Move left, then back
       rotate: [0, 3, 0],      // Slight rotation
       scale: [1, 1.03, 1],     // Slightly larger
@@ -59,14 +61,12 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
       return;
     }
     
-    // Calculate how many entries *could* be on screen if all pending animations finished
     const currentFullDisplayCandidateLength = displayedLogEntries.length + entriesToAnimateRef.current.length;
 
     if (gameLogMessages.length > currentFullDisplayCandidateLength) {
-      // New messages have been added to gameLogMessages that aren't displayed or queued
       const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
       entriesToAnimateRef.current.push(...newMessages);
-    } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) { // Reset if log is cleared (e.g. new game)
+    } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) { 
       setDisplayedLogEntries(gameLogMessages.slice(0, gameLogMessages.length));
       entriesToAnimateRef.current = [];
     }
@@ -77,26 +77,23 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
         if (nextEntry) {
           setDisplayedLogEntries(prev => [...prev, nextEntry]);
         }
-        // Schedule next animation
-        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); // Adjust delay as needed
+        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); 
       } else {
-        animationTimeoutRef.current = null; // No more entries to animate
+        animationTimeoutRef.current = null; 
       }
     };
   
-    // If there are entries to animate and no animation is currently scheduled, start it
     if (entriesToAnimateRef.current.length > 0 && !animationTimeoutRef.current) {
       animateNextEntry();
     }
   
-    // Cleanup function to clear timeout if component unmounts or dependencies change
     return () => {
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
         animationTimeoutRef.current = null;
       }
     };
-  }, [gameLogMessages, gamePhase]); // Re-run when gameLogMessages or gamePhase changes
+  }, [gameLogMessages, gamePhase]); 
   
 
   useEffect(() => {
@@ -168,7 +165,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={index} // Using index as key is fine here as log entries are append-only within a turn display
+              key={index} 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
