@@ -3,23 +3,38 @@
 
 import type { CardData } from '@/types';
 import { CardView } from './CardView';
+import { CoinFlipAnimation } from './CoinFlipAnimation'; // Import CoinFlipAnimation
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface BattleArenaProps {
   player1Card?: CardData;
   player2Card?: CardData;
+  player1Name: string;
+  player2Name: string;
   showClashAnimation?: boolean;
   gameLogMessages: string[];
   gamePhase: string;
   onProceedToNextTurn?: () => void;
+  onCoinFlipAnimationComplete?: () => void; // New prop
+  winningPlayerNameForCoinFlip?: string; // New prop
 }
 
-export function BattleArena({ player1Card, player2Card, showClashAnimation, gameLogMessages, gamePhase, onProceedToNextTurn }: BattleArenaProps) {
+export function BattleArena({
+  player1Card,
+  player2Card,
+  player1Name,
+  player2Name,
+  showClashAnimation,
+  gameLogMessages,
+  gamePhase,
+  onProceedToNextTurn,
+  onCoinFlipAnimationComplete,
+  winningPlayerNameForCoinFlip,
+}: BattleArenaProps) {
   const cardVariants = {
     hidden: { opacity: 0, scale: 0.5, y: 50, x: 0 },
     visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
@@ -29,7 +44,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
       rotate: [0, -2, 0],
       scale: [1, 1.05, 1],
       zIndex: [0, 10, 0],
-      transition: { delay: 0.5, duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
+      transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
     clashP2: {
       opacity: 1,
@@ -37,9 +52,9 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
       rotate: [0, 2, 0],
       scale: [1, 1.05, 1],
       zIndex: [0, 5, 0],
-      transition: { delay: 0.5, duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
+      transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
-    exit: { opacity: 0, scale: 0.5, y: -50, x: 0, transition: { duration: 0.3 } }
+    exit: { opacity: 0, scale: 0.5, y: -50, x: 0, transition: { duration: 0.3 } },
   };
 
   const [displayedLogEntries, setDisplayedLogEntries] = useState<string[]>([]);
@@ -47,28 +62,30 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const entriesToAnimateRef = useRef<string[]>([]);
 
-
   useEffect(() => {
     if (animationTimeoutRef.current) {
       clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
     }
 
-    if (gamePhase === 'initial' || gamePhase === 'loading_art') {
+    // If it's the start of these phases, reset displayed logs and animation queue
+    if (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') {
       setDisplayedLogEntries(gameLogMessages || []);
       entriesToAnimateRef.current = [];
       return;
     }
-
+    
     const currentFullDisplayCandidateLength = displayedLogEntries.length + entriesToAnimateRef.current.length;
 
     if (gameLogMessages.length > currentFullDisplayCandidateLength) {
       const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
       entriesToAnimateRef.current.push(...newMessages);
     } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) {
+       // Handle log reset for new rounds
       setDisplayedLogEntries(gameLogMessages.slice(0, gameLogMessages.length));
       entriesToAnimateRef.current = [];
     }
+
 
     const animateNextEntry = () => {
       if (entriesToAnimateRef.current.length > 0) {
@@ -94,10 +111,22 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
     };
   }, [gameLogMessages, gamePhase]);
 
-
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [displayedLogEntries]);
+
+  if (gamePhase === 'coin_flip_animation' && onCoinFlipAnimationComplete && winningPlayerNameForCoinFlip) {
+    return (
+      <div className="flex-grow flex flex-col justify-center items-center relative p-1 md:p-2 min-h-0 w-full h-full">
+        <CoinFlipAnimation
+          winningPlayerName={winningPlayerNameForCoinFlip}
+          player1Name={player1Name}
+          player2Name={player2Name}
+          onAnimationComplete={onCoinFlipAnimationComplete}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-grow flex flex-col justify-center items-center relative p-1 md:p-2 min-h-0 w-full h-full">
@@ -121,9 +150,9 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
                 key={`p1-${player1Card.id}`}
                 variants={cardVariants}
                 initial="hidden"
-                animate={showClashAnimation ? "clashP1" : "visible"}
+                animate={showClashAnimation ? 'clashP1' : 'visible'}
                 exit="exit"
-                style={{ transformOrigin: "center top" }}
+                style={{ transformOrigin: 'center top' }}
               >
                 <CardView card={player1Card} inBattleArena={true} />
               </motion.div>
@@ -138,11 +167,11 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
                 key={`p2-${player2Card.id}`}
                 variants={cardVariants}
                 initial="hidden"
-                animate={showClashAnimation ? "clashP2" : "visible"}
+                animate={showClashAnimation ? 'clashP2' : 'visible'}
                 exit="exit"
-                style={{ transformOrigin: "center top" }}
+                style={{ transformOrigin: 'center top' }}
               >
-                <CardView card={player2Card} inBattleArena={true} isOpponentCard={true}/>
+                <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} />
               </motion.div>
             )}
           </AnimatePresence>

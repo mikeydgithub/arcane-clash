@@ -2,16 +2,16 @@
 export interface CardData {
   id: string;
   title: string;
-  artUrl?: string; 
+  artUrl?: string;
   isLoadingArt: boolean;
   magic: number;
   melee: number;
   defense: number;
-  hp: number; 
-  maxHp: number; 
-  shield: number; 
+  hp: number;
+  maxHp: number;
+  shield: number;
   maxShield: number;
-  description: string; 
+  description: string;
 }
 
 export interface PlayerData {
@@ -23,22 +23,23 @@ export interface PlayerData {
   discardPile: CardData[];
 }
 
-export type GamePhase = 
+export type GamePhase =
   | "initial"
+  | "coin_flip_animation" // New phase for coin flip
   | "loading_art"
-  | "player1_select_card" 
-  | "player2_select_card" 
+  | "player1_select_card"
+  | "player2_select_card"
   | "combat_animation"
-  | "combat_resolution" 
-  | "combat_summary" 
+  | "combat_resolution"
+  | "combat_summary"
   | "game_over";
 
 export interface GameState {
   players: [PlayerData, PlayerData];
   currentPlayerIndex: 0 | 1;
   gamePhase: GamePhase;
-  selectedCardP1?: CardData; 
-  selectedCardP2?: CardData; 
+  selectedCardP1?: CardData;
+  selectedCardP2?: CardData;
   winner?: PlayerData;
-  gameLogMessages: string[]; // Changed from turnLogMessages
+  gameLogMessages: string[];
 }
