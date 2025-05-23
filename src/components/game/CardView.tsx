@@ -6,7 +6,7 @@ import type { CardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck } from 'lucide-react'; // Using ShieldHalf as there's no explicit shield icon like that
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck } from 'lucide-react';
 
 interface CardViewProps {
   card: CardData;
@@ -19,7 +19,8 @@ interface CardViewProps {
 
 export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard = false, inBattleArena = false }: CardViewProps) {
   const baseCardSize = inBattleArena ? "w-60 h-80 md:w-72 md:h-96" : "w-40 h-56 md:w-48 md:h-64";
-  const cardHoverEffect = isPlayable && !isOpponentCard && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
+  // Allow hover effect for opponent cards if they are playable (i.e. it's their turn and user is controlling them)
+  const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
 
   return (
     <Card 
@@ -27,14 +28,17 @@ export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard
         "flex flex-col overflow-hidden shadow-xl",
         baseCardSize,
         cardHoverEffect,
-        isSelected && !isOpponentCard ? "ring-2 ring-accent shadow-accent" : "",
-        isOpponentCard && !inBattleArena ? "opacity-70" : "",
+        // Allow selection ring for opponent cards if selected
+        isSelected ? "ring-2 ring-accent shadow-accent" : "",
+        isOpponentCard && !inBattleArena && !isSelected ? "opacity-70" : "", // Dim opponent card if not selected and in hand
         inBattleArena ? "animate-fadeIn" : ""
       )}
-      onClick={isPlayable && !isOpponentCard ? onClick : undefined}
+      // Allow click for opponent cards if they are playable
+      onClick={isPlayable ? onClick : undefined}
       aria-label={`Card: ${card.title}`}
-      role={isPlayable && !isOpponentCard ? "button" : "img"}
-      tabIndex={isPlayable && !isOpponentCard ? 0 : -1}
+      // Adjust role and tabIndex based on playability
+      role={isPlayable ? "button" : "img"}
+      tabIndex={isPlayable ? 0 : -1}
     >
       <CardHeader className={cn("p-2 text-center", inBattleArena ? "pb-1" : "pb-1")}>
         <CardTitle className={cn("truncate", inBattleArena ? "text-lg" : "text-sm")}>{card.title}</CardTitle>

@@ -22,8 +22,8 @@ export function GameBoard() {
   const { toast } = useToast();
 
   const initializeGame = useCallback(() => {
-    const initialCards = generateInitialCards();
-    const shuffledDeck = shuffleDeck(initialCards);
+    const initialCardsData = generateInitialCards(); // Renamed to avoid conflict
+    const shuffledDeck = shuffleDeck(initialCardsData);
 
     const p1CardsToDeal = Math.min(CARDS_IN_HAND, shuffledDeck.length);
     const { dealtCards: p1InitialHand, remainingDeck: deckAfterP1Deal } = dealCards(shuffledDeck, p1CardsToDeal);
@@ -47,11 +47,10 @@ export function GameBoard() {
     });
     setArtGenerationProgress(0);
 
-    // Generate card art
     let artLoadedCount = 0;
-    const totalCards = initialCards.length;
+    const totalCardsToLoad = initialCardsData.length; // Use the count of cards we are actually processing
 
-    initialCards.forEach(async (card) => {
+    initialCardsData.forEach(async (card) => {
       try {
         const artInput: GenerateCardArtInput = { cardTitle: card.title };
         const result = await generateCardArt(artInput);
@@ -73,7 +72,7 @@ export function GameBoard() {
         setGameState(prev => {
            if (!prev) return null;
            const updateCardInCollection = (collection: CardData[]) => 
-            collection.map(c => c.id === card.id ? { ...c, isLoadingArt: false } : c); // Mark as not loading even on error
+            collection.map(c => c.id === card.id ? { ...c, isLoadingArt: false } : c);
           
           return {
             ...prev,
@@ -83,8 +82,8 @@ export function GameBoard() {
         });
       } finally {
         artLoadedCount++;
-        setArtGenerationProgress((artLoadedCount / totalCards) * 100);
-        if (artLoadedCount === totalCards) {
+        setArtGenerationProgress((artLoadedCount / totalCardsToLoad) * 100);
+        if (artLoadedCount === totalCardsToLoad) {
           setGameState(prev => prev ? { ...prev, gamePhase: 'player1_select_card', battleMessage: "Player 1, select your champion!" } : null);
         }
       }
@@ -92,8 +91,6 @@ export function GameBoard() {
   }, [toast]);
 
   useEffect(() => {
-    // This effect only runs once on mount to set the initial state if no game is active.
-    // It doesn't auto-start the game to allow a "Start Game" button.
     if (!gameState) {
       setGameState({
         players: [
@@ -115,14 +112,13 @@ export function GameBoard() {
 
   const handleCardSelect = (card: CardData) => {
     if (!gameState) return;
-    const { currentPlayerIndex, gamePhase } = gameState;
+    const { currentPlayerIndex, gamePhase, selectedCardP1, selectedCardP2 } = gameState;
 
-    if (gamePhase === 'player1_select_card' && currentPlayerIndex === 0) {
-      setGameState(prev => prev ? { ...prev, selectedCardP1: card, gamePhase: 'player2_select_card', battleMessage: "Player 2, choose your defender!" } : null);
-    } else if (gamePhase === 'player2_select_card' && currentPlayerIndex === 1) {
-      setGameState(prev => prev ? { ...prev, selectedCardP2: card, gamePhase: 'combat_animation' } : null);
-      // Trigger combat after a short delay for animation
-      setTimeout(() => resolveCombat(), 1500); // Delay for "CLASH" animation
+    if (gamePhase === 'player1_select_card' && currentPlayerIndex === 0 && !selectedCardP1) {
+      setGameState(prev => prev ? { ...prev, selectedCardP1: card, gamePhase: 'player2_select_card', currentPlayerIndex: 1, battleMessage: "Player 2, choose your defender!" } : null);
+    } else if (gamePhase === 'player2_select_card' && currentPlayerIndex === 1 && !selectedCardP2) {
+      setGameState(prev => prev ? { ...prev, selectedCardP2: card, gamePhase: 'combat_animation', battleMessage: "CLASH!" } : null);
+      setTimeout(() => resolveCombat(), 1500); 
     }
   };
 
@@ -135,48 +131,66 @@ export function GameBoard() {
 
       const p1 = { ...players[0] };
       const p2 = { ...players[1] };
-      const card1 = { ...selectedCardP1 };
-      const card2 = { ...selectedCardP2 };
+      const card1 = { ...selectedCardP1 }; // original stats for shield absorption calculation
+      const card1Combat = { ...selectedCardP1 }; // mutable copy for combat
+      const card2 = { ...selectedCardP2 }; // original stats
+      const card2Combat = { ...selectedCardP2 }; // mutable copy
 
       // Combat logic
-      const attackP1 = card1.melee + card1.magic;
-      const attackP2 = card2.melee + card2.magic;
+      const attackP1 = card1Combat.melee + card1Combat.magic;
+      const attackP2 = card2Combat.melee + card2Combat.magic;
 
       // Card 1 attacks Card 2
-      let damageToCard2 = Math.max(0, attackP1 - card2.shield);
-      card2.shield = Math.max(0, card2.shield - attackP1);
-      card2.hp -= damageToCard2;
-      battleLog += `${card1.title} attacks ${card2.title} for ${attackP1} (shield absorbs ${selectedCardP2.shield - card2.shield}).\n`;
+      const shieldAbsorbedByC2 = Math.min(card2Combat.shield, attackP1);
+      card2Combat.shield -= shieldAbsorbedByC2;
+      const damageToCard2Hp = Math.max(0, attackP1 - shieldAbsorbedByC2 - card2.defense); // Subtract defense after shield
+      card2Combat.hp -= damageToCard2Hp;
+      battleLog += `${card1Combat.title} attacks ${card2Combat.title} for ${attackP1}. ${card2Combat.title} defense blocks ${card2.defense}, shield absorbs ${shieldAbsorbedByC2}. ${card2Combat.title} takes ${damageToCard2Hp} HP damage.\n`;
 
-
-      // Card 2 attacks Card 1
-      let damageToCard1 = Math.max(0, attackP2 - card1.shield);
-      card1.shield = Math.max(0, card1.shield - attackP2);
-      card1.hp -= damageToCard1;
-      battleLog += `${card2.title} counter-attacks ${card1.title} for ${attackP2} (shield absorbs ${selectedCardP1.shield - card1.shield}).\n`;
-
-
-      if (card2.hp <= 0) {
-        const damageToP2 = Math.max(0, attackP1 - selectedCardP2.defense);
-        p2.hp = Math.max(0, p2.hp - damageToP2);
-        battleLog += `${card2.title} is defeated! Player 2 takes ${damageToP2} damage.\n`;
+      // Card 2 attacks Card 1 (if it survived)
+      if (card2Combat.hp > 0) {
+        const shieldAbsorbedByC1 = Math.min(card1Combat.shield, attackP2);
+        card1Combat.shield -= shieldAbsorbedByC1;
+        const damageToCard1Hp = Math.max(0, attackP2 - shieldAbsorbedByC1 - card1.defense); // Subtract defense after shield
+        card1Combat.hp -= damageToCard1Hp;
+        battleLog += `${card2Combat.title} counter-attacks ${card1Combat.title} for ${attackP2}. ${card1Combat.title} defense blocks ${card1.defense}, shield absorbs ${shieldAbsorbedByC1}. ${card1Combat.title} takes ${damageToCard1Hp} HP damage.\n`;
+      } else {
+         battleLog += `${card2Combat.title} was defeated before it could counter-attack.\n`;
       }
-      if (card1.hp <= 0) {
-        const damageToP1 = Math.max(0, attackP2 - selectedCardP1.defense);
-        p1.hp = Math.max(0, p1.hp - damageToP1);
-        battleLog += `${card1.title} is defeated! Player 1 takes ${damageToP1} damage.\n`;
+
+
+      if (card1Combat.hp <= 0) {
+        battleLog += `${card1Combat.title} is defeated! `;
+        // Direct damage to player if card is defeated and overkill logic could be added here if desired.
+        // For now, player damage only if opponent's card is defeated.
+      }
+       if (card2Combat.hp <= 0) {
+        battleLog += `${card2Combat.title} is defeated! `;
+        // Player 2 takes direct damage if their card is defeated by Player 1
+        const damageToP2 = Math.max(0, attackP1 - card2.defense - shieldAbsorbedByC2); // Damage that got through card's defenses
+        // Simplified: if card2 is defeated, P1's full attack (post shield/def) might hit P2.
+        // More accurately, it could be the remaining power of the attack.
+        // Let's consider the initial attack from P1 on P2, minus P2's card initial defense (shield already handled)
+        const directDamageToP2 = Math.max(0, (selectedCardP1.melee + selectedCardP1.magic) - selectedCardP2.defense);
+        p2.hp = Math.max(0, p2.hp - directDamageToP2);
+        battleLog += `Player 2 takes ${directDamageToP2} direct damage.\n`;
       }
       
       // Update hands and discard pile
-      p1.hand = p1.hand.filter(c => c.id !== card1.id);
-      p2.hand = p2.hand.filter(c => c.id !== card2.id);
-      discardPile = [...discardPile, selectedCardP1, selectedCardP2];
+      // Cards are removed from hand, their state (hp, shield) is as per combat.
+      p1.hand = p1.hand.filter(c => c.id !== card1Combat.id);
+      p2.hand = p2.hand.filter(c => c.id !== card2Combat.id);
       
-      let newGamePhase: GamePhase = prev.currentPlayerIndex === 0 ? 'player2_select_card' : 'player1_select_card';
+      // Add cards to discard pile (original versions before combat for now, or combat-modified ones)
+      // For simplicity, let's add the original selected cards to discard.
+      discardPile = [...discardPile, selectedCardP1, selectedCardP2]; 
+      
+      let newGamePhase: GamePhase = 'player1_select_card'; // Default to P1's turn
       let winner: PlayerData | undefined = undefined;
+      let nextPlayerIdx = 0; // P1
 
       if (p1.hp <= 0 && p2.hp <= 0) {
-        winner = undefined; // Draw
+        winner = undefined; 
         newGamePhase = 'game_over';
         battleLog += "It's a draw!";
       } else if (p1.hp <= 0) {
@@ -189,36 +203,27 @@ export function GameBoard() {
         battleLog += `${players[0].name} wins!`;
       }
       
-      // Next turn logic if game not over
-      let nextPlayerIndex = prev.currentPlayerIndex;
       let currentDeck = prev.deck;
       if (newGamePhase !== 'game_over') {
-        nextPlayerIndex = prev.currentPlayerIndex === 0 ? 1 : 0;
-        
-        // Draw cards for current player (who just finished attacking/defending)
-        const playerToDrawFor = players[prev.currentPlayerIndex];
-        const cardsNeeded = CARDS_IN_HAND - playerToDrawFor.hand.length;
-        if (cardsNeeded > 0 && currentDeck.length > 0) {
-          const cardsToDeal = Math.min(cardsNeeded, currentDeck.length);
-          const { dealtCards, remainingDeck } = dealCards(currentDeck, cardsToDeal);
-          if (prev.currentPlayerIndex === 0) p1.hand = [...p1.hand, ...dealtCards];
-          else p2.hand = [...p2.hand, ...dealtCards];
-          currentDeck = remainingDeck;
-          battleLog += `\n${playerToDrawFor.name} draws ${dealtCards.length} card(s).`;
+        // Draw cards for Player 1
+        const p1CardsNeeded = CARDS_IN_HAND - p1.hand.length;
+        if (p1CardsNeeded > 0 && currentDeck.length > 0) {
+          const p1Deal = dealCards(currentDeck, Math.min(p1CardsNeeded, currentDeck.length));
+          p1.hand = [...p1.hand, ...p1Deal.dealtCards];
+          currentDeck = p1Deal.remainingDeck;
+          battleLog += `\nPlayer 1 draws ${p1Deal.dealtCards.length} card(s).`;
         }
         
-        // Draw cards for next player
-        const nextPlayerToDrawFor = players[nextPlayerIndex];
-        const nextPlayerCardsNeeded = CARDS_IN_HAND - nextPlayerToDrawFor.hand.length;
-         if (nextPlayerCardsNeeded > 0 && currentDeck.length > 0) {
-          const cardsToDeal = Math.min(nextPlayerCardsNeeded, currentDeck.length);
-          const { dealtCards, remainingDeck } = dealCards(currentDeck, cardsToDeal);
-          if (nextPlayerIndex === 0) p1.hand = [...p1.hand, ...dealtCards];
-          else p2.hand = [...p2.hand, ...dealtCards];
-          currentDeck = remainingDeck;
-          battleLog += `\n${nextPlayerToDrawFor.name} draws ${dealtCards.length} card(s).`;
+        // Draw cards for Player 2
+        const p2CardsNeeded = CARDS_IN_HAND - p2.hand.length;
+        if (p2CardsNeeded > 0 && currentDeck.length > 0) {
+          const p2Deal = dealCards(currentDeck, Math.min(p2CardsNeeded, currentDeck.length));
+          p2.hand = [...p2.hand, ...p2Deal.dealtCards];
+          currentDeck = p2Deal.remainingDeck;
+          battleLog += `\nPlayer 2 draws ${p2Deal.dealtCards.length} card(s).`;
         }
-        battleLog += `\n${players[nextPlayerIndex].name}'s turn. Select a card.`;
+        battleLog += `\nPlayer 1's turn. Select a card.`;
+        nextPlayerIdx = 0; // Reset to Player 1 for next turn's selection phase
       }
       
       return {
@@ -229,7 +234,7 @@ export function GameBoard() {
         selectedCardP1: undefined,
         selectedCardP2: undefined,
         gamePhase: newGamePhase,
-        currentPlayerIndex: nextPlayerIndex as 0 | 1,
+        currentPlayerIndex: nextPlayerIdx as 0 | 1,
         winner,
         battleMessage: battleLog.trim(),
       };
@@ -292,6 +297,7 @@ export function GameBoard() {
           isPlayerTurn={currentPlayerIndex === 1 && gamePhase === 'player2_select_card'}
           isOpponent={true}
           selectedCardId={selectedCardP2?.id}
+          hasCommittedCard={!!selectedCardP2} // Player 2 hand recedes if their card is selected
         />
       </div>
 
@@ -299,7 +305,7 @@ export function GameBoard() {
       <BattleArena 
         player1Card={selectedCardP1} 
         player2Card={selectedCardP2} 
-        showClashAnimation={gamePhase === 'combat_animation'}
+        showClashAnimation={gamePhase === 'combat_animation' && !!selectedCardP1 && !!selectedCardP2}
         battleMessage={battleMessage}
       />
 
@@ -310,6 +316,7 @@ export function GameBoard() {
           onCardSelect={handleCardSelect} 
           isPlayerTurn={currentPlayerIndex === 0 && gamePhase === 'player1_select_card'}
           selectedCardId={selectedCardP1?.id}
+          hasCommittedCard={!!selectedCardP1} // Player 1 hand recedes if their card is selected
         />
         <div className="flex justify-between items-end mt-2 md:mt-4">
            <PlayerStatusDisplay player={player1} isCurrentPlayer={currentPlayerIndex === 0 && gamePhase === 'player1_select_card'} />
@@ -324,5 +331,3 @@ export function GameBoard() {
     </div>
   );
 }
-
-    
