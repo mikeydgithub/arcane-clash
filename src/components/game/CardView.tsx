@@ -7,6 +7,12 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CardViewProps {
   card: CardData;
@@ -49,7 +55,7 @@ export function CardView({
         <CardTitle className={cn("truncate", inBattleArena ? "text-xs md:text-sm" : "text-sm")}>{card.title}</CardTitle>
       </CardHeader>
       
-      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-24 md:h-28" : "h-24 md:h-32")}>
+      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-20 md:h-24" : "h-24 md:h-32")}>
         {card.isLoadingArt ? (
           <Skeleton className="w-full h-full rounded-none" />
         ) : card.artUrl ? (
@@ -72,16 +78,17 @@ export function CardView({
           />
         )}
       </div>
-
-      <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-0.5 text-xs" : "text-xs")}>
-        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-          <StatDisplay icon={<Sparkles className="w-3 h-3 text-blue-400" />} value={card.magic} label="Magic" />
-          <StatDisplay icon={<Swords className="w-3 h-3 text-red-400" />} value={card.melee} label="Melee" />
-          <StatDisplay icon={<ShieldHalf className="w-3 h-3 text-green-400" />} value={card.defense} label="Defense" />
-          <StatDisplay icon={<Heart className="w-3 h-3 text-pink-400" />} value={`${card.hp}/${card.maxHp}`} label="HP" />
-        </div>
-         { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className="w-3 h-3 text-yellow-400" />} value={`${card.shield}/${card.maxShield}`} label="Shield" /> }
-      </CardContent>
+      <TooltipProvider delayDuration={300}>
+        <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-0.5 text-[10px] md:text-xs" : "text-xs")}>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+            <StatDisplay icon={<Sparkles className="w-3 h-3 text-blue-400" />} value={card.magic} label="Magic" />
+            <StatDisplay icon={<Swords className="w-3 h-3 text-red-400" />} value={card.melee} label="Melee" />
+            <StatDisplay icon={<ShieldHalf className="w-3 h-3 text-green-400" />} value={card.defense} label="Defense" />
+            <StatDisplay icon={<Heart className="w-3 h-3 text-pink-400" />} value={`${card.hp}/${card.maxHp}`} label="HP" />
+          </div>
+          { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className="w-3 h-3 text-yellow-400" />} value={`${card.shield}/${card.maxShield}`} label="Shield" /> }
+        </CardContent>
+      </TooltipProvider>
       
       {card.description && !inBattleArena && (
         <CardFooter className="p-2 mt-auto">
@@ -100,9 +107,17 @@ interface StatDisplayProps {
 
 function StatDisplay({ icon, value, label }: StatDisplayProps) {
   return (
-    <div className="flex items-center space-x-1" aria-label={`${label}: ${value}`}>
-      {icon}
-      <span className="font-semibold">{value}</span>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center space-x-1 cursor-default" aria-label={`${label}: ${value}`}>
+          {icon}
+          <span className="font-semibold">{value}</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" align="center">
+        <p>{label}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
+
