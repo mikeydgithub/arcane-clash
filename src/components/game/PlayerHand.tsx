@@ -11,44 +11,45 @@ interface PlayerHandProps {
   isPlayerTurn: boolean;
   isOpponent?: boolean;
   selectedCardId?: string;
-  hasCommittedCard?: boolean; // New prop
+  hasCommittedCard?: boolean;
 }
 
 export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = false, selectedCardId, hasCommittedCard = false }: PlayerHandProps) {
   if (!cards) return null;
 
+  // Estimate card width for min-w calculation (w-40 is 10rem, w-48 is 12rem)
+  // Let's use a slightly larger value for padding/margins.
+  const cardNominalWidth = "w-40 md:w-48"; // Keep this consistent with CardView's baseCardSize
+  const committedCardTranslation = isOpponent ? "md:translate-x-10" : "md:-translate-x-10";
+
   return (
     <div className={cn(
-      "flex justify-center items-end space-x-1 md:space-x-2 p-2 md:p-4 flex-shrink-0 transition-all duration-500 ease-in-out",
-      isOpponent ? "transform scale-y-[-1]" : "",
+      "flex flex-col items-center space-y-1 md:space-y-2 p-1 md:p-2 transition-all duration-500 ease-in-out w-full overflow-y-auto max-h-[calc(100vh-200px)]", // Allow vertical scroll if many cards
+      // When a card is committed, the hand recedes horizontally
       hasCommittedCard 
-        ? "opacity-60 transform-gpu md:translate-y-10 scale-90 min-h-[100px] md:min-h-[140px]" // Reduced min-h, increased translate-y
-        : "min-h-[180px] md:min-h-[280px]" // Approx. card height + padding
+        ? `opacity-60 transform-gpu ${committedCardTranslation} scale-90` 
+        : "",
+      // Ensure the hand still has some presence even when receded, but mostly determined by card content
+      "min-h-[200px]" // A fallback min-height, actual height driven by cards
     )}>
       {cards.map((card) => (
         <div key={card.id} className={cn(
-          isOpponent ? "transform scale-y-[-1]" : "", // Counter-flip individual cards
+          // No y-scaling needed for side hands
           "transition-opacity duration-300",
-          // Dim non-selected cards in a hand that has a committed card, but highlight the committed one if it's still "selected" visually
           hasCommittedCard && card.id !== selectedCardId ? "opacity-60" : "opacity-100"
         )}>
           <CardView 
             card={card}
             onClick={() => onCardSelect(card)}
             isSelected={selectedCardId === card.id}
-            // A player can only play if it's their turn AND they haven't already committed a card from this hand.
             isPlayable={isPlayerTurn && !hasCommittedCard} 
-            isOpponentCard={isOpponent}
+            isOpponentCard={isOpponent} // This prop is still useful for CardView's internal styling/behavior
           />
         </div>
       ))}
-      {cards.length === 0 && isPlayerTurn && !isOpponent && !hasCommittedCard && (
-        <p className="text-muted-foreground">No cards in hand.</p>
-      )}
-       {cards.length === 0 && isPlayerTurn && isOpponent && !hasCommittedCard && ( // Message for opponent's empty hand if playable
-        <p className={cn("text-muted-foreground", isOpponent ? "transform scale-y-[-1]" : "")}>No cards in hand.</p>
+      {cards.length === 0 && isPlayerTurn && !hasCommittedCard && (
+        <p className="text-muted-foreground text-center">No cards in hand.</p>
       )}
     </div>
   );
 }
-

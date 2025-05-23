@@ -21,9 +21,9 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, batt
   };
 
   return (
-    <div className="flex-grow flex flex-col justify-center items-center relative p-2 md:p-4 min-h-0">
+    <div className="flex-grow flex flex-col justify-center items-center relative p-2 md:p-4 min-h-0 w-full">
       <div className="flex justify-around items-center w-full max-w-3xl h-full relative">
-        {/* Player 1 Card Slot (Bottom/Left) */}
+        {/* Player 1 Card Slot (Left side of Arena) */}
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player1Card && (
@@ -46,10 +46,10 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, batt
           <motion.div
             key="clash-text"
             initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: [1, 1.1, 1], transition: { duration: 0.7, type: 'spring', stiffness: 250 } }} // Further reduced scale and adjusted animation
+            animate={{ opacity: 1, scale: [1, 1.1, 1], transition: { duration: 0.7, type: 'spring', stiffness: 250 } }}
             exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-            className="absolute text-4xl md:text-5xl font-bold text-destructive z-10 uppercase tracking-wider" // Further reduced text size
-            style={{ textShadow: '2px 2px 0px var(--background), 2px 2px 0px hsl(var(--primary))' }} // Slightly reduced shadow
+            className="absolute text-4xl md:text-5xl font-bold text-destructive z-10 uppercase tracking-wider"
+            style={{ textShadow: '2px 2px 0px var(--background), 2px 2px 0px hsl(var(--primary))' }}
           >
             Clash!
           </motion.div>
@@ -59,13 +59,13 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, batt
             key="battle-message"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0, transition: { duration: 0.5 } }}
-            className="absolute text-center text-sm md:text-base font-semibold text-foreground bg-background/80 p-2 rounded-md shadow-lg z-10 max-w-xs md:max-w-sm" // Reduced text size, adjusted max-width
+            className="absolute text-center text-sm md:text-base font-semibold text-foreground bg-background/80 p-2 rounded-md shadow-lg z-10 max-w-xs md:max-w-sm"
           >
             {battleMessage}
           </motion.div>
         )}
 
-        {/* Player 2 Card Slot (Top/Right) */}
+        {/* Player 2 Card Slot (Right side of Arena) */}
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player2Card && (
@@ -86,16 +86,16 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, batt
       <style jsx>{`
         @keyframes clash-p1 {
           0% { transform: translateX(0) rotate(0deg); }
-          50% { transform: translateX(8px) rotate(-2deg) scale(1.03); } /* Further reduced translate, rotate, scale */
+          50% { transform: translateX(8px) rotate(-2deg) scale(1.03); }
           100% { transform: translateX(0) rotate(0deg); }
         }
         @keyframes clash-p2 {
           0% { transform: translateX(0) rotate(0deg); }
-          50% { transform: translateX(-8px) rotate(2deg) scale(1.03); } /* Further reduced translate, rotate, scale */
+          50% { transform: translateX(-8px) rotate(2deg) scale(1.03); }
           100% { transform: translateX(0) rotate(0deg); }
         }
-        .animate-clash-p1 { animation: clash-p1 0.7s ease-in-out; } /* Adjusted animation duration */
-        .animate-clash-p2 { animation: clash-p2 0.7s ease-in-out; } /* Adjusted animation duration */
+        .animate-clash-p1 { animation: clash-p1 0.7s ease-in-out; }
+        .animate-clash-p2 { animation: clash-p2 0.7s ease-in-out; }
         
         @keyframes fadeIn {
           from { opacity: 0; transform: scale(0.9); }
