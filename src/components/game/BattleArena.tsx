@@ -61,26 +61,37 @@ export function BattleArena({
   const logEndRef = useRef<HTMLDivElement>(null);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const entriesToAnimateRef = useRef<string[]>([]);
+  
   const [clashTextVisible, setClashTextVisible] = useState(false);
+  const hideClashTextTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    let bubbleTimerId: NodeJS.Timeout | null = null;
     if (showClashAnimation) {
       setClashTextVisible(true);
-      // Hide the bubble after it has been shown, cards have clashed, and it has lingered.
-      // Bubble in-animation: delay 0.4s, duration 0.5s (fully visible at 0.9s)
-      // Card bash animation: delay 0.5s, duration 0.7s (finishes at 1.2s)
-      // Let bubble linger for ~0.8s more. Total visibility before starting to dissolve: 1.2s + 0.8s = 2.0s.
-      bubbleTimerId = setTimeout(() => {
+
+      // Clear any existing timer to ensure we don't have multiple hide timers running
+      if (hideClashTextTimerRef.current) {
+        clearTimeout(hideClashTextTimerRef.current);
+      }
+
+      // Set a new timer to hide the bubble
+      hideClashTextTimerRef.current = setTimeout(() => {
         setClashTextVisible(false);
-      }, 2000); // Start dissolving after 2 seconds
+      }, 2000); // Bubble stays visible for 2 seconds from when showClashAnimation becomes true
     }
+    // If showClashAnimation becomes false, the timer set above should still run its course
+    // for the linger effect. It is not cleared here.
+  }, [showClashAnimation]);
+
+  // Effect for unmount cleanup of the timer
+  useEffect(() => {
     return () => {
-      if (bubbleTimerId) {
-        clearTimeout(bubbleTimerId);
+      if (hideClashTextTimerRef.current) {
+        clearTimeout(hideClashTextTimerRef.current);
+        hideClashTextTimerRef.current = null;
       }
     };
-  }, [showClashAnimation]);
+  }, []); // Empty dependency array, so this cleanup runs only on unmount
 
   useEffect(() => {
     if (animationTimeoutRef.current) {
@@ -110,6 +121,7 @@ export function BattleArena({
       const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
       entriesToAnimateRef.current.push(...newMessages);
     } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) {
+      // This condition handles log reset for new turns/phases if necessary
       setDisplayedLogEntries(gameLogMessages.slice(0, gameLogMessages.length));
       entriesToAnimateRef.current = []; 
     }
