@@ -29,16 +29,16 @@ export type GamePhase =
   | "player1_select_card" 
   | "player2_select_card" 
   | "combat_animation"
-  | "combat_resolution" 
+  | "combat_resolution" // This phase might be very short or merged into combat_summary
+  | "combat_summary" // New: After combat, showing results, waiting for player to continue
   | "game_over";
 
 export interface GameState {
   players: [PlayerData, PlayerData];
   currentPlayerIndex: 0 | 1;
   gamePhase: GamePhase;
-  selectedCardP1?: CardData;
-  selectedCardP2?: CardData;
+  selectedCardP1?: CardData; // Card in arena for P1
+  selectedCardP2?: CardData; // Card in arena for P2
   winner?: PlayerData;
-  battleMessage?: string;
+  turnLogMessages: string[]; // Changed from battleMessage: string
 }
-
