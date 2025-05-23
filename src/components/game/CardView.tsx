@@ -15,7 +15,7 @@ interface CardViewProps {
   isPlayable?: boolean;
   isOpponentCard?: boolean;
   inBattleArena?: boolean;
-  isPlayerTurnForThisCard?: boolean; // Added to control fading based on turn
+  isPlayerTurnForThisCard?: boolean;
 }
 
 export function CardView({ 
@@ -37,7 +37,6 @@ export function CardView({
         baseCardSize,
         cardHoverEffect,
         isSelected ? "ring-2 ring-accent shadow-accent" : "",
-        // Updated Fading Logic: Fade opponent card if not selected, not in arena, AND it's not their turn.
         isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
         inBattleArena ? "animate-fadeIn" : ""
       )}
@@ -58,16 +57,16 @@ export function CardView({
             src={card.artUrl} 
             alt={`Art for ${card.title}`} 
             layout="fill" 
-            objectFit="cover" 
+            objectFit="contain" 
             data-ai-hint="fantasy creature"
             className="rounded-t-sm"
           />
         ) : (
           <Image 
-            src={`https://placehold.co/300x400.png?text=${encodeURIComponent(card.title)}`} 
+            src={`https://placehold.co/300x400.png`} 
             alt={`Placeholder for ${card.title}`} 
             layout="fill" 
-            objectFit="cover"
+            objectFit="contain"
             data-ai-hint="fantasy abstract"
             className="rounded-t-sm"
           />
