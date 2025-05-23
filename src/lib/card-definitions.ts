@@ -1,0 +1,23 @@
+
+export const CARD_TITLES: string[] = [
+  "Flame Serpent",
+  "Iron Golem",
+  "Shadow Stalker",
+  "Celestial Guardian",
+  "Mystic Owl",
+  "Stone Titan",
+  "Storm Drake",
+  "Forest Sprite",
+  "Abyssal Fiend",
+  "Sunstone Paladin",
+  "Glacier Elemental",
+  "Volcanic Imp",
+  "Ancient Treant",
+  "Whispering Banshee",
+  "Knight of the Rose",
+  "Desert Djinn",
+  "Swamp Hydra",
+  "Sky Griffin",
+  "Underworld Lich",
+  "Psionic Master",
+];
