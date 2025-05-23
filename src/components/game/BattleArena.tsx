@@ -45,13 +45,11 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
     }
     
     const currentFullDisplayCandidateLength = displayedLogEntries.length + entriesToAnimateRef.current.length;
-    // Only add new messages if gameLogMessages is longer than what's displayed + queued
+
     if (gameLogMessages.length > currentFullDisplayCandidateLength) {
       const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
       entriesToAnimateRef.current.push(...newMessages);
-    } else if (gameLogMessages.length < displayedLogEntries.length) {
-      // If gameLogMessages becomes shorter (e.g. new game, log reset), reset displayed log
-      // This case is partly handled by 'initial' phase, but good for robustness
+    } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) { // Reset if log is cleared (e.g. new game)
       setDisplayedLogEntries(gameLogMessages.slice(0, gameLogMessages.length));
       entriesToAnimateRef.current = [];
     }
@@ -87,7 +85,19 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
 
   return (
     <div className="flex-grow flex flex-col justify-center items-center relative p-1 md:p-2 min-h-0 w-full h-full">
-      <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]"> {/* Adjusted min-h */}
+      {showClashAnimation && (
+        <motion.div
+          key="clash-text-top"
+          initial={{ opacity: 0, scale: 0.5, y: -20 }}
+          animate={{ opacity: 1, scale: [1, 1.03, 1], y: 0, transition: { duration: 0.5, type: 'spring', stiffness: 180 } }}
+          exit={{ opacity: 0, scale: 0.5, y: -20, transition: { duration: 0.3 } }}
+          className="text-2xl md:text-3xl font-bold text-destructive uppercase tracking-wider my-2 text-center"
+          style={{ textShadow: '1px 1px 0px var(--background), 1px 1px 0px hsl(var(--primary))' }}
+        >
+          Clash!
+        </motion.div>
+      )}
+      <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player1Card && (
@@ -104,19 +114,6 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
             )}
           </AnimatePresence>
         </div>
-
-        {showClashAnimation && (
-          <motion.div
-            key="clash-text"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: [1, 1.03, 1], transition: { duration: 0.5, type: 'spring', stiffness: 180 } }} // Slightly toned down
-            exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-            className="absolute text-2xl md:text-3xl font-bold text-destructive z-10 uppercase tracking-wider" // Slightly smaller text
-            style={{ textShadow: '1px 1px 0px var(--background), 1px 1px 0px hsl(var(--primary))' }} // Simpler shadow
-          >
-            Clash!
-          </motion.div>
-        )}
         
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
@@ -144,7 +141,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
         </div>
       )}
 
-      <div className="w-full max-w-xl h-[30%] max-h-40 md:max-h-48 mb-1 md:mb-2"> {/* Adjusted max-h */}
+      <div className="w-full max-w-xl h-[30%] max-h-40 md:max-h-48 mb-1 md:mb-2">
         <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
           {displayedLogEntries.length === 0 && (gamePhase === 'player1_select_card' || gamePhase === 'player2_select_card') && (
             <p className="text-xs md:text-sm text-center text-muted-foreground italic">
@@ -157,7 +154,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="text-[10px] md:text-xs text-foreground mb-1 last:mb-0" // Slightly smaller log text
+              className="text-[10px] md:text-xs text-foreground mb-1 last:mb-0"
             >
               {entry}
             </motion.p>
@@ -169,19 +166,17 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
       <style jsx>{`
         @keyframes clash-p1 {
           0% { transform: translateX(0) rotate(0deg); }
-          50% { transform: translateX(5px) rotate(-1deg) scale(1.01); } /* Slightly toned down */
+          50% { transform: translateX(5px) rotate(-1deg) scale(1.01); } 
           100% { transform: translateX(0) rotate(0deg); }
         }
         @keyframes clash-p2 {
           0% { transform: translateX(0) rotate(0deg); }
-          50% { transform: translateX(-5px) rotate(1deg) scale(1.01); } /* Slightly toned down */
+          50% { transform: translateX(-5px) rotate(1deg) scale(1.01); } 
           100% { transform: translateX(0) rotate(0deg); }
         }
-        .animate-clash-p1 { animation: clash-p1 0.5s ease-in-out; } /* Slightly faster */
-        .animate-clash-p2 { animation: clash-p2 0.5s ease-in-out; } /* Slightly faster */
+        .animate-clash-p1 { animation: clash-p1 0.5s ease-in-out; } 
+        .animate-clash-p2 { animation: clash-p2 0.5s ease-in-out; } 
       `}</style>
     </div>
   );
 }
-
-    
