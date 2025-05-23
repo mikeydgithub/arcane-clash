@@ -68,22 +68,19 @@ export function BattleArena({
       animationTimeoutRef.current = null;
     }
     
-    // If it's the start of these phases, reset displayed logs and animation queue
     if (gamePhase === 'initial' || gamePhase === 'loading_art') {
         setDisplayedLogEntries(gameLogMessages || []);
         entriesToAnimateRef.current = [];
         return;
     }
-    // If it's the coin flip animation, show initial messages and then the specific coin flip message.
     if (gamePhase === 'coin_flip_animation') {
         const coinFlipMessages = gameLogMessages.filter(msg => msg.toLowerCase().includes("coin"));
         if(gameLogMessages.length > 0 && !gameLogMessages[gameLogMessages.length -1].toLowerCase().includes("coin")){
-             // Only show the "flipping coin" type message for this phase
             setDisplayedLogEntries(prev => [...prev, ...coinFlipMessages.filter(cfm => !prev.includes(cfm))]);
         } else {
             setDisplayedLogEntries(coinFlipMessages);
         }
-        entriesToAnimateRef.current = []; // No further animation for logs here
+        entriesToAnimateRef.current = []; 
         return;
     }
 
@@ -94,7 +91,6 @@ export function BattleArena({
       const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
       entriesToAnimateRef.current.push(...newMessages);
     } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) {
-       // Handle log reset for new rounds
       setDisplayedLogEntries(gameLogMessages.slice(0, gameLogMessages.length));
       entriesToAnimateRef.current = [];
     }
@@ -106,7 +102,7 @@ export function BattleArena({
         if (nextEntry) {
           setDisplayedLogEntries(prev => [...prev, nextEntry]);
         }
-        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); // Animation speed for log entries
+        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); 
       } else {
         animationTimeoutRef.current = null;
       }
@@ -139,7 +135,6 @@ export function BattleArena({
           player2Name={player2Name}
           onAnimationComplete={onCoinFlipAnimationComplete}
         />
-         {/* Log area for coin flip phase, can be minimal or show specific messages */}
         <div className="w-full max-w-xl h-[30%] max-h-40 md:max-h-48 mb-1 md:mb-2 mt-4">
           <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
             {displayedLogEntries.map((entry, index) => (
@@ -162,18 +157,32 @@ export function BattleArena({
 
   return (
     <div className="flex-grow flex flex-col justify-center items-center relative p-1 md:p-2 min-h-0 w-full h-full">
-      {showClashAnimation && (
-        <motion.div
-          key="clash-text-top"
-          initial={{ opacity: 0, scale: 0.5, y: -20 }}
-          animate={{ opacity: 1, scale: [1, 1.03, 1], y: 0, transition: { delay: 0.5, duration: 0.5, type: 'spring', stiffness: 180 } }}
-          exit={{ opacity: 0, scale: 0.5, y: -20, transition: { duration: 0.3 } }}
-          className="text-xl md:text-2xl font-bold text-destructive uppercase tracking-wider my-1 md:my-2 text-center"
-          style={{ textShadow: '1px 1px 0px var(--background), 1px 1px 0px hsl(var(--primary))' }}
-        >
-          Clash!
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {showClashAnimation && (
+          <motion.div
+            key="clash-text-bubble"
+            initial={{ opacity: 0, scale: 0.3, y: -60, rotate: -10 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              rotate: 0,
+              transition: {
+                delay: 0.4, // Slightly before cards hit
+                duration: 0.5, // Animation duration
+                type: 'spring',
+                stiffness: 120,
+                damping: 8,
+              },
+            }}
+            exit={{ opacity: 0, scale: 0.5, y: -30, rotate: 5, transition: { duration: 0.3 } }}
+            className="absolute top-[10%] md:top-[15%] z-20 bg-destructive text-destructive-foreground font-black text-3xl md:text-5xl uppercase tracking-wider px-6 py-3 rounded-2xl shadow-2xl transform -skew-y-3"
+            style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.2)' }}
+          >
+            Clash!
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
