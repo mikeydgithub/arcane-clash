@@ -23,11 +23,10 @@ export function GameBoard() {
   const { toast } = useToast();
 
   const initializeGame = useCallback(() => {
-    const allGeneratedCards = generateInitialCards(); // Generates 40 cards
-    const shuffledAllCards = shuffleDeck(allGeneratedCards);
+    const allGeneratedCards = generateInitialCards(); 
 
-    const player1DeckFull = shuffledAllCards.slice(0, INITIAL_DECK_SIZE_PER_PLAYER);
-    const player2DeckFull = shuffledAllCards.slice(INITIAL_DECK_SIZE_PER_PLAYER, INITIAL_DECK_SIZE_PER_PLAYER * 2);
+    const player1DeckFull = shuffleDeck(allGeneratedCards.slice(0, INITIAL_DECK_SIZE_PER_PLAYER));
+    const player2DeckFull = shuffleDeck(allGeneratedCards.slice(INITIAL_DECK_SIZE_PER_PLAYER, INITIAL_DECK_SIZE_PER_PLAYER * 2));
 
     const { dealtCards: p1InitialHand, remainingDeck: p1DeckAfterDeal } = dealCards(player1DeckFull, CARDS_IN_HAND);
     const { dealtCards: p2InitialHand, remainingDeck: p2DeckAfterDeal } = dealCards(player2DeckFull, CARDS_IN_HAND);
@@ -70,42 +69,48 @@ export function GameBoard() {
         const artInput: GenerateCardArtInput = { cardTitle: card.title };
         const result = await generateCardArt(artInput);
         
-        setGameState(prev => {
-          if (!prev) return null;
-          const updateCardInHand = (hand: CardData[]) => 
-            hand.map(c => c.id === card.id ? { ...c, artUrl: result.cardArtDataUri, isLoadingArt: false } : c);
-          
-          return {
-            ...prev,
-            players: prev.players.map(p => ({ ...p, hand: updateCardInHand(p.hand) })) as [PlayerData, PlayerData],
-          };
-        });
+        setTimeout(() => {
+          setGameState(prev => {
+            if (!prev) return null;
+            const updateCardInHand = (hand: CardData[]) => 
+              hand.map(c => c.id === card.id ? { ...c, artUrl: result.cardArtDataUri, isLoadingArt: false } : c);
+            
+            return {
+              ...prev,
+              players: prev.players.map(p => ({ ...p, hand: updateCardInHand(p.hand) })) as [PlayerData, PlayerData],
+            };
+          });
+        }, 0);
       } catch (error) {
         console.error(`Failed to generate art for ${card.title}:`, error);
         toast({ title: "Art Generation Error", description: `Could not generate art for ${card.title}. Using placeholder.`, variant: "destructive" });
-        setGameState(prev => {
-           if (!prev) return null;
-           const updateCardInHand = (hand: CardData[]) => 
-            hand.map(c => c.id === card.id ? { ...c, isLoadingArt: false } : c);
-          
-          return {
-            ...prev,
-            players: prev.players.map(p => ({ ...p, hand: updateCardInHand(p.hand) })) as [PlayerData, PlayerData],
-          };
-        });
+        setTimeout(() => {
+          setGameState(prev => {
+            if (!prev) return null;
+            const updateCardInHand = (hand: CardData[]) => 
+              hand.map(c => c.id === card.id ? { ...c, isLoadingArt: false } : c);
+            
+            return {
+              ...prev,
+              players: prev.players.map(p => ({ ...p, hand: updateCardInHand(p.hand) })) as [PlayerData, PlayerData],
+            };
+          });
+        }, 0);
       } finally {
         artLoadedCount++;
         setArtGenerationProgress((artLoadedCount / totalCardsToLoadArtFor) * 100);
         if (artLoadedCount === totalCardsToLoadArtFor) {
-          setGameState(prev => {
-            if (!prev) return null;
-            const nextPlayerName = prev.players[0].name;
-            return { 
-                ...prev, 
-                gamePhase: 'player1_select_card', 
-                gameLogMessages: [...prev.gameLogMessages, `${nextPlayerName}, select your champion!`] 
-            };
-          });
+          setTimeout(() => {
+            setGameState(prev => {
+              if (!prev) return null;
+              const nextPlayerName = prev.players[0].name;
+              return { 
+                  ...prev, 
+                  gamePhase: 'player1_select_card', 
+                  gameLogMessages: [...prev.gameLogMessages, `${nextPlayerName}, select your champion!`] 
+              };
+            });
+          },0);
         }
       }
     });
@@ -223,7 +228,7 @@ export function GameBoard() {
         newTurnLogEntries.push(`${card2InCombat.title} survives the clash.`);
       }
       
-      const drawCardForPlayer = async (playerData: PlayerData, playerName: string) => {
+      const drawCardForPlayer = (playerData: PlayerData, playerName: string) => {
         if (playerData.hand.length < CARDS_IN_HAND && playerData.deck.length > 0) {
           const { dealtCards: newCards, remainingDeck: deckAfterDraw } = dealCards(playerData.deck, 1);
           const newCardWithLoadingArt = { ...newCards[0], isLoadingArt: true, artUrl: undefined };
@@ -232,26 +237,30 @@ export function GameBoard() {
           newTurnLogEntries.push(`${playerName} draws a new card: ${newCards[0].title}.`);
           
           generateCardArt({ cardTitle: newCards[0].title }).then(artResult => {
-            setGameState(currentGS => {
-              if (!currentGS) return null;
-              return {
-                ...currentGS,
-                players: currentGS.players.map(p => 
-                  p.id === playerData.id ? { ...p, hand: p.hand.map(c => c.id === newCards[0].id ? {...c, artUrl: artResult.cardArtDataUri, isLoadingArt: false} : c) } : p
-                ) as [PlayerData, PlayerData]
-              };
-            });
+            setTimeout(() => {
+              setGameState(currentGS => {
+                if (!currentGS) return null;
+                return {
+                  ...currentGS,
+                  players: currentGS.players.map(p => 
+                    p.id === playerData.id ? { ...p, hand: p.hand.map(c => c.id === newCards[0].id ? {...c, artUrl: artResult.cardArtDataUri, isLoadingArt: false} : c) } : p
+                  ) as [PlayerData, PlayerData]
+                };
+              });
+            }, 0);
           }).catch(err => {
             console.error(`Art gen error for ${playerName} draw`, err);
-            setGameState(currentGS => {
-              if (!currentGS) return null;
-              return {
-                ...currentGS,
-                players: currentGS.players.map(p => 
-                  p.id === playerData.id ? { ...p, hand: p.hand.map(c => c.id === newCards[0].id ? {...c, isLoadingArt: false} : c) } : p
-                ) as [PlayerData, PlayerData]
-              };
-            });
+            setTimeout(() => {
+              setGameState(currentGS => {
+                if (!currentGS) return null;
+                return {
+                  ...currentGS,
+                  players: currentGS.players.map(p => 
+                    p.id === playerData.id ? { ...p, hand: p.hand.map(c => c.id === newCards[0].id ? {...c, isLoadingArt: false} : c) } : p
+                  ) as [PlayerData, PlayerData]
+                };
+              });
+            }, 0);
           });
         } else if (playerData.hand.length < CARDS_IN_HAND && playerData.deck.length === 0) {
           newTurnLogEntries.push(`${playerName} has no cards left in their deck to draw.`);
