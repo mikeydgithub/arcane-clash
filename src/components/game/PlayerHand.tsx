@@ -20,10 +20,10 @@ export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = fal
   return (
     <div className={cn(
       "flex justify-center items-end space-x-1 md:space-x-2 p-2 md:p-4 flex-shrink-0 transition-all duration-500 ease-in-out",
-      isOpponent ? "transform scale-y-[-1]" : "", // Flip opponent's hand for top display
+      isOpponent ? "transform scale-y-[-1]" : "",
       hasCommittedCard 
-        ? "opacity-60 transform-gpu md:translate-y-8 scale-90 min-h-[140px] md:min-h-[220px]" // Increased translate-y from 3 to 8
-        : "min-h-[180px] md:min-h-[280px]"
+        ? "opacity-60 transform-gpu md:translate-y-10 scale-90 min-h-[100px] md:min-h-[140px]" // Reduced min-h, increased translate-y
+        : "min-h-[180px] md:min-h-[280px]" // Approx. card height + padding
     )}>
       {cards.map((card) => (
         <div key={card.id} className={cn(
