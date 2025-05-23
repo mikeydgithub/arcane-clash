@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { CardData } from '@/types';
@@ -17,7 +18,7 @@ export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = fal
 
   return (
     <div className={cn(
-      "flex justify-center items-end space-x-1 md:space-x-2 p-2 md:p-4 min-h-[180px] md:min-h-[280px]",
+      "flex justify-center items-end space-x-1 md:space-x-2 p-2 md:p-4 min-h-[180px] md:min-h-[280px] flex-shrink-0",
       isOpponent ? "transform scale-y-[-1]" : "" // Flip opponent's hand for top display
     )}>
       {cards.map((card, index) => (
