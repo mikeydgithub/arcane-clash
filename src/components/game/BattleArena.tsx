@@ -40,18 +40,18 @@ export function BattleArena({
     visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
     clashP1: {
       opacity: 1,
-      x: ['0%', '60%', '0%'], 
-      rotate: [0, -2, 0],    
-      scale: [1, 1.05, 1],   
-      zIndex: [0, 10, 0],     
+      x: ['0%', '60%', '0%'],
+      rotate: [0, -2, 0],
+      scale: [1, 1.05, 1],
+      zIndex: [0, 10, 0],
       transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
     clashP2: {
       opacity: 1,
-      x: ['0%', '-60%', '0%'], 
-      rotate: [0, 2, 0],     
-      scale: [1, 1.05, 1],   
-      zIndex: [0, 5, 0],      
+      x: ['0%', '-60%', '0%'],
+      rotate: [0, 2, 0],
+      scale: [1, 1.05, 1],
+      zIndex: [0, 5, 0],
       transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
     exit: { opacity: 0, scale: 0.5, y: -50, x: 0, transition: { duration: 0.3 } },
@@ -61,6 +61,26 @@ export function BattleArena({
   const logEndRef = useRef<HTMLDivElement>(null);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const entriesToAnimateRef = useRef<string[]>([]);
+  const [clashTextVisible, setClashTextVisible] = useState(false);
+
+  useEffect(() => {
+    let bubbleTimerId: NodeJS.Timeout | null = null;
+    if (showClashAnimation) {
+      setClashTextVisible(true);
+      // Hide the bubble after it has been shown, cards have clashed, and it has lingered.
+      // Bubble in-animation: delay 0.4s, duration 0.5s (fully visible at 0.9s)
+      // Card bash animation: delay 0.5s, duration 0.7s (finishes at 1.2s)
+      // Let bubble linger for ~0.8s more. Total visibility before starting to dissolve: 1.2s + 0.8s = 2.0s.
+      bubbleTimerId = setTimeout(() => {
+        setClashTextVisible(false);
+      }, 2000); // Start dissolving after 2 seconds
+    }
+    return () => {
+      if (bubbleTimerId) {
+        clearTimeout(bubbleTimerId);
+      }
+    };
+  }, [showClashAnimation]);
 
   useEffect(() => {
     if (animationTimeoutRef.current) {
@@ -84,18 +104,15 @@ export function BattleArena({
         return;
     }
 
-
     const currentFullDisplayCandidateLength = displayedLogEntries.length + entriesToAnimateRef.current.length;
 
     if (gameLogMessages.length > currentFullDisplayCandidateLength) {
       const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
       entriesToAnimateRef.current.push(...newMessages);
     } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) {
-      // If gameLogMessages becomes shorter (e.g. reset to just the initial message), update displayedLogEntries
       setDisplayedLogEntries(gameLogMessages.slice(0, gameLogMessages.length));
-      entriesToAnimateRef.current = []; // Clear any pending animation queue
+      entriesToAnimateRef.current = []; 
     }
-
 
     const animateNextEntry = () => {
       if (entriesToAnimateRef.current.length > 0) {
@@ -113,11 +130,10 @@ export function BattleArena({
       animateNextEntry();
     }
 
-    // Cleanup function
     return () => {
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
-        animationTimeoutRef.current = null; // Important to nullify to prevent issues on re-render
+        animationTimeoutRef.current = null; 
       }
     };
   }, [gameLogMessages, gamePhase]);
@@ -160,7 +176,7 @@ export function BattleArena({
   return (
     <div className="flex-grow flex flex-col justify-center items-center relative p-1 md:p-2 min-h-0 w-full h-full">
       <AnimatePresence>
-        {showClashAnimation && (
+        {clashTextVisible && (
           <motion.div
             key="clash-text-bubble"
             initial={{ opacity: 0, scale: 0.3, y: -60, rotate: -10 }}
@@ -170,14 +186,20 @@ export function BattleArena({
               y: 0,
               rotate: 0,
               transition: {
-                delay: 0.4, // Slightly before cards hit
-                duration: 0.5, // Animation duration
+                delay: 0.4, 
+                duration: 0.5, 
                 type: 'spring',
                 stiffness: 120,
                 damping: 8,
               },
             }}
-            exit={{ opacity: 0, scale: 0.5, y: -30, rotate: 5, transition: { duration: 0.3 } }}
+            exit={{ 
+              opacity: 0, 
+              scale: 0.8, 
+              y: -30, 
+              rotate: 5, 
+              transition: { duration: 1.0, ease: "easeInOut" } 
+            }}
             className="absolute top-[10%] md:top-[15%] z-20 bg-destructive text-destructive-foreground font-black text-3xl md:text-5xl uppercase tracking-wider px-6 py-3 rounded-2xl shadow-2xl transform -skew-y-3"
             style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.2)' }}
           >
@@ -238,7 +260,7 @@ export function BattleArena({
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={index} // Use a unique key, e.g., message content + index if messages can repeat
+              key={index} 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
