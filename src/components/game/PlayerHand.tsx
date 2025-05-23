@@ -22,7 +22,7 @@ export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = fal
       "flex justify-center items-end space-x-1 md:space-x-2 p-2 md:p-4 flex-shrink-0 transition-all duration-500 ease-in-out",
       isOpponent ? "transform scale-y-[-1]" : "", // Flip opponent's hand for top display
       hasCommittedCard 
-        ? "opacity-60 transform-gpu md:translate-y-3 scale-90 min-h-[140px] md:min-h-[220px]" 
+        ? "opacity-60 transform-gpu md:translate-y-8 scale-90 min-h-[140px] md:min-h-[220px]" // Increased translate-y from 3 to 8
         : "min-h-[180px] md:min-h-[280px]"
     )}>
       {cards.map((card) => (
@@ -51,3 +51,4 @@ export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = fal
     </div>
   );
 }
+
