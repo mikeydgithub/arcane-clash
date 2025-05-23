@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CardData, GameState, PlayerData, GamePhase } from '@/types';
 import { generateInitialCards, shuffleDeck, dealCards } from '@/lib/game-utils';
 import { generateCardArt, type GenerateCardArtInput } from '@/ai/flows/generate-card-art';
@@ -21,8 +21,10 @@ export function GameBoard() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [artGenerationProgress, setArtGenerationProgress] = useState(0);
   const { toast } = useToast();
+  const hasInitialized = useRef(false);
 
   const initializeGame = useCallback(() => {
+    hasInitialized.current = true;
     const allGeneratedCards = generateInitialCards(); 
 
     const player1DeckFull = shuffleDeck(allGeneratedCards.slice(0, INITIAL_DECK_SIZE_PER_PLAYER));
@@ -83,7 +85,9 @@ export function GameBoard() {
         }, 0);
       } catch (error) {
         console.error(`Failed to generate art for ${card.title}:`, error);
-        toast({ title: "Art Generation Error", description: `Could not generate art for ${card.title}. Using placeholder.`, variant: "destructive" });
+        setTimeout(() => {
+            toast({ title: "Art Generation Error", description: `Could not generate art for ${card.title}. Using placeholder.`, variant: "destructive" });
+        },0);
         setTimeout(() => {
           setGameState(prev => {
             if (!prev) return null;
@@ -98,7 +102,9 @@ export function GameBoard() {
         }, 0);
       } finally {
         artLoadedCount++;
-        setArtGenerationProgress((artLoadedCount / totalCardsToLoadArtFor) * 100);
+        setTimeout(() => {
+            setArtGenerationProgress((artLoadedCount / totalCardsToLoadArtFor) * 100);
+        }, 0);
         if (artLoadedCount === totalCardsToLoadArtFor) {
           setTimeout(() => {
             setGameState(prev => {
@@ -130,8 +136,10 @@ export function GameBoard() {
         winner: undefined,
         gameLogMessages: ["Welcome to Arcane Clash!"],
       });
+    } else if (gameState.gamePhase === 'initial' && !hasInitialized.current) {
+       initializeGame();
     }
-  }, [gameState]);
+  }, [gameState, initializeGame]);
 
 
   const handleCardSelect = (card: CardData) => {
@@ -251,6 +259,9 @@ export function GameBoard() {
           }).catch(err => {
             console.error(`Art gen error for ${playerName} draw`, err);
             setTimeout(() => {
+                 toast({ title: "Art Generation Error", description: `Could not generate art for ${newCards[0].title}. Using placeholder.`, variant: "destructive" });
+            }, 0);
+            setTimeout(() => {
               setGameState(currentGS => {
                 if (!currentGS) return null;
                 return {
@@ -301,7 +312,7 @@ export function GameBoard() {
         selectedCardP2: finalSelectedCardP2, 
         gamePhase: newGamePhase,
         winner,
-        gameLogMessages: [...currentLog, ...newTurnLogEntries],
+        gameLogMessages: [...(currentLog || []), ...newTurnLogEntries],
       };
     });
   };
@@ -310,11 +321,12 @@ export function GameBoard() {
     setGameState(prev => {
       if (!prev) return null;
       const nextPlayerName = prev.players[0].name; 
+      const currentLog = prev.gameLogMessages || [];
       return {
         ...prev,
         selectedCardP1: undefined,
         selectedCardP2: undefined,
-        gameLogMessages: [...prev.gameLogMessages, `A new round begins! ${nextPlayerName}, select your champion!`],
+        gameLogMessages: [...currentLog, `A new round begins! ${nextPlayerName}, select your champion!`],
         currentPlayerIndex: 0,
         gamePhase: 'player1_select_card',
       };
@@ -394,7 +406,7 @@ export function GameBoard() {
           player1Card={selectedCardP1} 
           player2Card={selectedCardP2} 
           showClashAnimation={gamePhase === 'combat_animation' && !!selectedCardP1 && !!selectedCardP2}
-          gameLogMessages={gameLogMessages}
+          gameLogMessages={gameLogMessages || []}
           gamePhase={gamePhase}
           onProceedToNextTurn={handleProceedToNextTurn}
         />
