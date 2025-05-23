@@ -24,19 +24,19 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
     hidden: { opacity: 0, scale: 0.5, y: 50, x: 0 },
     visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
     clashP1: {
-      opacity: 1, // Ensure card is visible during clash
-      x: ['0%', '15%', '0%'], // Move right, then back
-      rotate: [0, -3, 0],     // Slight rotation
-      scale: [1, 1.03, 1],    // Slightly larger
-      zIndex: [0, 1, 0],
+      opacity: 1,
+      x: ['0%', '60%', '0%'], // Increased horizontal movement
+      rotate: [0, -2, 0],     // Subtle rotation
+      scale: [1, 1.05, 1],    // Slightly larger at impact
+      zIndex: [0, 10, 0],     // P1 card on top during clash
       transition: { duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
     },
     clashP2: {
-      opacity: 1, // Ensure card is visible during clash
-      x: ['0%', '-15%', '0%'], // Move left, then back
-      rotate: [0, 3, 0],      // Slight rotation
-      scale: [1, 1.03, 1],     // Slightly larger
-      zIndex: [0, 1, 0],
+      opacity: 1,
+      x: ['0%', '-60%', '0%'], // Increased horizontal movement
+      rotate: [0, 2, 0],      // Subtle rotation
+      scale: [1, 1.05, 1],     // Slightly larger at impact
+      zIndex: [0, 5, 0],      // P2 card below P1 during clash
       transition: { duration: 0.7, ease: "easeInOut", times: [0, 0.5, 1] }
     },
     exit: { opacity: 0, scale: 0.5, y: -50, x: 0, transition: { duration: 0.3 } }
@@ -54,10 +54,9 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
       animationTimeoutRef.current = null;
     }
   
-    // If game phase indicates initial loading or art loading, just set the log directly
     if (gamePhase === 'initial' || gamePhase === 'loading_art') {
       setDisplayedLogEntries(gameLogMessages || []);
-      entriesToAnimateRef.current = []; // Clear any pending animations
+      entriesToAnimateRef.current = []; 
       return;
     }
     
@@ -124,6 +123,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
                 initial="hidden"
                 animate={showClashAnimation ? "clashP1" : "visible"}
                 exit="exit"
+                style={{ transformOrigin: "center top" }}
               >
                 <CardView card={player1Card} inBattleArena={true} />
               </motion.div>
@@ -140,6 +140,7 @@ export function BattleArena({ player1Card, player2Card, showClashAnimation, game
                 initial="hidden"
                 animate={showClashAnimation ? "clashP2" : "visible"}
                 exit="exit"
+                style={{ transformOrigin: "center top" }}
               >
                 <CardView card={player2Card} inBattleArena={true} isOpponentCard={true}/>
               </motion.div>
