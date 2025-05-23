@@ -18,7 +18,8 @@ interface CardViewProps {
 }
 
 export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard = false, inBattleArena = false }: CardViewProps) {
-  const baseCardSize = inBattleArena ? "w-60 h-80 md:w-72 md:h-96" : "w-40 h-56 md:w-48 md:h-64";
+  // Reduced card sizes for inBattleArena state
+  const baseCardSize = inBattleArena ? "w-52 h-72 md:w-60 md:h-80" : "w-40 h-56 md:w-48 md:h-64";
   // Allow hover effect for opponent cards if they are playable (i.e. it's their turn and user is controlling them)
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
 
@@ -41,10 +42,10 @@ export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard
       tabIndex={isPlayable ? 0 : -1}
     >
       <CardHeader className={cn("p-2 text-center", inBattleArena ? "pb-1" : "pb-1")}>
-        <CardTitle className={cn("truncate", inBattleArena ? "text-lg" : "text-sm")}>{card.title}</CardTitle>
+        <CardTitle className={cn("truncate", inBattleArena ? "text-base md:text-lg" : "text-sm")}>{card.title}</CardTitle> {/* Adjusted title size for smaller arena cards */}
       </CardHeader>
       
-      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-40 md:h-48" : "h-24 md:h-32")}>
+      <div className={cn("relative w-full bg-muted/50", inBattleArena ? "h-36 md:h-40" : "h-24 md:h-32")}> {/* Adjusted image height for smaller arena cards */}
         {card.isLoadingArt ? (
           <Skeleton className="w-full h-full rounded-none" />
         ) : card.artUrl ? (
@@ -68,7 +69,7 @@ export function CardView({ card, onClick, isSelected, isPlayable, isOpponentCard
         )}
       </div>
 
-      <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-2 text-base" : "text-xs")}>
+      <CardContent className={cn("flex-grow p-2 space-y-1", inBattleArena ? "space-y-1 text-sm md:text-base" : "text-xs")}> {/* Adjusted spacing and text size for smaller arena cards */}
         <div className="grid grid-cols-2 gap-x-2 gap-y-1">
           <StatDisplay icon={<Sparkles className="w-3 h-3 md:w-4 md:h-4 text-blue-400" />} value={card.magic} label="Magic" />
           <StatDisplay icon={<Swords className="w-3 h-3 md:w-4 md:h-4 text-red-400" />} value={card.melee} label="Melee" />
