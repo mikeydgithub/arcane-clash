@@ -25,23 +25,29 @@ interface AnimatedNumberProps {
 }
 
 function AnimatedNumber({ value }: AnimatedNumberProps) {
+  // Ensure targetValue is always a finite number, defaulting to 0
   const targetValue = Number.isFinite(value) ? value : 0;
 
   const numberMotionValue = useMotionValue(targetValue);
+  // useRef to store the previous target, initialized with the (potentially corrected) targetValue
   const prevTargetRef = useRef(targetValue);
 
+
   useEffect(() => {
+    // Ensure newNumericTarget is always a finite number for animation, defaulting to 0
     const newNumericTarget = Number.isFinite(value) ? value : 0;
     
     const currentMotionNumericValue = numberMotionValue.get();
+    // Ensure startValue for animation is also a finite number
     const startValue = Number.isFinite(currentMotionNumericValue) ? currentMotionNumericValue : 0;
 
     const controls = animate(numberMotionValue, newNumericTarget, {
-      duration: Math.max(0.2, Math.abs(newNumericTarget - startValue) * 0.15),
+      duration: Math.max(0.2, Math.abs(newNumericTarget - startValue) * 0.15), // Proportional duration
       type: "tween",
       ease: "linear",
     });
 
+    // Update ref only if the new target is a valid finite number
     if (Number.isFinite(newNumericTarget)) {
         prevTargetRef.current = newNumericTarget;
     }
@@ -49,9 +55,11 @@ function AnimatedNumber({ value }: AnimatedNumberProps) {
     return () => controls.stop();
   }, [value, numberMotionValue]); 
 
+  // Transform the motion value to a string, ensuring it's always a string representation of a rounded number
   const displayTransformed = useTransform(numberMotionValue, (v) => {
+    // Ensure 'v' is treated as a finite number before rounding and stringifying
     const currentDisplayNum = Number.isFinite(v) ? Math.round(v) : 0;
-    return String(currentDisplayNum); 
+    return String(currentDisplayNum);
   });
 
   return <motion.span>{displayTransformed}</motion.span>;
@@ -75,7 +83,7 @@ function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = fals
   return (
     <div
       className="flex items-center space-x-1 cursor-default"
-      aria-label={`${label}: ${ariaCurrentValue}${!isSingleValue && ariaMaxValue !== undefined ? `/${ariaMaxValue}` : ''}`}
+      aria-label={`${label}: ${ariaCurrentValue}${!isSingleValue && ariaMaxValue !== undefined ? ` / ${ariaMaxValue}` : ''}`}
     >
       {icon}
       <span className="font-semibold">
@@ -160,7 +168,7 @@ export function CardView({
           {card.magic > 0 && <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={card.magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
           
           {/* Defense Stat */}
-          <>
+          <> 
             <StatDisplay 
               icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />} 
               currentValue={card.defense} 
