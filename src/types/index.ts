@@ -6,11 +6,13 @@ export interface CardData {
   isLoadingArt: boolean;
   magic: number;
   melee: number;
-  defense: number;
+  defense: number; // Physical defense
   hp: number;
   maxHp: number;
-  shield: number;
-  maxShield: number;
+  shield: number; // Physical shield
+  maxShield: number; // Max physical shield
+  magicShield: number;
+  maxMagicShield: number;
   description: string;
 }
 
@@ -25,12 +27,12 @@ export interface PlayerData {
 
 export type GamePhase =
   | "initial"
-  | "coin_flip_animation" // New phase for coin flip
+  | "coin_flip_animation"
   | "loading_art"
   | "player1_select_card"
   | "player2_select_card"
   | "combat_animation"
-  | "combat_resolution"
+  | "combat_resolution" // This phase might be implicitly handled by combat_animation now
   | "combat_summary"
   | "game_over";
 

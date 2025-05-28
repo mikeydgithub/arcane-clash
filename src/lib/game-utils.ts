@@ -14,29 +14,46 @@ export const generateInitialCards = (): CardData[] => {
   }
   
   return CARD_TITLES.slice(0, 40).map((title, index) => {
-    const magic = getRandomInt(0, 15);
-    const melee = getRandomInt(0, 15);
-    const totalAttack = magic + melee;
-    
-    const finalMagic = totalAttack === 0 ? getRandomInt(1,8) : magic;
-    const finalMelee = totalAttack === 0 && finalMagic === magic ? getRandomInt(1,8) : melee;
+    let magic = 0;
+    let melee = 0;
 
-    const maxHp = getRandomInt(10, 30);
-    const maxShield = getRandomInt(0, 15);
+    if (Math.random() < 0.5) {
+      // Melee focused
+      melee = getRandomInt(8, 20);
+      magic = 0;
+    } else {
+      // Magic focused
+      magic = getRandomInt(8, 20);
+      melee = 0;
+    }
+    // Ensure at least one attack type has a value if both somehow ended up 0 (shouldn't happen with above logic)
+    if (melee === 0 && magic === 0) {
+      if (Math.random() < 0.5) melee = getRandomInt(5,15); else magic = getRandomInt(5,15);
+    }
+
+
+    const maxHp = getRandomInt(15, 35);
+    const maxPhysicalShield = getRandomInt(0, 15);
+    const maxMagicShield = getRandomInt(0, 15);
     
     return {
       id: `card-${index}-${Date.now()}-${Math.random().toString(36).substring(7)}`, 
       title,
-      isLoadingArt: false, // Art loading skipped for testing
+      // isLoadingArt: true, // Art generation now handled by useEffect in GameBoard
+      // artUrl: undefined,
+      isLoadingArt: false, // For skipping art loading for testing
       artUrl: undefined,   // Will use placeholder
-      magic: finalMagic,
-      melee: finalMelee,
-      defense: getRandomInt(1, 10),
+
+      magic: magic,
+      melee: melee,
+      defense: getRandomInt(1, 10), // Physical defense
       hp: maxHp,
       maxHp,
-      shield: maxShield,
-      maxShield,
-      description: `A formidable ${title}.`,
+      shield: maxPhysicalShield, // Physical shield
+      maxShield: maxPhysicalShield,
+      magicShield: maxMagicShield,
+      maxMagicShield: maxMagicShield,
+      description: `A ${title} specializing in ${melee > 0 ? 'fierce melee' : 'powerful magic'}.`,
     };
   });
 };
@@ -57,5 +74,3 @@ export const dealCards = (deck: CardData[], count: number): { dealtCards: CardDa
   const remainingDeck = deck.slice(cardsToDeal);
   return { dealtCards, remainingDeck };
 };
-
-    

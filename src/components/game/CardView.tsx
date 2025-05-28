@@ -6,7 +6,7 @@ import type { CardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck } from 'lucide-react';
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react'; // Added ShieldAlert
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 import {
@@ -38,9 +38,10 @@ function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
     const previousValue = prevTargetValueRef.current;
     numberMotionValue.set(previousValue);
 
+    const animationDuration = Math.max(0.2, Math.abs(targetValue - previousValue) * 0.15); // 150ms per unit change, min 200ms
     const controls = animate(numberMotionValue, targetValue, {
-      duration: Math.max(0.2, Math.abs(targetValue - previousValue) * 0.15),
-      type: "tween",
+      duration: animationDuration,
+      type: "tween", // Using tween for a more linear "counting" effect
       ease: "linear",
     });
 
@@ -60,17 +61,17 @@ interface StatDisplayProps {
   maxValue?: number;
   label: string;
   isSingleValue?: boolean;
-  animate?: boolean;
+  animateStats?: boolean; // Renamed from 'animate' to be more specific
 }
 
-function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animate = false }: StatDisplayProps) {
+function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false }: StatDisplayProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div className="flex items-center space-x-1 cursor-default" aria-label={`${label}: ${currentValue}${!isSingleValue && maxValue !== undefined ? `/${maxValue}` : ''}`}>
           {icon}
           <span className="font-semibold">
-            {animate ? <AnimatedNumber value={currentValue} /> : currentValue}
+            {animateStats ? <AnimatedNumber value={currentValue} /> : currentValue}
             {!isSingleValue && maxValue !== undefined && `/${maxValue}`}
           </span>
         </div>
@@ -91,8 +92,7 @@ export function CardView({
   inBattleArena = false,
   isPlayerTurnForThisCard = false
 }: CardViewProps) {
-  // REVERTED: Card size is now consistently the larger size, regardless of inBattleArena.
-  const baseCardSize = "w-40 h-56 md:w-48 md:h-64";
+  const baseCardSize = "w-40 h-56 md:w-48 md:h-64"; // Reverted to larger default size
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
 
   return (
@@ -103,19 +103,17 @@ export function CardView({
         cardHoverEffect,
         isSelected ? "ring-2 ring-accent shadow-accent" : "",
         isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
-        inBattleArena ? "animate-fadeIn" : ""
+        // inBattleArena ? "animate-fadeIn" : "" // fadeIn might conflict with framer-motion if used simultaneously
       )}
       onClick={isPlayable ? onClick : undefined}
       aria-label={`Card: ${card.title}`}
       role={isPlayable ? "button" : "img"}
       tabIndex={isPlayable ? 0 : -1}
     >
-      {/* REVERTED: CardHeader styling reverted to default (larger text, consistent padding) */}
       <CardHeader className={cn("p-2 text-center", "pb-1")}>
         <CardTitle className={cn("truncate", "text-sm")}>{card.title}</CardTitle>
       </CardHeader>
 
-      {/* REVERTED: Image container height reverted to default (larger) */}
       <div className={cn("relative w-full bg-muted/50", "h-24 md:h-32")}>
         {card.isLoadingArt ? (
           <Skeleton className="w-full h-full rounded-none" />
@@ -124,7 +122,7 @@ export function CardView({
             src={card.artUrl}
             alt={`Art for ${card.title}`}
             layout="fill"
-            objectFit="contain"
+            objectFit="contain" 
             data-ai-hint="fantasy creature"
             className="rounded-t-sm"
           />
@@ -140,16 +138,15 @@ export function CardView({
         )}
       </div>
       <TooltipProvider delayDuration={300}>
-        {/* REVERTED: CardContent styling reverted to default (larger text, consistent spacing) */}
         <CardContent className={cn("flex-grow p-2 space-y-1", "text-xs")}>
           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-            {/* REVERTED: Stat icon sizes reverted to include md:w-4 md:h-4 */}
-            <StatDisplay icon={<Sparkles className="w-3 h-3 md:w-4 md:h-4 text-blue-400" />} currentValue={card.magic} label="Magic" isSingleValue={true} animate={inBattleArena} />
-            <StatDisplay icon={<Swords className="w-3 h-3 md:w-4 md:h-4 text-red-400" />} currentValue={card.melee} label="Melee" isSingleValue={true} animate={inBattleArena} />
-            <StatDisplay icon={<ShieldHalf className="w-3 h-3 md:w-4 md:h-4 text-green-400" />} currentValue={card.defense} label="Defense" isSingleValue={true} animate={inBattleArena} />
-            <StatDisplay icon={<Heart className="w-3 h-3 md:w-4 md:h-4 text-pink-400" />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animate={inBattleArena} />
+            {card.melee > 0 && <StatDisplay icon={<Swords className="w-3 h-3 md:w-4 md:h-4 text-red-400" />} currentValue={card.melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} />}
+            {card.magic > 0 && <StatDisplay icon={<Sparkles className="w-3 h-3 md:w-4 md:h-4 text-blue-400" />} currentValue={card.magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
+            <StatDisplay icon={<ShieldHalf className="w-3 h-3 md:w-4 md:h-4 text-green-400" />} currentValue={card.defense} label="Defense" isSingleValue={true} animateStats={inBattleArena} />}
+            <StatDisplay icon={<Heart className="w-3 h-3 md:w-4 md:h-4 text-pink-400" />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animateStats={inBattleArena} />}
           </div>
-          { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className="w-3 h-3 md:w-4 md:h-4 text-yellow-400" />} currentValue={card.shield} maxValue={card.maxShield} label="Shield" animate={inBattleArena} /> }
+          { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className="w-3 h-3 md:w-4 md:h-4 text-yellow-400" />} currentValue={card.shield} maxValue={card.maxShield} label="Physical Shield" animateStats={inBattleArena} /> }
+          { card.maxMagicShield > 0 && <StatDisplay icon={<ShieldAlert className="w-3 h-3 md:w-4 md:h-4 text-purple-400" />} currentValue={card.magicShield} maxValue={card.maxMagicShield} label="Magic Shield" animateStats={inBattleArena} /> }
         </CardContent>
       </TooltipProvider>
 
