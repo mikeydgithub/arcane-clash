@@ -65,8 +65,8 @@ interface StatDisplayProps {
 }
 
 function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false }: StatDisplayProps) {
-  const displayValue = animateStats ? <AnimatedNumber value={currentValue} /> : String(currentValue);
-  const displayMaxValue = !isSingleValue && maxValue !== undefined ? ` / ${String(maxValue)}` : '';
+  const displayCurrentValue = animateStats ? <AnimatedNumber value={currentValue} /> : Math.round(currentValue);
+  const displayMaxValueString = !isSingleValue && maxValue !== undefined ? ` / ${Math.round(maxValue)}` : '';
   
   return (
     <Tooltip>
@@ -74,7 +74,7 @@ function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = fals
         <div className="flex items-center space-x-1 cursor-default" aria-label={`${label}: ${currentValue}${!isSingleValue && maxValue !== undefined ? `/${maxValue}` : ''}`}>
           {icon}
           <span className="font-semibold">
-            {displayValue}{displayMaxValue}
+            {displayCurrentValue}{displayMaxValueString}
           </span>
         </div>
       </TooltipTrigger>
@@ -94,15 +94,15 @@ export function CardView({
   inBattleArena = false,
   isPlayerTurnForThisCard = false
 }: CardViewProps) {
-  const cardSizeClass = inBattleArena ? "w-32 h-44 md:w-36 md:h-52" : "w-40 h-56 md:w-48 md:h-64";
+  const cardSizeClass = "w-40 h-56 md:w-48 md:h-64"; // Reverted to original larger size
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
   
-  const headerPadding = inBattleArena ? "pb-0.5 pt-1 px-1.5" : "pb-1 p-2";
-  const titleSize = inBattleArena ? "text-xs" : "text-sm";
-  const imageSize = inBattleArena ? "h-16 md:h-20" : "h-24 md:h-32";
-  const contentPadding = inBattleArena ? "p-1.5 space-y-0.5" : "p-2 space-y-1";
-  const contentTextSize = inBattleArena ? "text-[10px]" : "text-xs";
-  const iconSize = inBattleArena ? "w-2.5 h-2.5 md:w-3 md:h-3" : "w-3 h-3 md:w-4 md:h-4";
+  const headerPadding = "pb-1 p-2"; // Reverted
+  const titleSize = "text-sm"; // Reverted
+  const imageSize = "h-24 md:h-32"; // Reverted
+  const contentPadding = "p-2 space-y-1"; // Reverted
+  const contentTextSize = "text-xs"; // Reverted
+  const iconSize = "w-3 h-3 md:w-4 md:h-4"; // Reverted
 
 
   return (
@@ -113,6 +113,7 @@ export function CardView({
         cardHoverEffect,
         isSelected ? "ring-2 ring-accent shadow-accent" : "",
         isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
+        isOpponentCard && isPlayerTurnForThisCard && !inBattleArena ? "opacity-100" : "" // Ensure opponent's card is fully opaque on their turn
       )}
       onClick={isPlayable ? onClick : undefined}
       aria-label={`Card: ${card.title}`}
