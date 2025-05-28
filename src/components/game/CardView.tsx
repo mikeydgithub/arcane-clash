@@ -2,15 +2,14 @@
 'use client';
 
 import Image from 'next/image';
-import type { CardData } from '@/types'; // Assuming CardData is correctly defined
+import type { CardData } from '@/types'; 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react'; // Added ShieldAlert
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react'; 
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 
-// Prop types for CardView - assuming this is defined elsewhere or should be added
 interface CardViewProps {
   card: CardData;
   onClick?: () => void;
@@ -25,49 +24,34 @@ interface AnimatedNumberProps {
   value: number; 
 }
 
-function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
-  // Ensure targetValue is treated as a number from the start.
-  const numericTarget = Number(targetValue);
-  const initialValue = isNaN(numericTarget) ? 0 : numericTarget;
+function AnimatedNumber({ value }: AnimatedNumberProps) {
+  const targetValue = Number.isFinite(value) ? value : 0;
 
-  const numberMotionValue = useMotionValue(initialValue);
-  // useRef should store the numeric value that was last targeted for animation.
-  const prevTargetRef = useRef(initialValue);
+  const numberMotionValue = useMotionValue(targetValue);
+  const prevTargetRef = useRef(targetValue);
 
   useEffect(() => {
-    const newNumericTarget = Number(targetValue); 
-
-    let valueToAnimateTo: number;
-    if (isNaN(newNumericTarget)) {
-      // If current target is NaN, set to last known good numeric value or 0
-      valueToAnimateTo = isNaN(prevTargetRef.current) ? 0 : prevTargetRef.current;
-    } else {
-      valueToAnimateTo = newNumericTarget;
-    }
+    const newNumericTarget = Number.isFinite(value) ? value : 0;
     
-    // Get current numeric value of motion value, default to 0 if NaN
-    const currentMotionNumericValue = Number(numberMotionValue.get());
-    const startValue = isNaN(currentMotionNumericValue) ? 0 : currentMotionNumericValue;
+    const currentMotionNumericValue = numberMotionValue.get();
+    const startValue = Number.isFinite(currentMotionNumericValue) ? currentMotionNumericValue : 0;
 
-    const controls = animate(numberMotionValue, valueToAnimateTo, {
-      duration: Math.max(0.2, Math.abs(valueToAnimateTo - startValue) * 0.15), // Adjusted duration logic
-      type: "tween", // Changed from "spring" to "tween" for more linear counting
-      ease: "linear", // Ensures linear progression
+    const controls = animate(numberMotionValue, newNumericTarget, {
+      duration: Math.max(0.2, Math.abs(newNumericTarget - startValue) * 0.15),
+      type: "tween",
+      ease: "linear",
     });
 
-    // Store the value we are animating towards as the new "previous" target
-    // if it was a valid number, otherwise keep the last valid one.
-    if (!isNaN(newNumericTarget)) {
+    if (Number.isFinite(newNumericTarget)) {
         prevTargetRef.current = newNumericTarget;
     }
 
     return () => controls.stop();
-  }, [targetValue, numberMotionValue]); 
+  }, [value, numberMotionValue]); 
 
   const displayTransformed = useTransform(numberMotionValue, (v) => {
-    const rounded = Math.round(Number(v)); // Ensure v is treated as number
-    // Explicitly convert to string for motion.span to avoid potential issues
-    return String(isNaN(rounded) ? 0 : rounded); 
+    const currentDisplayNum = Number.isFinite(v) ? Math.round(v) : 0;
+    return String(currentDisplayNum); 
   });
 
   return <motion.span>{displayTransformed}</motion.span>;
@@ -85,11 +69,13 @@ interface StatDisplayProps {
 
 function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false }: StatDisplayProps) {
   const displayCurrentValueNode = animateStats ? <AnimatedNumber value={currentValue} /> : Math.round(currentValue);
+  const ariaCurrentValue = Math.round(currentValue);
+  const ariaMaxValue = maxValue !== undefined ? Math.round(maxValue) : undefined;
 
   return (
     <div
       className="flex items-center space-x-1 cursor-default"
-      aria-label={`${label}: ${Math.round(currentValue)}${!isSingleValue && maxValue !== undefined ? `/${Math.round(maxValue)}` : ''}`}
+      aria-label={`${label}: ${ariaCurrentValue}${!isSingleValue && ariaMaxValue !== undefined ? `/${ariaMaxValue}` : ''}`}
     >
       {icon}
       <span className="font-semibold">
