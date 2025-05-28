@@ -69,21 +69,16 @@ export function BattleArena({
     if (showClashAnimation) {
       setClashTextVisible(true);
 
-      // Clear any existing timer to ensure we don't have multiple hide timers running
       if (hideClashTextTimerRef.current) {
         clearTimeout(hideClashTextTimerRef.current);
       }
 
-      // Set a new timer to hide the bubble
       hideClashTextTimerRef.current = setTimeout(() => {
         setClashTextVisible(false);
-      }, 2000); // Bubble stays visible for 2 seconds from when showClashAnimation becomes true
+      }, 2000); 
     }
-    // If showClashAnimation becomes false, the timer set above should still run its course
-    // for the linger effect. It is not cleared here.
   }, [showClashAnimation]);
 
-  // Effect for unmount cleanup of the timer
   useEffect(() => {
     return () => {
       if (hideClashTextTimerRef.current) {
@@ -91,40 +86,38 @@ export function BattleArena({
         hideClashTextTimerRef.current = null;
       }
     };
-  }, []); // Empty dependency array, so this cleanup runs only on unmount
+  }, []);
 
   useEffect(() => {
+    // Always clear any ongoing animation timeout and pending entries when dependencies change
     if (animationTimeoutRef.current) {
       clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
     }
-    
-    if (gamePhase === 'initial' || gamePhase === 'loading_art') {
+    entriesToAnimateRef.current = [];
+
+    // For these phases, we expect a fresh log directly from gameLogMessages
+    if (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation' || gamePhase === 'player1_select_card' || gamePhase === 'player2_select_card') {
         setDisplayedLogEntries(gameLogMessages || []);
-        entriesToAnimateRef.current = [];
-        return;
-    }
-    if (gamePhase === 'coin_flip_animation') {
-        const coinFlipMessages = gameLogMessages.filter(msg => msg.toLowerCase().includes("coin"));
-        if(gameLogMessages.length > 0 && !gameLogMessages[gameLogMessages.length -1].toLowerCase().includes("coin")){
-            setDisplayedLogEntries(prev => [...prev, ...coinFlipMessages.filter(cfm => !prev.includes(cfm))]);
-        } else {
-            setDisplayedLogEntries(coinFlipMessages);
-        }
-        entriesToAnimateRef.current = []; 
-        return;
+        return; // Stop further processing, log is set directly
     }
 
-    const currentFullDisplayCandidateLength = displayedLogEntries.length + entriesToAnimateRef.current.length;
-
-    if (gameLogMessages.length > currentFullDisplayCandidateLength) {
-      const newMessages = gameLogMessages.slice(currentFullDisplayCandidateLength);
+    // For other phases (like combat_summary, combat_animation), animate new entries
+    // This part handles appending new messages from gameLogMessages to displayedLogEntries
+    const currentDisplayedCount = displayedLogEntries.length;
+    if (gameLogMessages.length > currentDisplayedCount) {
+      const newMessages = gameLogMessages.slice(currentDisplayedCount);
       entriesToAnimateRef.current.push(...newMessages);
-    } else if (gameLogMessages.length < displayedLogEntries.length && gameLogMessages.length <=1 ) {
-      // This condition handles log reset for new turns/phases if necessary
-      setDisplayedLogEntries(gameLogMessages.slice(0, gameLogMessages.length));
-      entriesToAnimateRef.current = []; 
+    } else if (gameLogMessages.length < currentDisplayedCount && gameLogMessages.length > 0) {
+      // This handles cases where gameLogMessages might have been reset externally (e.g. for a new turn)
+      // but phase isn't one of the explicit reset phases above.
+      // This case might be less common now with the explicit phase checks.
+      setDisplayedLogEntries(gameLogMessages); 
+    } else if (gameLogMessages.length === 0 && currentDisplayedCount > 0) {
+        // If gameLogMessages is empty but we have displayed entries, clear them
+        setDisplayedLogEntries([]);
     }
+
 
     const animateNextEntry = () => {
       if (entriesToAnimateRef.current.length > 0) {
@@ -142,6 +135,7 @@ export function BattleArena({
       animateNextEntry();
     }
 
+    // Cleanup for this effect instance
     return () => {
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
