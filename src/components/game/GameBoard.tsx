@@ -15,7 +15,7 @@ import { Loader2, Layers3, Trash2 } from 'lucide-react';
 
 const INITIAL_PLAYER_HP = 100;
 const CARDS_IN_HAND = 5;
-const INITIAL_DECK_SIZE_PER_PLAYER = 20; // Each player has their own deck
+const INITIAL_DECK_SIZE_PER_PLAYER = 20;
 
 export function GameBoard() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -26,7 +26,7 @@ export function GameBoard() {
 
   const initializeGame = useCallback(() => {
     hasInitialized.current = true;
-    const allGeneratedCards = generateInitialCards(); // Generates 40 cards
+    const allGeneratedCards = generateInitialCards(); 
     const shuffledMasterDeck = shuffleDeck(allGeneratedCards);
 
     const player1DeckFull = shuffledMasterDeck.slice(0, INITIAL_DECK_SIZE_PER_PLAYER);
@@ -35,7 +35,7 @@ export function GameBoard() {
     const { dealtCards: p1InitialHand, remainingDeck: p1DeckAfterDeal } = dealCards(player1DeckFull, CARDS_IN_HAND);
     const { dealtCards: p2InitialHand, remainingDeck: p2DeckAfterDeal } = dealCards(player2DeckFull, CARDS_IN_HAND);
 
-    const firstPlayerIndex = Math.random() < 0.5 ? 0 : 1; // Pre-determine who will win the coin flip
+    const firstPlayerIndex = Math.random() < 0.5 ? 0 : 1;
 
     const initialPlayer1: PlayerData = {
       id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP,
@@ -52,8 +52,8 @@ export function GameBoard() {
     
     setGameState({
       players: [initialPlayer1, initialPlayer2],
-      currentPlayerIndex: firstPlayerIndex, // Winner of the upcoming coin flip
-      gamePhase: 'loading_art', // Start with art loading
+      currentPlayerIndex: firstPlayerIndex,
+      gamePhase: 'loading_art',
       selectedCardP1: undefined,
       selectedCardP2: undefined,
       winner: undefined,
@@ -80,7 +80,6 @@ export function GameBoard() {
     });
   }, []);
 
-
   useEffect(() => {
     if (!gameState) {
       setGameState({
@@ -96,118 +95,131 @@ export function GameBoard() {
         gameLogMessages: ["Welcome to Arcane Clash!"],
       });
     } else if (gameState.gamePhase === 'initial' && !hasInitialized.current) {
-      // Do nothing here, initializeGame will be called by button
+      // Do nothing, button calls initializeGame
     }
   }, [gameState]);
 
+  // Effect 1: Handles 'loading_art' phase transition for initial card load
+  useEffect(() => {
+    if (!gameState || gameState.gamePhase !== 'loading_art') return;
 
- useEffect(() => {
-    if (!gameState || gameState.gamePhase === 'initial' || gameState.gamePhase === 'game_over') return;
+    const stillLoadingArt = gameState.players.some(p => p.hand.some(c => c.isLoadingArt));
+    const totalCardsInHands = gameState.players.reduce((sum, p) => sum + p.hand.length, 0);
+    const loadedCardsCount = gameState.players.reduce((sum, p) => sum + p.hand.filter(c => !c.isLoadingArt).length, 0);
+
+    if (totalCardsInHands > 0) {
+        setTimeout(() => setArtGenerationProgress((loadedCardsCount / totalCardsInHands) * 100), 0);
+    }
+
+    // Check if all art is loaded or if there are no cards to load art for (e.g., empty hands and decks)
+    const allArtLoadedOrNoCardsToLoad = !stillLoadingArt || 
+                                       (totalCardsInHands === 0 && gameState.players.every(p => p.deck.length === 0));
+
+    if (allArtLoadedOrNoCardsToLoad && totalCardsInHands > 0) { // Ensure there were cards to load or game setup is complete
+        setTimeout(() => {
+            setGameState(prev => {
+                if (!prev || prev.gamePhase !== 'loading_art') return prev; // Guard
+                return {
+                    ...prev,
+                    gamePhase: 'coin_flip_animation',
+                    gameLogMessages: [
+                        ...(prev.gameLogMessages || []),
+                        "Card art conjured! Flipping coin to decide who goes first..."
+                    ]
+                };
+            });
+        }, 500);
+    } else if (totalCardsInHands === 0 && gameState.players.every(p => p.deck.length === 0 && p.hand.length === 0) && hasInitialized.current) {
+        // Handles case where game initializes with no cards (e.g. if deck/hand sizes were 0)
+        setTimeout(() => {
+            setGameState(prev => {
+                if (!prev || prev.gamePhase !== 'loading_art') return prev;
+                 return {
+                    ...prev,
+                    gamePhase: 'coin_flip_animation',
+                    gameLogMessages: [
+                       ...(prev.gameLogMessages || []),
+                       "Card art phase complete (no cards). Flipping coin..."
+                    ]
+                 };
+            });
+        }, 500);
+    }
+  }, [gameState?.gamePhase, gameState?.players]);
+
+
+  // Effect 2: Fetches art for cards in hand (ongoing, e.g. for drawn cards)
+  useEffect(() => {
+    if (!gameState || !gameState.players || gameState.gamePhase === 'initial' || gameState.gamePhase === 'game_over' || gameState.gamePhase === 'loading_art') {
+        // Don't run if game not ready, over, or during initial bulk load (handled by Effect 1)
+        return;
+    }
 
     const artQueue = artGenerationQueueRef.current;
     const cardsToFetchArtFor: { playerId: string, cardId: string, cardTitle: string }[] = [];
 
     gameState.players.forEach(player => {
-      player.hand.forEach(card => {
-        if (card.isLoadingArt && !card.artUrl && !artQueue.has(card.id)) {
-          cardsToFetchArtFor.push({ playerId: player.id, cardId: card.id, cardTitle: card.title });
-        }
-      });
+        player.hand.forEach(card => {
+            if (card.isLoadingArt && !card.artUrl && !artQueue.has(card.id)) {
+                cardsToFetchArtFor.push({ playerId: player.id, cardId: card.id, cardTitle: card.title });
+            }
+        });
     });
 
     if (cardsToFetchArtFor.length > 0) {
-      cardsToFetchArtFor.forEach(({ playerId, cardId, cardTitle }) => {
-        if (!artQueue.has(cardId)) {
-          artQueue.add(cardId);
-          generateCardArt({ cardTitle })
-            .then(artResult => {
-              setTimeout(() => {
-                setGameState(currentGS => {
-                  if (!currentGS) return null;
-                  const updatedPlayers = currentGS.players.map(p => {
-                    if (p.id === playerId) {
-                      return {
-                        ...p,
-                        hand: p.hand.map(c =>
-                          c.id === cardId ? { ...c, artUrl: artResult.cardArtDataUri, isLoadingArt: false } : c
-                        ),
-                      };
-                    }
-                    return p;
-                  });
-                  return { ...currentGS, players: updatedPlayers as [PlayerData, PlayerData] };
-                });
-                artQueue.delete(cardId);
-              }, 0);
-            })
-            .catch(err => {
-              console.error(`Art gen error for card ${cardTitle} (ID: ${cardId}) for player ${playerId}:`, err);
-               setTimeout(() => {
-                toast({ title: "Art Generation Error", description: `Could not generate art for ${cardTitle}. Using placeholder.`, variant: "destructive" });
-              },0);
-              setTimeout(() => {
-                setGameState(currentGS => {
-                  if (!currentGS) return null;
-                  const updatedPlayers = currentGS.players.map(p => {
-                    if (p.id === playerId) {
-                      return {
-                        ...p,
-                        hand: p.hand.map(c =>
-                          c.id === cardId ? { ...c, isLoadingArt: false, artUrl: undefined } : c
-                        ),
-                      };
-                    }
-                    return p;
-                  });
-                  return { ...currentGS, players: updatedPlayers as [PlayerData, PlayerData] };
-                });
-                artQueue.delete(cardId);
-              }, 0);
-            });
-        }
-      });
+        cardsToFetchArtFor.forEach(({ playerId, cardId, cardTitle }) => {
+            if (!artQueue.has(cardId)) { // Double check before expensive call
+                artQueue.add(cardId);
+                generateCardArt({ cardTitle })
+                    .then(artResult => {
+                        setTimeout(() => { // Defer state update
+                            setGameState(currentGS => {
+                                if (!currentGS) return null;
+                                const updatedPlayers = currentGS.players.map(p => {
+                                    if (p.id === playerId) {
+                                        return {
+                                            ...p,
+                                            hand: p.hand.map(c =>
+                                                c.id === cardId ? { ...c, artUrl: artResult.cardArtDataUri, isLoadingArt: false } : c
+                                            ),
+                                        };
+                                    }
+                                    return p;
+                                });
+                                return { ...currentGS, players: updatedPlayers as [PlayerData, PlayerData] };
+                            });
+                        }, 0);
+                    })
+                    .catch(err => {
+                        console.error(`Art gen error for card ${cardTitle} (ID: ${cardId}) for player ${playerId}:`, err);
+                        setTimeout(() => { // Defer toast
+                            toast({ title: "Art Generation Error", description: `Could not generate art for ${cardTitle}. Using placeholder.`, variant: "destructive" });
+                        },0);
+                        setTimeout(() => { // Defer state update
+                            setGameState(currentGS => {
+                                if (!currentGS) return null;
+                                const updatedPlayers = currentGS.players.map(p => {
+                                    if (p.id === playerId) {
+                                        return {
+                                            ...p,
+                                            hand: p.hand.map(c =>
+                                                c.id === cardId ? { ...c, isLoadingArt: false, artUrl: undefined } : c // Mark as not loading, use placeholder
+                                            ),
+                                        };
+                                    }
+                                    return p;
+                                });
+                                return { ...currentGS, players: updatedPlayers as [PlayerData, PlayerData] };
+                            });
+                        }, 0);
+                    })
+                    .finally(() => {
+                        artQueue.delete(cardId); // Ensure queue item is removed
+                    });
+            }
+        });
     }
-    
-    if (gameState.gamePhase === 'loading_art') {
-      const stillLoadingArt = gameState.players.some(p => p.hand.some(c => c.isLoadingArt));
-      const totalCardsInHands = gameState.players.reduce((sum, p) => sum + p.hand.length, 0);
-      const loadedCardsCount = gameState.players.reduce((sum, p) => sum + p.hand.filter(c => !c.isLoadingArt).length, 0);
-
-      if (totalCardsInHands > 0) {
-         setTimeout(() => setArtGenerationProgress((loadedCardsCount / totalCardsInHands) * 100), 0);
-      }
-
-      if (!stillLoadingArt && totalCardsInHands > 0) {
-        setTimeout(() => { // Ensure this update happens after current render cycle
-          setGameState(prev => {
-            if (!prev || prev.gamePhase !== 'loading_art') return prev;
-            return {
-              ...prev,
-              gamePhase: 'coin_flip_animation', // Transition to coin flip after art
-              gameLogMessages: [
-                ...prev.gameLogMessages,
-                "Card art conjured! Flipping coin to decide who goes first..."
-              ]
-            };
-          });
-        }, 500); 
-      } else if (totalCardsInHands === 0 && gameState.players.every(p => p.deck.length === 0)) {
-         setTimeout(() => {
-          setGameState(prev => {
-            if (!prev || prev.gamePhase !== 'loading_art') return prev;
-            return {
-              ...prev,
-              gamePhase: 'coin_flip_animation', // Also transition if no cards
-              gameLogMessages: [
-                ...prev.gameLogMessages,
-                "Card art phase complete (no cards). Flipping coin..."
-              ]
-            };
-          });
-        }, 500);
-      }
-    }
-  }, [gameState, toast]);
+  }, [gameState?.players, toast, gameState?.gamePhase]); // Depend on players, toast, and gamePhase to gate execution
 
 
   const handleCardSelect = (card: CardData) => {
@@ -215,10 +227,10 @@ export function GameBoard() {
     const { currentPlayerIndex, gamePhase, players, gameLogMessages } = gameState;
 
     if (gamePhase === 'player1_select_card' && currentPlayerIndex === 0) {
-      setGameState(prev => prev ? { ...prev, selectedCardP1: card, gamePhase: 'player2_select_card', currentPlayerIndex: 1, gameLogMessages: [...gameLogMessages, `${players[1].name}, choose your defender!`] } : null);
+      setGameState(prev => prev ? { ...prev, selectedCardP1: card, gamePhase: 'player2_select_card', currentPlayerIndex: 1, gameLogMessages: [...(gameLogMessages || []), `${players[1].name}, choose your defender!`] } : null);
     } else if (gamePhase === 'player2_select_card' && currentPlayerIndex === 1) {
-      setGameState(prev => prev ? { ...prev, selectedCardP2: card, gamePhase: 'combat_animation', gameLogMessages: [...gameLogMessages, "Prepare for CLASH!"] } : null);
-      setTimeout(() => resolveCombat(), 1200); // Delay combat resolution for animation
+      setGameState(prev => prev ? { ...prev, selectedCardP2: card, gamePhase: 'combat_animation', gameLogMessages: [...(gameLogMessages || []), "Prepare for CLASH!"] } : null);
+      setTimeout(() => resolveCombat(), 1200);
     }
   };
 
@@ -252,7 +264,7 @@ export function GameBoard() {
       card2InCombat.hp -= damageToCard2Hp;
       newTurnLogEntries.push(`${card1InCombat.title} attacks ${card2InCombat.title} for ${attackP1}. ${card2InCombat.title} takes ${damageToCard2Hp} HP damage. New HP: ${card2InCombat.hp}`);
 
-      if (card2InCombat.hp > 0) { // Card 2 counter-attacks if it survived
+      if (card2InCombat.hp > 0) {
         const shieldAbsorbedByC1 = Math.min(card1InCombat.shield, attackP2);
         if (shieldAbsorbedByC1 > 0) newTurnLogEntries.push(`${card1InCombat.title}'s shield absorbs ${shieldAbsorbedByC1} damage.`);
         card1InCombat.shield -= shieldAbsorbedByC1;
@@ -268,20 +280,18 @@ export function GameBoard() {
         newTurnLogEntries.push(`${card2InCombat.title} was defeated before it could counter-attack.`);
       }
       
-      // Handle card 1 defeat and player 1 direct damage / draw
       if (card1InCombat.hp <= 0) {
         newTurnLogEntries.push(`${card1InCombat.title} is defeated!`);
         p1Data.discardPile.push(prev.selectedCardP1);
         p1Data.hand = p1Data.hand.filter(c => c.id !== card1InCombat.id);
 
-        if (card2InCombat.hp > 0) { // If card 2 survived, it deals direct damage
-            const directDamageToP1 = Math.max(0, attackP2 - initialP1CardDefense); // Damage bypassing defeated card's original defense
+        if (card2InCombat.hp > 0) {
+            const directDamageToP1 = Math.max(0, attackP2 - initialP1CardDefense);
              if(directDamageToP1 > 0) {
                 p1Data.hp = Math.max(0, p1Data.hp - directDamageToP1);
                 newTurnLogEntries.push(`${p1Data.name} takes ${directDamageToP1} direct damage. New HP: ${p1Data.hp}`);
             }
         }
-        // Draw card for Player 1
         if (p1Data.hand.length < CARDS_IN_HAND && p1Data.deck.length > 0) {
           const { dealtCards: newCardsArr, remainingDeck: deckAfterDraw } = dealCards(p1Data.deck, 1);
           const newDrawnCard = { ...newCardsArr[0], isLoadingArt: true, artUrl: undefined };
@@ -296,18 +306,16 @@ export function GameBoard() {
         newTurnLogEntries.push(`${card1InCombat.title} survives the clash.`);
       }
 
-      // Handle card 2 defeat and player 2 direct damage / draw
       if (card2InCombat.hp <= 0) {
         newTurnLogEntries.push(`${card2InCombat.title} is defeated!`);
         p2Data.discardPile.push(prev.selectedCardP2);
         p2Data.hand = p2Data.hand.filter(c => c.id !== card2InCombat.id);
 
-        const directDamageToP2 = Math.max(0, attackP1 - initialP2CardDefense); // Damage bypassing defeated card's original defense
+        const directDamageToP2 = Math.max(0, attackP1 - initialP2CardDefense);
         if (directDamageToP2 > 0) {
             p2Data.hp = Math.max(0, p2Data.hp - directDamageToP2);
             newTurnLogEntries.push(`${p2Data.name} takes ${directDamageToP2} direct damage. New HP: ${p2Data.hp}`);
         }
-        // Draw card for Player 2
         if (p2Data.hand.length < CARDS_IN_HAND && p2Data.deck.length > 0) {
           const { dealtCards: newCardsArr, remainingDeck: deckAfterDraw } = dealCards(p2Data.deck, 1);
           const newDrawnCard = { ...newCardsArr[0], isLoadingArt: true, artUrl: undefined };
@@ -339,9 +347,13 @@ export function GameBoard() {
         newTurnLogEntries.push(`${prev.players[0].name} wins! ${prev.players[1].name} has been defeated.`);
       }
       
-      // Update selected cards to reflect their state after combat (or undefined if defeated)
       const finalSelectedCardP1 = card1InCombat.hp > 0 ? card1InCombat : undefined;
       const finalSelectedCardP2 = card2InCombat.hp > 0 ? card2InCombat : undefined;
+
+      // Accumulate log messages correctly
+      const existingLog = prev.gameLogMessages || [];
+      const baseLog = existingLog.length > 0 && existingLog[0].startsWith("Game initialized") ? [existingLog[0]] : [];
+
 
       return {
         ...prev,
@@ -350,33 +362,30 @@ export function GameBoard() {
         selectedCardP2: finalSelectedCardP2,
         gamePhase: newGamePhase,
         winner,
-        gameLogMessages: [...(prev.gameLogMessages || []).slice(0,1), ...newTurnLogEntries], // Keep initial message, add new turn logs
+        gameLogMessages: [...baseLog, ...newTurnLogEntries],
       };
     });
   };
 
-
   const handleProceedToNextTurn = () => {
     setGameState(prev => {
       if (!prev) return null;
-      // Determine next player based on current logic (e.g., P1 always starts new round, or alternate)
-      // For simplicity, let's assume P1 (index 0) always starts the new round selection after combat summary.
       const nextPlayerToSelect = prev.players[0];
-      const currentLog = prev.gameLogMessages || [];
-      const initialLogMessages = currentLog.length > 0 ? [currentLog[0]] : ["A new round begins!"];
-
+      
+      // Keep the initial "Game initialized..." message if it exists, then add new turn prompt.
+      const baseLog = (prev.gameLogMessages || []).find(msg => msg.startsWith("Game initialized")) || [];
+      const newLogMessages = [...(Array.isArray(baseLog) ? baseLog : [baseLog]), `A new round begins! ${nextPlayerToSelect.name}, select your champion!`];
 
       return {
         ...prev,
         selectedCardP1: undefined,
         selectedCardP2: undefined,
-        gameLogMessages: [...initialLogMessages, `A new round begins! ${nextPlayerToSelect.name}, select your champion!`],
-        currentPlayerIndex: 0, // Player 1 (index 0) starts selection
+        gameLogMessages: newLogMessages,
+        currentPlayerIndex: 0, 
         gamePhase: 'player1_select_card',
       };
     });
   };
-
 
   if (!gameState) {
     return (
@@ -396,7 +405,7 @@ export function GameBoard() {
       <div className="flex flex-col items-center justify-center h-screen w-screen p-4 bg-background text-foreground">
         <h1 className="text-5xl font-bold text-primary mb-8 tracking-wide">Arcane Clash</h1>
         <Button onClick={() => {
-          hasInitialized.current = false; // Reset for re-initialization
+          hasInitialized.current = false; 
           initializeGame();
         }} 
         size="lg" className="px-10 py-6 text-2xl bg-accent hover:bg-accent/90">
@@ -422,11 +431,9 @@ export function GameBoard() {
     );
   }
 
-
   return (
     <div className="flex flex-row h-screen w-screen overflow-hidden bg-background text-foreground p-1 md:p-2">
-      {/* Player 1 Side (Left) */}
-      <div className="w-1/4 flex flex-col items-center p-1 md:p-2 space-y-2 md:space-y-3 flex-shrink-0">
+      <div className="w-1/4 flex flex-col items-center p-1 md:p-2 space-y-1 md:space-y-2 flex-shrink-0">
         <div className="w-full flex flex-col items-center space-y-1 text-xs text-muted-foreground mb-1">
           <div className="flex items-center space-x-1">
             <Layers3 className="w-3 h-3" />
@@ -439,7 +446,7 @@ export function GameBoard() {
         </div>
         <PlayerStatusDisplay
           player={player1}
-          isCurrentPlayer={currentPlayerIndex === 0 && (gamePhase === 'player1_select_card' || gamePhase === 'coin_flip_animation' || gamePhase === 'combat_summary' || gamePhase === 'combat_animation')}
+          isCurrentPlayer={currentPlayerIndex === 0 && (gamePhase === 'player1_select_card' || (gamePhase === 'coin_flip_animation' && gameState.currentPlayerIndex === 0) || gamePhase === 'combat_summary' || gamePhase === 'combat_animation')}
         />
         <PlayerHand
           cards={player1.hand}
@@ -451,7 +458,6 @@ export function GameBoard() {
         />
       </div>
 
-      {/* Battle Arena (Center) */}
       <div className="flex-grow flex flex-col items-center justify-center min-w-0">
         <BattleArena
           player1Card={selectedCardP1}
@@ -462,13 +468,12 @@ export function GameBoard() {
           gameLogMessages={gameLogMessages || []}
           gamePhase={gamePhase}
           onProceedToNextTurn={handleProceedToNextTurn}
-          onCoinFlipAnimationComplete={handleCoinFlipAnimationComplete} // Pass this down
-          winningPlayerNameForCoinFlip={players[currentPlayerIndex].name} // Pass pre-determined winner name
+          onCoinFlipAnimationComplete={handleCoinFlipAnimationComplete}
+          winningPlayerNameForCoinFlip={players[gameState.currentPlayerIndex]?.name}
         />
       </div>
 
-      {/* Player 2 Side (Right) */}
-      <div className="w-1/4 flex flex-col items-center p-1 md:p-2 space-y-2 md:space-y-3 flex-shrink-0">
+      <div className="w-1/4 flex flex-col items-center p-1 md:p-2 space-y-1 md:space-y-2 flex-shrink-0">
         <div className="w-full flex flex-col items-center space-y-1 text-xs text-muted-foreground mb-1">
           <div className="flex items-center space-x-1">
             <Layers3 className="w-3 h-3" />
@@ -481,7 +486,7 @@ export function GameBoard() {
         </div>
         <PlayerStatusDisplay
           player={player2}
-          isCurrentPlayer={currentPlayerIndex === 1 && (gamePhase === 'player2_select_card' || gamePhase === 'coin_flip_animation' || gamePhase === 'combat_summary' || gamePhase === 'combat_animation')}
+          isCurrentPlayer={currentPlayerIndex === 1 && (gamePhase === 'player2_select_card' || (gamePhase === 'coin_flip_animation' && gameState.currentPlayerIndex === 1) || gamePhase === 'combat_summary' || gamePhase === 'combat_animation')}
           isOpponent={true}
         />
         <PlayerHand
@@ -498,11 +503,10 @@ export function GameBoard() {
         isOpen={gamePhase === 'game_over'}
         winnerName={winner?.name}
         onRestart={() => {
-          hasInitialized.current = false; // Reset for re-initialization
+          hasInitialized.current = false;
           initializeGame();
         }}
       />
     </div>
   );
 }
-
