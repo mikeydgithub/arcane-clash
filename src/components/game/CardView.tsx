@@ -10,63 +10,56 @@ import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'l
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 
-interface CardViewProps {
-  card: CardData;
-  onClick?: () => void;
-  isSelected?: boolean;
-  isPlayable?: boolean;
-  isOpponentCard?: boolean;
-  inBattleArena?: boolean;
-  isPlayerTurnForThisCard?: boolean;
-}
-
 interface AnimatedNumberProps {
-  value: number;
+  value: number; // Expect a number
 }
 
 function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
-  const numericTargetValue = Number(targetValue);
-  const initialMotionValue = isNaN(numericTargetValue) ? 0 : numericTargetValue;
+  // Ensure targetValue is treated as a number from the start.
+  const numericTarget = Number(targetValue);
+  const initialValue = isNaN(numericTarget) ? 0 : numericTarget;
 
-  const numberMotionValue = useMotionValue(initialMotionValue);
-  const prevTargetValueRef = useRef(initialMotionValue);
+  const numberMotionValue = useMotionValue(initialValue);
+  // useRef should store the numeric value that was last targeted for animation.
+  const prevTargetRef = useRef(initialValue);
 
   useEffect(() => {
-    const previousValueOnEffectStart = prevTargetValueRef.current;
-    // Ensure the animation starts from the value held by the motion value if different, or previous ref
-    numberMotionValue.set(Number(numberMotionValue.get()) || previousValueOnEffectStart);
+    const newNumericTarget = Number(targetValue); 
 
-
-    const currentNumericTarget = Number(targetValue);
-
-    if (isNaN(currentNumericTarget)) {
-        // If the target value is not a number, set motion value to a fallback (e.g., 0 or last valid)
-        // and update ref to prevent NaN propagation.
-        const fallbackValue = isNaN(Number(prevTargetValueRef.current)) ? 0 : Number(prevTargetValueRef.current);
-        numberMotionValue.set(fallbackValue);
-        prevTargetValueRef.current = fallbackValue;
-        return;
+    let valueToAnimateTo: number;
+    if (isNaN(newNumericTarget)) {
+      // If current target is NaN, set to last known good numeric value or 0
+      valueToAnimateTo = isNaN(prevTargetRef.current) ? 0 : prevTargetRef.current;
+    } else {
+      valueToAnimateTo = newNumericTarget;
     }
+    
+    // Get current numeric value of motion value, default to 0 if NaN
+    const currentMotionNumericValue = Number(numberMotionValue.get());
+    const startValue = isNaN(currentMotionNumericValue) ? 0 : currentMotionNumericValue;
 
-    const diff = Math.abs(currentNumericTarget - (Number(prevTargetValueRef.current))); // Diff from previous *numeric* ref
-    let animationDuration = Math.max(0.2, diff * 0.15); // 150ms per unit, min 200ms
-    animationDuration = Math.min(animationDuration, 2); // Max 2 seconds
-
-    const controls = animate(numberMotionValue, currentNumericTarget, {
-      duration: animationDuration,
+    const controls = animate(numberMotionValue, valueToAnimateTo, {
+      duration: Math.max(0.2, Math.abs(valueToAnimateTo - startValue) * 0.15),
       type: "tween",
       ease: "linear",
     });
 
-    prevTargetValueRef.current = currentNumericTarget; // Store the current numeric target for next run
+    // Store the value we are animating towards as the new "previous" target
+    // if it was a valid number, otherwise keep the last valid one.
+    if (!isNaN(newNumericTarget)) {
+        prevTargetRef.current = newNumericTarget;
+    }
+
 
     return () => controls.stop();
-  }, [targetValue, numberMotionValue]);
+  }, [targetValue, numberMotionValue]); 
 
-  const displayTransformed = useTransform(numberMotionValue, v => {
+  const displayTransformed = useTransform(numberMotionValue, (v) => {
     const rounded = Math.round(Number(v));
-    return isNaN(rounded) ? 0 : rounded; // Display 0 if calculation results in NaN
+    // Explicitly convert to string for motion.span to avoid potential issues
+    return String(isNaN(rounded) ? 0 : rounded); 
   });
+
   return <motion.span>{displayTransformed}</motion.span>;
 }
 
@@ -107,14 +100,14 @@ export function CardView({
   inBattleArena = false,
   isPlayerTurnForThisCard = false
 }: CardViewProps) {
-  const cardSizeClass = "w-40 h-56 md:w-48 md:h-64"; // Reverted to original default size
+  const baseCardSize = "w-40 h-56 md:w-48 md:h-64"; 
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
 
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
-  const imageSize = "h-24 md:h-32";
+  const imageSize = "h-24 md:h-32"; 
   const contentPadding = "p-2 space-y-1";
-  const contentTextSize = "text-xs";
+  const contentTextSize = "text-xs"; 
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
 
@@ -122,7 +115,7 @@ export function CardView({
     <Card
       className={cn(
         "flex flex-col overflow-hidden shadow-xl",
-        cardSizeClass,
+        baseCardSize,
         cardHoverEffect,
         isSelected ? "ring-2 ring-accent shadow-accent" : "",
         isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
@@ -160,7 +153,7 @@ export function CardView({
           />
         )}
       </div>
-      <CardContent className={cn("flex-grow space-y-1", contentPadding, contentTextSize)}>
+      <CardContent className={cn("flex-grow", contentPadding, contentTextSize)}>
         <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
           {card.melee > 0 && (
              <div className="flex items-center space-x-1 cursor-default" aria-label={`Melee: ${Math.round(card.melee)}`}>
