@@ -12,8 +12,7 @@ export const generateInitialCards = (): CardData[] => {
   if (CARD_TITLES.length < 40) {
     console.warn("Not enough unique card titles to generate 40 unique cards. Duplicates might occur or deck sizes will be smaller.");
   }
-  // Ensure we generate up to 40 cards, even if titles repeat for the purpose of generation.
-  // In a real game, you'd have truly unique cards or allow duplicates by design.
+  
   return CARD_TITLES.slice(0, 40).map((title, index) => {
     const magic = getRandomInt(0, 15);
     const melee = getRandomInt(0, 15);
@@ -26,10 +25,10 @@ export const generateInitialCards = (): CardData[] => {
     const maxShield = getRandomInt(0, 15);
     
     return {
-      id: `card-${index}-${Date.now()}-${Math.random().toString(36).substring(7)}`, // More unique ID
+      id: `card-${index}-${Date.now()}-${Math.random().toString(36).substring(7)}`, 
       title,
-      isLoadingArt: true,
-      artUrl: undefined,
+      isLoadingArt: false, // Art loading skipped for testing
+      artUrl: undefined,   // Will use placeholder
       magic: finalMagic,
       melee: finalMelee,
       defense: getRandomInt(1, 10),
@@ -59,3 +58,4 @@ export const dealCards = (deck: CardData[], count: number): { dealtCards: CardDa
   return { dealtCards, remainingDeck };
 };
 
+    
