@@ -2,16 +2,27 @@
 'use client';
 
 import Image from 'next/image';
-import type { CardData } from '@/types';
+import type { CardData } from '@/types'; // Assuming CardData is correctly defined
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react'; // Added ShieldAlert
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 
+// Prop types for CardView - assuming this is defined elsewhere or should be added
+interface CardViewProps {
+  card: CardData;
+  onClick?: () => void;
+  isSelected?: boolean;
+  isPlayable?: boolean;
+  isOpponentCard?: boolean;
+  inBattleArena?: boolean;
+  isPlayerTurnForThisCard?: boolean;
+}
+
 interface AnimatedNumberProps {
-  value: number; // Expect a number
+  value: number; 
 }
 
 function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
@@ -39,9 +50,9 @@ function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
     const startValue = isNaN(currentMotionNumericValue) ? 0 : currentMotionNumericValue;
 
     const controls = animate(numberMotionValue, valueToAnimateTo, {
-      duration: Math.max(0.2, Math.abs(valueToAnimateTo - startValue) * 0.15),
-      type: "tween",
-      ease: "linear",
+      duration: Math.max(0.2, Math.abs(valueToAnimateTo - startValue) * 0.15), // Adjusted duration logic
+      type: "tween", // Changed from "spring" to "tween" for more linear counting
+      ease: "linear", // Ensures linear progression
     });
 
     // Store the value we are animating towards as the new "previous" target
@@ -50,12 +61,11 @@ function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
         prevTargetRef.current = newNumericTarget;
     }
 
-
     return () => controls.stop();
   }, [targetValue, numberMotionValue]); 
 
   const displayTransformed = useTransform(numberMotionValue, (v) => {
-    const rounded = Math.round(Number(v));
+    const rounded = Math.round(Number(v)); // Ensure v is treated as number
     // Explicitly convert to string for motion.span to avoid potential issues
     return String(isNaN(rounded) ? 0 : rounded); 
   });
@@ -90,7 +100,6 @@ function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = fals
   );
 }
 
-
 export function CardView({
   card,
   onClick,
@@ -109,7 +118,6 @@ export function CardView({
   const contentPadding = "p-2 space-y-1";
   const contentTextSize = "text-xs"; 
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
-
 
   return (
     <Card
@@ -166,7 +174,15 @@ export function CardView({
           {card.magic > 0 && <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={card.magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
           
           {/* Defense Stat */}
-          <StatDisplay icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />} currentValue={card.defense} label="Defense" isSingleValue={true} animateStats={inBattleArena} />}
+          <>
+            <StatDisplay 
+              icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />} 
+              currentValue={card.defense} 
+              label="Defense" 
+              isSingleValue={true} 
+              animateStats={inBattleArena} 
+            />
+          </>
           
           {/* HP Stat */}
           <StatDisplay icon={<Heart className={cn(iconSize, "text-pink-400")} />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animateStats={inBattleArena} />}
