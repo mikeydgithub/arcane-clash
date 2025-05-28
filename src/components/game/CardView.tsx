@@ -38,7 +38,7 @@ function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
     const previousValue = prevTargetValueRef.current;
     numberMotionValue.set(previousValue);
 
-    const animationDuration = Math.max(0.2, Math.abs(targetValue - previousValue) * 0.15); // 150ms per unit change, min 200ms
+    const animationDuration = Math.max(0.2, Math.abs(targetValue - previousValue) * 0.15);
     const controls = animate(numberMotionValue, targetValue, {
       duration: animationDuration,
       type: "tween", 
@@ -65,19 +65,16 @@ interface StatDisplayProps {
 }
 
 function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false }: StatDisplayProps) {
+  const displayValue = animateStats ? <AnimatedNumber value={currentValue} /> : String(currentValue);
+  const displayMaxValue = !isSingleValue && maxValue !== undefined ? ` / ${String(maxValue)}` : '';
+  
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div className="flex items-center space-x-1 cursor-default" aria-label={`${label}: ${currentValue}${!isSingleValue && maxValue !== undefined ? `/${maxValue}` : ''}`}>
           {icon}
           <span className="font-semibold">
-            {animateStats ? <AnimatedNumber value={currentValue} /> : currentValue}
-            {!isSingleValue && maxValue !== undefined && (
-              <>
-                {' / '}
-                {maxValue}
-              </>
-            )}
+            {displayValue}{displayMaxValue}
           </span>
         </div>
       </TooltipTrigger>
