@@ -38,25 +38,37 @@ function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
     const previousValue = prevTargetValueRef.current;
     numberMotionValue.set(previousValue);
 
-    const diff = Math.abs(targetValue - previousValue);
+    // Ensure targetValue is a number for calculation
+    const numericTargetValue = Number(targetValue);
+    const numericPreviousValue = Number(previousValue);
+
+    if (isNaN(numericTargetValue) || isNaN(numericPreviousValue)) {
+        // Fallback if values are not numeric, set directly
+        numberMotionValue.set(isNaN(numericTargetValue) ? 0 : numericTargetValue); 
+        prevTargetValueRef.current = isNaN(numericTargetValue) ? 0 : numericTargetValue;
+        return;
+    }
+    
+    const diff = Math.abs(numericTargetValue - numericPreviousValue);
     let animationDuration = Math.max(0.2, diff * 0.15); 
     animationDuration = Math.min(animationDuration, 2); 
 
 
-    const controls = animate(numberMotionValue, targetValue, {
+    const controls = animate(numberMotionValue, numericTargetValue, {
       duration: animationDuration,
       type: "tween", 
       ease: "linear",
     });
 
-    prevTargetValueRef.current = targetValue; 
+    prevTargetValueRef.current = numericTargetValue; 
 
     return () => controls.stop();
   }, [targetValue, numberMotionValue]);
 
-  const displayTransformed = useTransform(numberMotionValue, v => Math.round(v));
+  const displayTransformed = useTransform(numberMotionValue, v => Math.round(Number(v))); // Ensure v is treated as number
   return <motion.span>{displayTransformed}</motion.span>;
 }
+
 
 interface StatDisplayProps {
   icon: React.ReactNode;
@@ -82,7 +94,7 @@ function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = fals
           {icon}
           <span className="font-semibold">
             {displayCurrentValueNode}
-            {!isSingleValue && maxValue !== undefined ? ` / ${Math.round(maxValue)}` : ''}
+            {!isSingleValue && maxValue !== undefined ? ` / ${Math.round(maxValue)}` : null}
           </span>
         </div>
       </TooltipTrigger>
@@ -92,6 +104,7 @@ function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = fals
     </Tooltip>
   );
 }
+
 
 export function CardView({
   card,
@@ -145,7 +158,7 @@ export function CardView({
           />
         ) : (
           <Image
-            src={`https://placehold.co/300x400.png`}
+            src="https://placehold.co/300x400.png"
             alt={`Placeholder for ${card.title}`}
             fill
             objectFit="contain"
@@ -157,7 +170,15 @@ export function CardView({
       <TooltipProvider delayDuration={300}>
         <CardContent className={cn("flex-grow space-y-1", contentPadding, contentTextSize)}>
           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-            {card.melee > 0 && <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={card.melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} />}
+            {/* DIAGNOSTIC: Direct rendering for Melee stat */}
+            {card.melee > 0 && (
+              <div className="flex items-center space-x-1 cursor-default" aria-label={`Melee: ${Math.round(card.melee)}`}>
+                <Swords className={cn(iconSize, "text-red-400")} />
+                <span className="font-semibold">
+                  {inBattleArena ? <AnimatedNumber value={card.melee} /> : Math.round(card.melee)}
+                </span>
+              </div>
+            )}
             {card.magic > 0 && <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={card.magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
             <StatDisplay icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />} currentValue={card.defense} label="Defense" isSingleValue={true} animateStats={inBattleArena} />}
             <StatDisplay icon={<Heart className={cn(iconSize, "text-pink-400")} />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animateStats={inBattleArena} />}
