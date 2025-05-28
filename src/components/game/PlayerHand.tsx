@@ -17,7 +17,7 @@ interface PlayerHandProps {
 export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = false, selectedCardId, hasCommittedCard = false }: PlayerHandProps) {
   if (!cards) return null;
 
-  const committedCardTranslation = isOpponent ? "md:translate-x-10" : "md:-translate-x-10";
+  const committedCardTranslation = isOpponent ? "md:translate-x-4" : "md:-translate-x-4";
 
   return (
     <div className={cn(
