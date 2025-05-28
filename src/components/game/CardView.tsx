@@ -36,21 +36,20 @@ function AnimatedNumber({ value: targetValue }: AnimatedNumberProps) {
 
   useEffect(() => {
     const previousValue = prevTargetValueRef.current;
-    numberMotionValue.set(previousValue); // Start animation from the previous value
+    numberMotionValue.set(previousValue);
 
-    // Duration proportional to change, with min/max
     const diff = Math.abs(targetValue - previousValue);
-    let animationDuration = Math.max(0.2, diff * 0.15); // 150ms per unit change, min 200ms
-    animationDuration = Math.min(animationDuration, 2); // Max 2 seconds for very large changes
+    let animationDuration = Math.max(0.2, diff * 0.15); 
+    animationDuration = Math.min(animationDuration, 2); 
 
 
     const controls = animate(numberMotionValue, targetValue, {
       duration: animationDuration,
-      type: "tween", // Use tween for a more linear "counting" effect
+      type: "tween", 
       ease: "linear",
     });
 
-    prevTargetValueRef.current = targetValue; // Update ref for next animation
+    prevTargetValueRef.current = targetValue; 
 
     return () => controls.stop();
   }, [targetValue, numberMotionValue]);
@@ -70,24 +69,20 @@ interface StatDisplayProps {
 
 function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false }: StatDisplayProps) {
   const displayCurrentValueNode = animateStats ? <AnimatedNumber value={currentValue} /> : Math.round(currentValue);
-  const displayMaxValuePart = !isSingleValue && maxValue !== undefined ? Math.round(maxValue) : null;
+  const ariaCurrentValue = Math.round(currentValue);
+  const ariaMaxValuePart = !isSingleValue && maxValue !== undefined ? `/${Math.round(maxValue)}` : '';
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div
           className="flex items-center space-x-1 cursor-default"
-          aria-label={`${label}: ${Math.round(currentValue)}${displayMaxValuePart !== null ? `/${displayMaxValuePart}` : ''}`}
+          aria-label={`${label}: ${ariaCurrentValue}${ariaMaxValuePart}`}
         >
           {icon}
           <span className="font-semibold">
             {displayCurrentValueNode}
-            {displayMaxValuePart !== null && (
-              <>
-                {' / '}
-                {displayMaxValuePart}
-              </>
-            )}
+            {!isSingleValue && maxValue !== undefined ? ` / ${Math.round(maxValue)}` : ''}
           </span>
         </div>
       </TooltipTrigger>
@@ -117,7 +112,6 @@ export function CardView({
   const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
-
   return (
     <Card
       className={cn(
@@ -145,7 +139,7 @@ export function CardView({
             src={card.artUrl}
             alt={`Art for ${card.title}`}
             fill
-            objectFit="contain"
+            objectFit="contain" 
             data-ai-hint="fantasy creature"
             className="rounded-t-sm"
           />
