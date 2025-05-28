@@ -6,7 +6,7 @@ import type { CardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react'; // Added ShieldAlert
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 import {
@@ -61,7 +61,7 @@ interface StatDisplayProps {
   maxValue?: number;
   label: string;
   isSingleValue?: boolean;
-  animateStats?: boolean; // Renamed from 'animate' to be more specific
+  animateStats?: boolean;
 }
 
 function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false }: StatDisplayProps) {
@@ -92,7 +92,7 @@ export function CardView({
   inBattleArena = false,
   isPlayerTurnForThisCard = false
 }: CardViewProps) {
-  const baseCardSize = "w-40 h-56 md:w-48 md:h-64"; // Reverted to larger default size
+  const baseCardSize = "w-40 h-56 md:w-48 md:h-64";
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
 
   return (
@@ -103,7 +103,6 @@ export function CardView({
         cardHoverEffect,
         isSelected ? "ring-2 ring-accent shadow-accent" : "",
         isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
-        // inBattleArena ? "animate-fadeIn" : "" // fadeIn might conflict with framer-motion if used simultaneously
       )}
       onClick={isPlayable ? onClick : undefined}
       aria-label={`Card: ${card.title}`}
