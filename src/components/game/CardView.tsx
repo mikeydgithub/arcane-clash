@@ -81,20 +81,20 @@ interface CardViewProps {
 const MotionCard = motion(Card);
 
 const ghastlyGlowVariants = {
-  selected: {
+  selected: { // This variant is now triggered by inBattleArena
     boxShadow: [
-      "0 0 10px 3px hsla(170, 70%, 60%, 0.5)",
+      "0 0 10px 3px hsla(170, 70%, 60%, 0.5)", // Ethereal blue-green
       "0 0 22px 7px hsla(170, 70%, 60%, 0.8)",
       "0 0 10px 3px hsla(170, 70%, 60%, 0.5)",
     ],
     transition: {
-      duration: 2.0,
+      duration: 2.0, // Slower, more "breathing"
       repeat: Infinity,
       ease: "easeInOut",
     },
   },
   initial: {
-    // The boxShadow from the 'shadow-xl' class will apply here
+    // The boxShadow from the 'shadow-xl' class will apply here, or none if not defined
   },
 };
 
@@ -113,7 +113,7 @@ export function CardView({
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
   const imageSize = "h-24 md:h-32";
-  const contentPadding = "p-2";
+  const contentPadding = "p-2"; // Reduced overall padding
   const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
@@ -123,7 +123,7 @@ export function CardView({
         "flex flex-col overflow-hidden shadow-xl", // Default shadow
         baseCardSize,
         cardHoverEffect,
-        // isSelected ? "ring-2 ring-accent shadow-accent" : "", // Removed static glow
+        isSelected && !inBattleArena ? "ring-2 ring-accent" : "", // Basic selection ring for hand only
         isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
         isOpponentCard && isPlayerTurnForThisCard && !inBattleArena ? "opacity-100" : ""
       )}
@@ -132,7 +132,7 @@ export function CardView({
       role={isPlayable ? "button" : "img"}
       tabIndex={isPlayable ? 0 : -1}
       variants={ghastlyGlowVariants}
-      animate={isSelected ? "selected" : "initial"}
+      animate={inBattleArena ? "selected" : "initial"} // Glow only if inBattleArena
       initial="initial"
     >
       <CardHeader className={cn("text-center", headerPadding)}>
@@ -162,9 +162,10 @@ export function CardView({
           />
         )}
       </div>
+      
       <CardContent className={cn("flex-grow flex flex-col items-center space-y-0.5", contentPadding, contentTextSize)}>
-          {card.melee > 0 && <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={card.melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} />}
-          {card.magic > 0 && <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={card.magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
+        {card.melee > 0 && <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={card.melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} />}
+        {card.magic > 0 && <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={card.magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
         <>
           <StatDisplay
             icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />}
@@ -174,10 +175,10 @@ export function CardView({
             animateStats={inBattleArena}
           />
         </>
-          <StatDisplay icon={<Heart className={cn(iconSize, "text-pink-400")} />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animateStats={inBattleArena} />
+        <StatDisplay icon={<Heart className={cn(iconSize, "text-pink-400")} />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animateStats={inBattleArena} />
         
-          { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className={cn(iconSize, "text-yellow-400")} />} currentValue={card.shield} maxValue={card.maxShield} label="Physical Shield" animateStats={inBattleArena} /> }
-          { card.maxMagicShield > 0 && <StatDisplay icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />} currentValue={card.magicShield} maxValue={card.maxMagicShield} label="Magic Shield" animateStats={inBattleArena} /> }
+        {card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className={cn(iconSize, "text-yellow-400")} />} currentValue={card.shield} maxValue={card.maxShield} label="Physical Shield" animateStats={inBattleArena} />}
+        {card.maxMagicShield > 0 && <StatDisplay icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />} currentValue={card.magicShield} maxValue={card.maxMagicShield} label="Magic Shield" animateStats={inBattleArena} />}
       </CardContent>
 
       {card.description && !inBattleArena && (
