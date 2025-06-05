@@ -25,39 +25,24 @@ interface AnimatedNumberProps {
 }
 
 function AnimatedNumber({ value }: AnimatedNumberProps) {
-  // Ensure targetValue is always a finite number, defaulting to 0
   const targetValue = Number.isFinite(value) ? value : 0;
-
   const numberMotionValue = useMotionValue(targetValue);
-  // useRef to store the previous target, initialized with the (potentially corrected) targetValue
-  const prevTargetRef = useRef(targetValue);
-
 
   useEffect(() => {
-    // Ensure newNumericTarget is always a finite number for animation, defaulting to 0
     const newNumericTarget = Number.isFinite(value) ? value : 0;
-    
     const currentMotionNumericValue = numberMotionValue.get();
-    // Ensure startValue for animation is also a finite number
     const startValue = Number.isFinite(currentMotionNumericValue) ? currentMotionNumericValue : 0;
 
     const controls = animate(numberMotionValue, newNumericTarget, {
-      duration: Math.max(0.2, Math.abs(newNumericTarget - startValue) * 0.15), // Proportional duration
+      duration: Math.max(0.2, Math.abs(newNumericTarget - startValue) * 0.15), 
       type: "tween",
       ease: "linear",
     });
 
-    // Update ref only if the new target is a valid finite number
-    if (Number.isFinite(newNumericTarget)) {
-        prevTargetRef.current = newNumericTarget;
-    }
-
     return () => controls.stop();
   }, [value, numberMotionValue]); 
 
-  // Transform the motion value to a string, ensuring it's always a string representation of a rounded number
   const displayTransformed = useTransform(numberMotionValue, (v) => {
-    // Ensure 'v' is treated as a finite number before rounding and stringifying
     const currentDisplayNum = Number.isFinite(v) ? Math.round(v) : 0;
     return String(currentDisplayNum);
   });
@@ -109,7 +94,7 @@ export function CardView({
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
   const imageSize = "h-24 md:h-32"; 
-  const contentPadding = "p-2 space-y-1";
+  const contentPadding = "p-2"; // Removed space-y-1 from here, will be handled by inner div
   const contentTextSize = "text-xs"; 
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
@@ -156,33 +141,23 @@ export function CardView({
         )}
       </div>
       <CardContent className={cn("flex-grow", contentPadding, contentTextSize)}>
-        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-          {card.melee > 0 && (
-             <div className="flex items-center space-x-1 cursor-default" aria-label={`Melee: ${Math.round(card.melee)}`}>
-                <Swords className={cn(iconSize, "text-red-400")} />
-                <span className="font-semibold">
-                  {inBattleArena ? <AnimatedNumber value={card.melee} /> : Math.round(card.melee)}
-                </span>
-              </div>
-          )}
+        <div className="flex flex-col space-y-0.5">
+          {card.melee > 0 && <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={card.melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} />}
           {card.magic > 0 && <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={card.magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
           
-          {/* Defense Stat */}
-          <> 
-            <StatDisplay 
-              icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />} 
-              currentValue={card.defense} 
-              label="Defense" 
-              isSingleValue={true} 
-              animateStats={inBattleArena} 
-            />
-          </>
+          <StatDisplay 
+            icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />} 
+            currentValue={card.defense} 
+            label="Defense" 
+            isSingleValue={true} 
+            animateStats={inBattleArena} 
+          />
           
-          {/* HP Stat */}
-          <StatDisplay icon={<Heart className={cn(iconSize, "text-pink-400")} />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animateStats={inBattleArena} />}
+          <StatDisplay icon={<Heart className={cn(iconSize, "text-pink-400")} />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animateStats={inBattleArena} />
+        
+          { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className={cn(iconSize, "text-yellow-400")} />} currentValue={card.shield} maxValue={card.maxShield} label="Physical Shield" animateStats={inBattleArena} /> }
+          { card.maxMagicShield > 0 && <StatDisplay icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />} currentValue={card.magicShield} maxValue={card.maxMagicShield} label="Magic Shield" animateStats={inBattleArena} /> }
         </div>
-        { card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className={cn(iconSize, "text-yellow-400")} />} currentValue={card.shield} maxValue={card.maxShield} label="Physical Shield" animateStats={inBattleArena} /> }
-        { card.maxMagicShield > 0 && <StatDisplay icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />} currentValue={card.magicShield} maxValue={card.maxMagicShield} label="Magic Shield" animateStats={inBattleArena} /> }
       </CardContent>
 
       {card.description && !inBattleArena && (
