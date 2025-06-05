@@ -1,8 +1,10 @@
+
 'use client';
 
 import type { PlayerData } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { Heart, ShieldCheck } from 'lucide-react';
 
@@ -22,14 +24,26 @@ export function PlayerStatusDisplay({ player, isCurrentPlayer, isOpponent = fals
       isOpponent ? "bg-card/70" : "bg-card"
     )}>
       <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className={cn(
-          "text-xl flex items-center justify-between",
-          isCurrentPlayer ? "text-accent-foreground" : "",
-          isOpponent ? "text-muted-foreground" : ""
-        )}>
-          {player.name}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Avatar className="h-10 w-10">
+              <AvatarImage 
+                src={player.avatarUrl || `https://placehold.co/64x64.png?text=${player.name.substring(0,1)}`} 
+                alt={player.name} 
+                data-ai-hint="player avatar" 
+              />
+              <AvatarFallback>{player.name.substring(0, 1).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <CardTitle className={cn(
+              "text-xl",
+              isCurrentPlayer ? "text-accent-foreground" : "", // This applies to the text color of the name based on current player
+              isOpponent && !isCurrentPlayer ? "text-muted-foreground" : "" // Muted if opponent and not current turn
+            )}>
+              {player.name}
+            </CardTitle>
+          </div>
           {isCurrentPlayer && <ShieldCheck className="w-6 h-6 text-accent animate-pulse" />}
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="px-4 pb-4">
         <div className="flex items-center space-x-2 mb-2">

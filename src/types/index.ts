@@ -23,6 +23,7 @@ export interface PlayerData {
   hand: CardData[];
   deck: CardData[];
   discardPile: CardData[];
+  avatarUrl?: string;
 }
 
 export type GamePhase =

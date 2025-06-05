@@ -44,13 +44,15 @@ export function GameBoard() {
       id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP,
       hand: p1InitialHand.map(c => ({ ...c, isLoadingArt: false, artUrl: undefined })), // Skip art loading for testing
       deck: p1DeckAfterDeal,
-      discardPile: []
+      discardPile: [],
+      avatarUrl: 'https://placehold.co/64x64.png?text=P1', // Placeholder avatar
     };
     const initialPlayer2: PlayerData = {
       id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
       hand: p2InitialHand.map(c => ({ ...c, isLoadingArt: false, artUrl: undefined })), // Skip art loading for testing
       deck: p2DeckAfterDeal,
-      discardPile: []
+      discardPile: [],
+      avatarUrl: 'https://placehold.co/64x64.png?text=P2', // Placeholder avatar
     };
     
     setGameState({
