@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Utility class for the starry pattern */
+.bg-starry-pattern {
+  background-image: radial-gradient(white 3px, transparent 3.5px); /* Large, bright white dots */
+  background-size: 60px 60px; /* Spacing for the dots */
+  background-position: 0 0;
+}
+
 body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
@@ -79,11 +86,7 @@ body {
     @apply border-border;
   }
   body {
-    /* background-color: hsl(var(--background)); */ /* Temporarily removed for testing */
-    /* Starry pattern on top - using hardcoded white for max visibility */
-    background-image: radial-gradient(white 3px, transparent 3.5px); /* Large, bright white dots */
-    background-size: 60px 60px; /* Spacing for the dots */
-    background-position: 0 0;
+    background-color: hsl(var(--background)); /* Solid background color for body */
     color: hsl(var(--foreground));
 
     /* Layout properties */
