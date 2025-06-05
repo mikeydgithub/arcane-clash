@@ -8,33 +8,32 @@ body {
 
 @layer base {
   :root {
-    --background: 260 15% 10%; /* Very dark desaturated purple, e.g., #17151A */
-    /* --gradient-end-color: 250 20% 8%; */ /* Removed */
-    --foreground: 260 10% 88%; /* Light grayish-purple for text, e.g., #DCDADD */
-    --card: 260 15% 15%; /* Slightly lighter dark purple for cards, e.g., #221F26 */
+    --background: 260 15% 10%; /* Very dark desaturated purple */
+    --foreground: 260 10% 88%; /* Light grayish-purple for text */
+    --card: 260 15% 15%; 
     --card-foreground: 260 10% 88%;
     --popover: 260 15% 10%;
     --popover-foreground: 260 10% 88%;
-    --primary: 262 52.4% 47.3%; /* #673AB7 deep purple (existing) */
-    --primary-foreground: 0 0% 100%; /* #FFFFFF white (existing) */
-    --secondary: 232 47.3% 40%; /* Darker blue for secondary elements (existing) */
+    --primary: 262 52.4% 47.3%; 
+    --primary-foreground: 0 0% 100%; 
+    --secondary: 232 47.3% 40%; 
     --secondary-foreground: 0 0% 100%;
-    --muted: 260 10% 20%; /* Darker muted purple, e.g., #2E2A33 */
-    --muted-foreground: 260 10% 55%; /* Muted purple text, e.g., #837E8A */
-    --accent: 232 47.3% 47.8%; /* #3F51B5 electric blue (existing) */
-    --accent-foreground: 0 0% 100%; /* #FFFFFF white (existing) */
-    --destructive: 0 72.2% 50.6%; /* Default destructive (existing) */
+    --muted: 260 10% 20%; 
+    --muted-foreground: 260 10% 55%; 
+    --accent: 232 47.3% 47.8%; 
+    --accent-foreground: 0 0% 100%; 
+    --destructive: 0 72.2% 50.6%; 
     --destructive-foreground: 0 0% 100%;
-    --border: 260 10% 25%; /* Subtle purple border, e.g., #3A363F */
+    --border: 260 10% 25%; 
     --input: 260 10% 25%;
-    --ring: 262 52.4% 47.3%; /* Primary color for rings (existing) */
+    --ring: 262 52.4% 47.3%; 
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 260 15% 8%; /* Slightly darker for sidebar */
+    --sidebar-background: 260 15% 8%;
     --sidebar-foreground: 260 10% 80%;
     --sidebar-primary: 262 52.4% 47.3%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -46,7 +45,6 @@ body {
 
   .dark {
     --background: 260 15% 10%;
-    /* --gradient-end-color: 250 20% 8%; */ /* Removed */
     --foreground: 260 10% 88%;
     --card: 260 15% 15%;
     --card-foreground: 260 10% 88%;
@@ -81,17 +79,15 @@ body {
     @apply border-border;
   }
   body {
-    background-color: hsl(var(--background)); /* Fallback color */
-    background-image:
-      /* Top layer: More prominent stars/particles */
-      radial-gradient(hsla(var(--foreground), 0.25) 1.5px, transparent 1.7px); /* Increased opacity and size */
-    background-size:
-      70px 70px;   /* Spacing for the dots */
-    background-position:
-      0 0;
-    color: hsl(var(--foreground)); /* Ensure text color is still applied */
+    /* Solid background color */
+    background-color: hsl(var(--background)); 
+    /* Starry pattern on top - using hardcoded white for max visibility */
+    background-image: radial-gradient(white 3px, transparent 3.5px); /* Large, bright white dots */
+    background-size: 60px 60px; /* Spacing for the dots */
+    background-position: 0 0;
+    color: hsl(var(--foreground));
 
-    /* Ensure app fits viewport and has no scrollbars */
+    /* Layout properties */
     @apply min-h-screen max-h-screen overflow-hidden;
   }
 }
