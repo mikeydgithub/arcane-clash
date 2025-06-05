@@ -8,69 +8,68 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 18.8%; /* #303030 dark grey */
-    --foreground: 0 0% 90.2%; /* #E6E6E6 light grey for text */
-    --card: 0 0% 25%; /* Slightly lighter grey for cards */
-    --card-foreground: 0 0% 90.2%;
-    --popover: 0 0% 18.8%;
-    --popover-foreground: 0 0% 90.2%;
-    --primary: 262 52.4% 47.3%; /* #673AB7 deep purple */
-    --primary-foreground: 0 0% 100%; /* #FFFFFF white */
-    --secondary: 232 47.3% 40%; /* Darker blue for secondary elements */
+    --background: 260 15% 10%; /* Very dark desaturated purple, e.g., #17151A */
+    --foreground: 260 10% 88%; /* Light grayish-purple for text, e.g., #DCDADD */
+    --card: 260 15% 15%; /* Slightly lighter dark purple for cards, e.g., #221F26 */
+    --card-foreground: 260 10% 88%;
+    --popover: 260 15% 10%;
+    --popover-foreground: 260 10% 88%;
+    --primary: 262 52.4% 47.3%; /* #673AB7 deep purple (existing) */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF white (existing) */
+    --secondary: 232 47.3% 40%; /* Darker blue for secondary elements (existing) */
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 30%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 232 47.3% 47.8%; /* #3F51B5 electric blue */
-    --accent-foreground: 0 0% 100%; /* #FFFFFF white */
-    --destructive: 0 72.2% 50.6%; /* Default destructive, adjust if needed */
+    --muted: 260 10% 20%; /* Darker muted purple, e.g., #2E2A33 */
+    --muted-foreground: 260 10% 55%; /* Muted purple text, e.g., #837E8A */
+    --accent: 232 47.3% 47.8%; /* #3F51B5 electric blue (existing) */
+    --accent-foreground: 0 0% 100%; /* #FFFFFF white (existing) */
+    --destructive: 0 72.2% 50.6%; /* Default destructive (existing) */
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 35%;
-    --input: 0 0% 35%;
-    --ring: 262 52.4% 47.3%; /* Primary color for rings */
+    --border: 260 10% 25%; /* Subtle purple border, e.g., #3A363F */
+    --input: 260 10% 25%;
+    --ring: 262 52.4% 47.3%; /* Primary color for rings (existing) */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 15%;
-    --sidebar-foreground: 0 0% 85%;
+    --sidebar-background: 260 15% 8%; /* Slightly darker for sidebar */
+    --sidebar-foreground: 260 10% 80%;
     --sidebar-primary: 262 52.4% 47.3%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 232 47.3% 47.8%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 30%;
+    --sidebar-border: 260 10% 22%;
     --sidebar-ring: 262 52.4% 47.3%;
   }
 
   .dark {
-    /* Keep dark theme consistent with base, or define specific dark variations if needed */
-    --background: 0 0% 18.8%;
-    --foreground: 0 0% 90.2%;
-    --card: 0 0% 25%;
-    --card-foreground: 0 0% 90.2%;
-    --popover: 0 0% 18.8%;
-    --popover-foreground: 0 0% 90.2%;
+    --background: 260 15% 10%;
+    --foreground: 260 10% 88%;
+    --card: 260 15% 15%;
+    --card-foreground: 260 10% 88%;
+    --popover: 260 15% 10%;
+    --popover-foreground: 260 10% 88%;
     --primary: 262 52.4% 47.3%;
     --primary-foreground: 0 0% 100%;
     --secondary: 232 47.3% 40%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 30%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 260 10% 20%;
+    --muted-foreground: 260 10% 55%;
     --accent: 232 47.3% 47.8%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72.2% 50.6%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 35%;
-    --input: 0 0% 35%;
+    --border: 260 10% 25%;
+    --input: 260 10% 25%;
     --ring: 262 52.4% 47.3%;
-    --sidebar-background: 0 0% 15%;
-    --sidebar-foreground: 0 0% 85%;
+    --sidebar-background: 260 15% 8%;
+    --sidebar-foreground: 260 10% 80%;
     --sidebar-primary: 262 52.4% 47.3%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 232 47.3% 47.8%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 30%;
+    --sidebar-border: 260 10% 22%;
     --sidebar-ring: 262 52.4% 47.3%;
   }
 }
