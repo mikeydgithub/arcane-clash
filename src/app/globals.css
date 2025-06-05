@@ -81,7 +81,23 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-gradient-to-br from-background to-gradient-end-color text-foreground;
+    background-color: hsl(var(--background)); /* Fallback color */
+    background-image:
+      /* Top layer: subtle stars/particles */
+      radial-gradient(hsla(var(--foreground), 0.08) 0.5px, transparent 0.5px), /* finer dots */
+      radial-gradient(hsla(var(--foreground), 0.04) 0.5px, transparent 0.5px),
+      /* Bottom layer: existing gradient */
+      linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--gradient-end-color)));
+    background-size:
+      50px 50px, /* spacing for the first set of dots */
+      80px 80px, /* spacing for the second, sparser set of dots */
+      auto;      /* for the linear gradient */
+    background-position:
+      0 0,
+      25px 25px, /* offset for the second set of dots */
+      0 0;
+    color: hsl(var(--foreground)); /* Ensure text color is still applied */
+
     /* Ensure app fits viewport and has no scrollbars */
     @apply min-h-screen max-h-screen overflow-hidden;
   }
