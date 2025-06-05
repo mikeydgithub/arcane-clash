@@ -9,7 +9,7 @@ body {
 @layer base {
   :root {
     --background: 260 15% 10%; /* Very dark desaturated purple, e.g., #17151A */
-    --gradient-end-color: 250 20% 8%; /* Slightly darker, bluer purple for gradient */
+    /* --gradient-end-color: 250 20% 8%; */ /* Removed */
     --foreground: 260 10% 88%; /* Light grayish-purple for text, e.g., #DCDADD */
     --card: 260 15% 15%; /* Slightly lighter dark purple for cards, e.g., #221F26 */
     --card-foreground: 260 10% 88%;
@@ -46,7 +46,7 @@ body {
 
   .dark {
     --background: 260 15% 10%;
-    --gradient-end-color: 250 20% 8%;
+    /* --gradient-end-color: 250 20% 8%; */ /* Removed */
     --foreground: 260 10% 88%;
     --card: 260 15% 15%;
     --card-foreground: 260 10% 88%;
@@ -84,14 +84,10 @@ body {
     background-color: hsl(var(--background)); /* Fallback color */
     background-image:
       /* Top layer: More prominent stars/particles */
-      radial-gradient(hsla(var(--foreground), 0.25) 1.5px, transparent 1.7px), /* Increased opacity and size */
-      /* Bottom layer: existing gradient */
-      linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--gradient-end-color)));
+      radial-gradient(hsla(var(--foreground), 0.25) 1.5px, transparent 1.7px); /* Increased opacity and size */
     background-size:
-      70px 70px,   /* Spacing for the dots */
-      auto;        /* For the linear gradient */
+      70px 70px;   /* Spacing for the dots */
     background-position:
-      0 0,
       0 0;
     color: hsl(var(--foreground)); /* Ensure text color is still applied */
 

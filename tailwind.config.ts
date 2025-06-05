@@ -11,7 +11,7 @@ export default {
   	extend: {
   		colors: {
   			background: 'hsl(var(--background))',
-        'gradient-end-color': 'hsl(var(--gradient-end-color))',
+        /* 'gradient-end-color': 'hsl(var(--gradient-end-color))', */ /* Removed */
   			foreground: 'hsl(var(--foreground))',
   			card: {
   				DEFAULT: 'hsl(var(--card))',
