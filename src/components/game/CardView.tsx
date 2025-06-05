@@ -2,45 +2,34 @@
 'use client';
 
 import Image from 'next/image';
-import type { CardData } from '@/types'; 
+import type { CardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react'; 
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 
-interface CardViewProps {
-  card: CardData;
-  onClick?: () => void;
-  isSelected?: boolean;
-  isPlayable?: boolean;
-  isOpponentCard?: boolean;
-  inBattleArena?: boolean;
-  isPlayerTurnForThisCard?: boolean;
-}
-
 interface AnimatedNumberProps {
-  value: number; 
+  value: number;
 }
 
 function AnimatedNumber({ value }: AnimatedNumberProps) {
-  const targetValue = Number.isFinite(value) ? value : 0;
-  const numberMotionValue = useMotionValue(targetValue);
+  const numericValue = Number.isFinite(value) ? value : 0;
+  const numberMotionValue = useMotionValue(numericValue);
 
   useEffect(() => {
     const newNumericTarget = Number.isFinite(value) ? value : 0;
-    const currentMotionNumericValue = numberMotionValue.get();
-    const startValue = Number.isFinite(currentMotionNumericValue) ? currentMotionNumericValue : 0;
-
+    const currentMotionNumericValue = Number.isFinite(numberMotionValue.get()) ? numberMotionValue.get() : 0;
+    
     const controls = animate(numberMotionValue, newNumericTarget, {
-      duration: Math.max(0.2, Math.abs(newNumericTarget - startValue) * 0.15), 
+      duration: Math.max(0.2, Math.abs(newNumericTarget - currentMotionNumericValue) * 0.15),
       type: "tween",
       ease: "linear",
     });
 
     return () => controls.stop();
-  }, [value, numberMotionValue]); 
+  }, [value, numberMotionValue]);
 
   const displayTransformed = useTransform(numberMotionValue, (v) => {
     const currentDisplayNum = Number.isFinite(v) ? Math.round(v) : 0;
@@ -88,14 +77,14 @@ export function CardView({
   inBattleArena = false,
   isPlayerTurnForThisCard = false
 }: CardViewProps) {
-  const baseCardSize = "w-40 h-56 md:w-48 md:h-64"; 
+  const baseCardSize = "w-40 h-56 md:w-48 md:h-64";
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-accent transition-transform duration-200 cursor-pointer" : "";
 
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
-  const imageSize = "h-24 md:h-32"; 
-  const contentPadding = "p-2"; // Removed space-y-1 from here, will be handled by inner div
-  const contentTextSize = "text-xs"; 
+  const imageSize = "h-24 md:h-32";
+  const contentPadding = "p-2";
+  const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
   return (
@@ -141,16 +130,16 @@ export function CardView({
         )}
       </div>
       <CardContent className={cn("flex-grow", contentPadding, contentTextSize)}>
-        <div className="flex flex-col space-y-0.5">
+        <div className="flex flex-col items-center space-y-0.5"> {/* Added items-center here */}
           {card.melee > 0 && <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={card.melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} />}
           {card.magic > 0 && <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={card.magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
           
-          <StatDisplay 
-            icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />} 
-            currentValue={card.defense} 
-            label="Defense" 
-            isSingleValue={true} 
-            animateStats={inBattleArena} 
+          <StatDisplay
+            icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />}
+            currentValue={card.defense}
+            label="Defense"
+            isSingleValue={true}
+            animateStats={inBattleArena}
           />
           
           <StatDisplay icon={<Heart className={cn(iconSize, "text-pink-400")} />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animateStats={inBattleArena} />
