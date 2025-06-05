@@ -2,21 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Utility class for the starry pattern */
-.bg-starry-pattern {
-  background-image: radial-gradient(white 3px, transparent 3.5px); /* Large, bright white dots */
-  background-size: 60px 60px; /* Spacing for the dots */
-  background-position: 0 0;
-}
-
 body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background-color: #000; /* Dark background as per user request */
+  color: hsl(var(--foreground));
+  /* Layout properties */
+  @apply min-h-screen max-h-screen overflow-hidden;
 }
+
+.star {
+  position: absolute;
+  width: 2px; /* Star size */
+  height: 2px;
+  background: white;
+  border-radius: 50%; /* Make it a circle */
+  box-shadow: 0 0 5px white; /* Glowing effect */
+  animation: pulse 2s infinite, twinkle 5s infinite; /* Pulse and twinkle animations */
+}
+
+/* Create multiple stars with random positions */
+.star:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
+.star:nth-child(2) { top: 20%; left: 30%; animation-delay: -0.5s; }
+.star:nth-child(3) { top: 40%; left: 70%; animation-delay: -1s; }
+.star:nth-child(4) { top: 60%; left: 20%; animation-delay: -1.5s; }
+.star:nth-child(5) { top: 80%; left: 50%; animation-delay: -2s; }
+.star:nth-child(6) { top: 5%; left: 80%; animation-delay: -0.2s; }
+.star:nth-child(7) { top: 30%; left: 5%; animation-delay: -0.8s; }
+.star:nth-child(8) { top: 50%; left: 90%; animation-delay: -1.2s; }
+.star:nth-child(9) { top: 70%; left: 40%; animation-delay: -1.8s; }
+.star:nth-child(10) { top: 90%; left: 75%; animation-delay: -2.2s; }
+
+
+@keyframes pulse {
+  0% { opacity: 0.5; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.5; transform: scale(0.8); }
+}
+
+@keyframes twinkle {
+  0% { box-shadow: 0 0 5px white, 0 0 8px white; }
+  50% { box-shadow: 0 0 10px white, 0 0 15px white; }
+  100% { box-shadow: 0 0 5px white, 0 0 8px white; }
+}
+
 
 @layer base {
   :root {
-    --background: 260 15% 10%; /* Very dark desaturated purple */
-    --foreground: 260 10% 88%; /* Light grayish-purple for text */
+    --background: 260 15% 10%;
+    --foreground: 260 10% 88%; 
     --card: 260 15% 15%; 
     --card-foreground: 260 10% 88%;
     --popover: 260 15% 10%;
@@ -85,11 +118,5 @@ body {
   * {
     @apply border-border;
   }
-  body {
-    background-color: hsl(var(--background)); /* Solid background color for body */
-    color: hsl(var(--foreground));
-
-    /* Layout properties */
-    @apply min-h-screen max-h-screen overflow-hidden;
-  }
+  /* body styles are now at the top of the file for clarity */
 }
