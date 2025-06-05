@@ -79,8 +79,7 @@ body {
     @apply border-border;
   }
   body {
-    /* Solid background color */
-    background-color: hsl(var(--background)); 
+    /* background-color: hsl(var(--background)); */ /* Temporarily removed for testing */
     /* Starry pattern on top - using hardcoded white for max visibility */
     background-image: radial-gradient(white 3px, transparent 3.5px); /* Large, bright white dots */
     background-size: 60px 60px; /* Spacing for the dots */
