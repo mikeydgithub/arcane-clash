@@ -83,18 +83,15 @@ body {
   body {
     background-color: hsl(var(--background)); /* Fallback color */
     background-image:
-      /* Top layer: subtle stars/particles */
-      radial-gradient(hsla(var(--foreground), 0.12) 1px, transparent 1.1px), /* More visible dots */
-      radial-gradient(hsla(var(--foreground), 0.07) 1px, transparent 1.1px), /* Sparser, slightly more visible dots */
+      /* Top layer: More prominent stars/particles */
+      radial-gradient(hsla(var(--foreground), 0.25) 1.5px, transparent 1.7px), /* Increased opacity and size */
       /* Bottom layer: existing gradient */
       linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--gradient-end-color)));
     background-size:
-      60px 60px,   /* Spacing for the first set of dots */
-      100px 100px, /* Spacing for the second, sparser set of dots */
+      70px 70px,   /* Spacing for the dots */
       auto;        /* For the linear gradient */
     background-position:
       0 0,
-      30px 30px,   /* Offset for the second set of dots */
       0 0;
     color: hsl(var(--foreground)); /* Ensure text color is still applied */
 
