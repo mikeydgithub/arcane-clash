@@ -6,7 +6,7 @@ import type { CardData, MonsterCardData, SpellCardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert, Zap, Loader2 } from 'lucide-react'; 
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert, Zap } from 'lucide-react'; 
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 
@@ -141,7 +141,7 @@ export function CardView({
       </CardHeader>
 
       <div className={cn("relative w-full bg-muted/50", imageSize)}>
-        {card.isLoadingArt ? (
+        {card.isLoadingArt ? ( // This condition should ideally be false if pregenerated
           <Skeleton className="w-full h-full rounded-none" />
         ) : card.artUrl ? (
           <Image
@@ -151,6 +151,7 @@ export function CardView({
             style={{ objectFit: 'contain' }}
             data-ai-hint={isMonster ? "fantasy creature" : "magical spell"}
             className="rounded-t-sm"
+            priority={true} // Since art is preloaded, mark as priority
           />
         ) : (
           <Image
@@ -160,6 +161,7 @@ export function CardView({
             style={{ objectFit: 'contain' }}
             data-ai-hint={isMonster ? "fantasy abstract" : "spell icon"}
             className="rounded-t-sm"
+            priority={true}
           />
         )}
       </div>
@@ -190,12 +192,9 @@ export function CardView({
       </CardContent>
 
       {!inBattleArena && (
-        <CardFooter className="p-2 mt-auto min-h-[2.5rem] flex items-center justify-center"> {/* Ensure footer has some min height */}
-          {card.isLoadingDescription ? (
-            <div className="flex items-center text-xs text-muted-foreground italic">
-              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              Generating...
-            </div>
+        <CardFooter className="p-2 mt-auto min-h-[2.5rem] flex items-center justify-center">
+          {card.isLoadingDescription ? ( // This should ideally be false
+            <p className="text-xs text-muted-foreground italic">Loading description...</p>
           ) : card.description ? (
             <p className="text-xs text-muted-foreground italic truncate">
               {isMonster ? "Flavor: " : "Effect: "}
@@ -203,7 +202,7 @@ export function CardView({
             </p>
           ) : (
              <p className="text-xs text-muted-foreground italic">
-              {isMonster ? "Flavor text pending..." : "Effect pending..."}
+              {isMonster ? "Flavor text unavailable." : "Effect unavailable."}
             </p>
           )}
         </CardFooter>

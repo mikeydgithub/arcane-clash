@@ -1,74 +1,55 @@
 
 import type { CardData, MonsterCardData, SpellCardData } from '@/types';
-// import { MONSTER_CARD_TITLES, SPELL_CARD_TITLES } from './card-definitions';
-// import { generateCardDescription } from '@/ai/flows/generate-card-description'; // No longer called here
+import pregeneratedCardData from './pregenerated-card-data.json';
 
-// Helper to generate random number in a range
+// Helper to generate random number in a range (still needed for some dynamic aspects if any)
 const getRandomInt = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-// Generates a pool of monster cards
-export const generateMonsterCards = async (titles: string[]): Promise<MonsterCardData[]> => {
-  const monsterCards: MonsterCardData[] = [];
-  for (let i = 0; i < titles.length; i++) {
-    const title = titles[i];
+const allPregeneratedCards: CardData[] = pregeneratedCardData as CardData[];
 
-    let magic = 0;
-    let melee = 0;
+// Generates a pool of monster cards from pregenerated data
+export const generateMonsterCards = (titlesToFetch?: string[]): MonsterCardData[] => {
+  const availableMonsters = allPregeneratedCards.filter(
+    (card): card is MonsterCardData => card.cardType === 'Monster'
+  );
 
-    if (Math.random() < 0.5) {
-      melee = getRandomInt(8, 20);
-    } else {
-      magic = getRandomInt(8, 20);
-    }
-    if (melee === 0 && magic === 0) {
-      if (Math.random() < 0.5) melee = getRandomInt(5,15); else magic = getRandomInt(5,15);
-    }
-
-    const maxHp = getRandomInt(15, 35);
-    const maxPhysicalShield = getRandomInt(0, 15);
-    const maxMagicShield = getRandomInt(0, 15);
-    
-    monsterCards.push({
-      id: `monster-${title.replace(/\s+/g, '-')}-${i}-${Date.now()}`, 
-      title,
-      cardType: 'Monster',
-      isLoadingArt: false, 
-      artUrl: undefined,   
-      magic,
-      melee,
-      defense: getRandomInt(1, 10), 
-      hp: maxHp,
-      maxHp,
-      shield: maxPhysicalShield, 
-      maxShield: maxPhysicalShield,
-      magicShield: maxMagicShield,
-      maxMagicShield: maxMagicShield,
-      description: undefined, // Initialize with no description
-      isLoadingDescription: false,
+  if (titlesToFetch) {
+    // If specific titles are requested, try to find them
+    // This path might not be used if we always pick randomly for decks
+    return titlesToFetch.map(title => {
+      const found = availableMonsters.find(m => m.title === title);
+      if (found) return { ...found, isLoadingArt: false, isLoadingDescription: false };
+      // Fallback if a specific pregenerated title isn't found (shouldn't happen if titles match card-definitions)
+      console.warn(`Pregenerated monster with title "${title}" not found. This may indicate an issue.`);
+      // Create a minimal fallback or throw error
+      return { 
+        id: `monster-fallback-${title.replace(/\s+/g, '-')}-${Date.now()}`, title, cardType: 'Monster', melee: 5, magic: 5, defense: 5, hp: 10, maxHp: 10, shield: 0, maxShield: 0, magicShield: 0, maxMagicShield: 0, description: "Data missing.", artUrl: undefined, isLoadingArt: false, isLoadingDescription: false 
+      } as MonsterCardData;
     });
   }
-  return monsterCards;
+  // If no specific titles, return all available pregenerated monsters
+  return availableMonsters.map(card => ({ ...card, isLoadingArt: false, isLoadingDescription: false }));
 };
 
-// Generates a pool of spell cards
-export const generateSpellCards = async (titles: string[]): Promise<SpellCardData[]> => {
-  const spellCards: SpellCardData[] = [];
-  for (let i = 0; i < titles.length; i++) {
-    const title = titles[i];
-    
-    spellCards.push({
-      id: `spell-${title.replace(/\s+/g, '-')}-${i}-${Date.now()}`,
-      title,
-      cardType: 'Spell',
-      isLoadingArt: false, 
-      artUrl: undefined,
-      description: undefined, // Initialize with no description
-      isLoadingDescription: false,
+// Generates a pool of spell cards from pregenerated data
+export const generateSpellCards = (titlesToFetch?: string[]): SpellCardData[] => {
+  const availableSpells = allPregeneratedCards.filter(
+    (card): card is SpellCardData => card.cardType === 'Spell'
+  );
+  
+  if (titlesToFetch) {
+    return titlesToFetch.map(title => {
+      const found = availableSpells.find(s => s.title === title);
+      if (found) return { ...found, isLoadingArt: false, isLoadingDescription: false };
+      console.warn(`Pregenerated spell with title "${title}" not found. This may indicate an issue.`);
+      return { 
+        id: `spell-fallback-${title.replace(/\s+/g, '-')}-${Date.now()}`, title, cardType: 'Spell', description: "Data missing.", artUrl: undefined, isLoadingArt: false, isLoadingDescription: false 
+      } as SpellCardData;
     });
   }
-  return spellCards;
+  return availableSpells.map(card => ({ ...card, isLoadingArt: false, isLoadingDescription: false }));
 };
 
 
@@ -86,10 +67,11 @@ export const dealCards = (deck: CardData[], count: number): { dealtCards: CardDa
   const cardsToDeal = Math.min(count, deck.length);
   const dealtCards = deck.slice(0, cardsToDeal);
   const remainingDeck = deck.slice(cardsToDeal);
-  // Mark cards for description loading when dealt, if not already loaded/loading
+  // No need to mark for loading, as data is pregenerated
   const updatedDealtCards = dealtCards.map(card => ({
     ...card,
-    // isLoadingDescription will be handled by GameBoard's useEffect
+    isLoadingArt: false, 
+    isLoadingDescription: false,
   }));
   return { dealtCards: updatedDealtCards, remainingDeck };
 };
