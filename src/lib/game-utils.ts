@@ -1,19 +1,20 @@
 
 import type { CardData } from '@/types';
 import { CARD_TITLES } from './card-definitions';
+import { generateCardDescription } from '@/ai/flows/generate-card-description';
 
 // Helper to generate random number in a range
 const getRandomInt = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-// Generates a pool of 40 unique-ish cards
-export const generateInitialCards = (): CardData[] => {
+// Generates a pool of 40 unique-ish cards with AI descriptions
+export const generateInitialCards = async (): Promise<CardData[]> => {
   if (CARD_TITLES.length < 40) {
-    console.warn("Not enough unique card titles to generate 40 unique cards. Duplicates might occur or deck sizes will be smaller.");
+    console.warn("Not enough unique card titles to generate 40 unique cards. Some stats/descriptions might be reused or decks will be smaller.");
   }
   
-  return CARD_TITLES.slice(0, 40).map((title, index) => {
+  const cardPromises = CARD_TITLES.slice(0, 40).map(async (title, index) => {
     let magic = 0;
     let melee = 0;
 
@@ -26,36 +27,42 @@ export const generateInitialCards = (): CardData[] => {
       magic = getRandomInt(8, 20);
       melee = 0;
     }
-    // Ensure at least one attack type has a value if both somehow ended up 0 (shouldn't happen with above logic)
+    // Ensure at least one attack type has a value if both somehow ended up 0
     if (melee === 0 && magic === 0) {
       if (Math.random() < 0.5) melee = getRandomInt(5,15); else magic = getRandomInt(5,15);
     }
-
 
     const maxHp = getRandomInt(15, 35);
     const maxPhysicalShield = getRandomInt(0, 15);
     const maxMagicShield = getRandomInt(0, 15);
     
+    let description = `A ${title} specializing in ${melee > 0 ? 'fierce melee' : 'powerful magic'}.`; // Default fallback description
+    try {
+      const descriptionResult = await generateCardDescription({ cardTitle: title });
+      description = descriptionResult.description;
+    } catch (error) {
+      console.error(`Failed to generate description for ${title}:`, error);
+      // Keep default description on error
+    }
+    
     return {
       id: `card-${index}-${Date.now()}-${Math.random().toString(36).substring(7)}`, 
       title,
-      // isLoadingArt: true, // Art generation now handled by useEffect in GameBoard
-      // artUrl: undefined,
-      isLoadingArt: false, // For skipping art loading for testing
-      artUrl: undefined,   // Will use placeholder
-
+      isLoadingArt: false, 
+      artUrl: undefined,   
       magic: magic,
       melee: melee,
-      defense: getRandomInt(1, 10), // Physical defense
+      defense: getRandomInt(1, 10), 
       hp: maxHp,
       maxHp,
-      shield: maxPhysicalShield, // Physical shield
+      shield: maxPhysicalShield, 
       maxShield: maxPhysicalShield,
       magicShield: maxMagicShield,
       maxMagicShield: maxMagicShield,
-      description: `A ${title} specializing in ${melee > 0 ? 'fierce melee' : 'powerful magic'}.`,
+      description, // Use AI generated or default description
     };
   });
+  return Promise.all(cardPromises);
 };
 
 export const shuffleDeck = (deck: CardData[]): CardData[] => {
