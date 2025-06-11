@@ -6,7 +6,7 @@ import type { CardData, MonsterCardData, SpellCardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert, Zap } from 'lucide-react'; // Added Zap for spells
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert, Zap, Loader2 } from 'lucide-react'; 
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 
@@ -110,7 +110,7 @@ export function CardView({
 
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
-  const imageSize = "h-24 md:h-32"; // Same for monster and spell
+  const imageSize = "h-24 md:h-32"; 
   const contentPadding = "p-2"; 
   const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
@@ -126,7 +126,7 @@ export function CardView({
         isSelected && !inBattleArena ? "ring-2 ring-accent" : "", 
         isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
         isOpponentCard && isPlayerTurnForThisCard && !inBattleArena ? "opacity-100" : "",
-        !isMonster ? "border-purple-500/50 ring-purple-500/30" : "" // Subtle visual cue for spell cards
+        !isMonster ? "border-purple-500/50 ring-purple-500/30" : "" 
       )}
       onClick={isPlayable ? onClick : undefined}
       aria-label={`Card: ${card.title} (${card.cardType})`}
@@ -154,7 +154,7 @@ export function CardView({
           />
         ) : (
           <Image
-            src={isMonster ? "https://placehold.co/300x400.png" : "https://placehold.co/300x400.png"} // Could use different placeholders
+            src={isMonster ? "https://placehold.co/300x400.png" : "https://placehold.co/300x400.png"} 
             alt={`Placeholder for ${card.title}`}
             fill
             style={{ objectFit: 'contain' }}
@@ -181,24 +181,31 @@ export function CardView({
             {(card as MonsterCardData).maxMagicShield > 0 && <StatDisplay icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />} currentValue={(card as MonsterCardData).magicShield} maxValue={(card as MonsterCardData).maxMagicShield} label="Magic Shield" animateStats={inBattleArena} />}
           </>
         )}
-        {!isMonster && ( // Display for Spell Cards
+        {!isMonster && ( 
           <div className="flex flex-col items-center text-center p-2">
             <Zap className={cn(iconSize, "text-yellow-400 mb-1")} />
             <p className="text-xs italic">Spell Effect</p>
-             {/* Effect is in description for spells, shown in footer when in hand.
-                 If inBattleArena, it's already logged. We can show it here too if desired.
-                 For now, this area is kept simple for spells.
-             */}
           </div>
         )}
       </CardContent>
 
-      {card.description && !inBattleArena && (
-        <CardFooter className="p-2 mt-auto">
-          <p className="text-xs text-muted-foreground italic truncate">
-            {isMonster ? "Flavor: " : "Effect: "}
-            {card.description}
-          </p>
+      {!inBattleArena && (
+        <CardFooter className="p-2 mt-auto min-h-[2.5rem] flex items-center justify-center"> {/* Ensure footer has some min height */}
+          {card.isLoadingDescription ? (
+            <div className="flex items-center text-xs text-muted-foreground italic">
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              Generating...
+            </div>
+          ) : card.description ? (
+            <p className="text-xs text-muted-foreground italic truncate">
+              {isMonster ? "Flavor: " : "Effect: "}
+              {card.description}
+            </p>
+          ) : (
+             <p className="text-xs text-muted-foreground italic">
+              {isMonster ? "Flavor text pending..." : "Effect pending..."}
+            </p>
+          )}
         </CardFooter>
       )}
     </MotionCard>

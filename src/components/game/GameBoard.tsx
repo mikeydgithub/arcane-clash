@@ -6,6 +6,7 @@ import type { CardData, GameState, PlayerData, GamePhase, MonsterCardData, Spell
 import { generateMonsterCards, generateSpellCards, shuffleDeck, dealCards } from '@/lib/game-utils';
 import { MONSTER_CARD_TITLES, SPELL_CARD_TITLES } from '@/lib/card-definitions';
 import { generateCardArt } from '@/ai/flows/generate-card-art';
+import { generateCardDescription } from '@/ai/flows/generate-card-description';
 import { PlayerHand } from './PlayerHand';
 import { PlayerStatusDisplay } from './PlayerStatusDisplay';
 import { BattleArena } from './BattleArena';
@@ -24,15 +25,18 @@ export function GameBoard() {
   const { toast } = useToast();
   const hasInitialized = useRef(false);
   const artGenerationQueueRef = useRef<Set<string>>(new Set());
+  const descriptionGenerationQueueRef = useRef<Array<{ playerId: string; cardId: string; cardTitle: string; cardType: 'Monster' | 'Spell' }>>([]);
+  const isProcessingDescriptionQueue = useRef(false);
+
 
   const initializeGame = useCallback(async () => {
     hasInitialized.current = true; 
     setGameState(prev => ({...(prev || {} as GameState), gamePhase: 'loading_art', gameLogMessages: ["Initializing Arcane Clash... Generating cards..."]}));
 
-    // Ensure enough unique titles, or repeat if necessary for larger pools
     const neededMonsterTitles = MONSTER_CARD_TITLES.slice(0, MAX_MONSTERS_PER_DECK * 2);
     const neededSpellTitles = SPELL_CARD_TITLES.slice(0, MAX_SPELLS_PER_DECK * 2);
 
+    // Generate cards without descriptions initially
     const masterMonsterPool = shuffleDeck(await generateMonsterCards(neededMonsterTitles));
     const masterSpellPool = shuffleDeck(await generateSpellCards(neededSpellTitles));
 
@@ -51,15 +55,15 @@ export function GameBoard() {
 
     const initialPlayer1: PlayerData = {
       id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP,
-      hand: p1InitialHand.map(c => ({ ...c, isLoadingArt: true, artUrl: undefined })), 
-      deck: p1DeckAfterDeal,
+      hand: p1InitialHand.map(c => ({ ...c, isLoadingArt: true, artUrl: undefined, description: undefined, isLoadingDescription: false })), 
+      deck: p1DeckAfterDeal.map(c => ({ ...c, description: undefined, isLoadingDescription: false })),
       discardPile: [],
       avatarUrl: 'https://placehold.co/64x64.png?text=P1', 
     };
     const initialPlayer2: PlayerData = {
       id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
-      hand: p2InitialHand.map(c => ({ ...c, isLoadingArt: true, artUrl: undefined })), 
-      deck: p2DeckAfterDeal,
+      hand: p2InitialHand.map(c => ({ ...c, isLoadingArt: true, artUrl: undefined, description: undefined, isLoadingDescription: false })), 
+      deck: p2DeckAfterDeal.map(c => ({ ...c, description: undefined, isLoadingDescription: false })),
       discardPile: [],
       avatarUrl: 'https://placehold.co/64x64.png?text=P2', 
     };
@@ -74,6 +78,7 @@ export function GameBoard() {
       gameLogMessages: [`Game cards generated. ${firstPlayerIndex === 0 ? initialPlayer1.name : initialPlayer2.name} will be determined by coin flip. Flipping coin...`],
     });
     artGenerationQueueRef.current.clear();
+    descriptionGenerationQueueRef.current = [];
   }, [toast]); 
 
   const handleCoinFlipAnimationComplete = useCallback(() => {
@@ -105,7 +110,7 @@ export function GameBoard() {
     }
   }, [gameState, initializeGame]);
 
-   useEffect(() => {
+   useEffect(() => { // For Art Generation
     if (!gameState || !gameState.players || gameState.gamePhase === 'initial' || gameState.gamePhase === 'game_over' || gameState.gamePhase === 'loading_art') {
         return; 
     }
@@ -115,7 +120,6 @@ export function GameBoard() {
 
     gameState.players.forEach(player => {
         player.hand.forEach(card => {
-            // Fetch art if isLoadingArt is true, not in queue, and no artUrl yet
             if (card.isLoadingArt && !artQueue.has(card.id) && !card.artUrl) {
                 cardsToFetchArtFor.push({ playerId: player.id, cardId: card.id, cardTitle: card.title });
             }
@@ -128,7 +132,7 @@ export function GameBoard() {
                 artQueue.add(cardId); 
                 generateCardArt({ cardTitle })
                     .then(artResult => {
-                         setTimeout(() => { // Use timeout to batch state updates
+                         setTimeout(() => { 
                             setGameState(currentGS => {
                                 if (!currentGS) return null;
                                 const updatedPlayers = currentGS.players.map(p => {
@@ -138,7 +142,7 @@ export function GameBoard() {
                                             hand: p.hand.map(c =>
                                                 c.id === cardId ? { ...c, artUrl: artResult.cardArtDataUri, isLoadingArt: false } : c
                                             ),
-                                            deck: p.deck.map(c => // Also check deck for this card ID
+                                            deck: p.deck.map(c => 
                                                 c.id === cardId ? { ...c, artUrl: artResult.cardArtDataUri, isLoadingArt: false } : c
                                             ),
                                         };
@@ -153,7 +157,7 @@ export function GameBoard() {
                         console.error(`Art gen error for card ${cardTitle} (ID: ${cardId}) for player ${playerId}:`, err);
                         setTimeout(() => {
                             toast({ title: "Art Generation Error", description: `Could not generate art for ${cardTitle}. Using placeholder.`, variant: "destructive" });
-                            setGameState(currentGS => { // Ensure isLoadingArt is set to false on error
+                            setGameState(currentGS => { 
                                 if (!currentGS) return null;
                                 const updatedPlayers = currentGS.players.map(p => {
                                     if (p.id === playerId) {
@@ -179,6 +183,94 @@ export function GameBoard() {
             }
         });
     }
+  }, [gameState?.players, gameState?.gamePhase, toast]);
+
+  // Effect for On-Demand Description Generation
+  useEffect(() => {
+    if (!gameState || !gameState.players || ['initial', 'loading_art', 'game_over'].includes(gameState.gamePhase)) {
+      return;
+    }
+
+    const cardsNeedingDescription: Array<{ playerId: string; cardId: string; cardTitle: string; cardType: 'Monster' | 'Spell'}> = [];
+    gameState.players.forEach(player => {
+      player.hand.forEach(card => {
+        if (card.description === undefined && !card.isLoadingDescription && !descriptionGenerationQueueRef.current.some(item => item.cardId === card.id)) {
+          cardsNeedingDescription.push({ playerId: player.id, cardId: card.id, cardTitle: card.title, cardType: card.cardType });
+        }
+      });
+    });
+
+    if (cardsNeedingDescription.length > 0) {
+      descriptionGenerationQueueRef.current.push(...cardsNeedingDescription);
+      // Mark cards as loading immediately in UI
+      setGameState(prevGS => {
+        if (!prevGS) return null;
+        const updatedPlayers = prevGS.players.map(p => ({
+          ...p,
+          hand: p.hand.map(c => {
+            if (cardsNeedingDescription.some(entry => entry.cardId === c.id)) {
+              return { ...c, isLoadingDescription: true };
+            }
+            return c;
+          })
+        }));
+        return { ...prevGS, players: updatedPlayers as [PlayerData, PlayerData] };
+      });
+    }
+
+    const processQueue = async () => {
+      if (isProcessingDescriptionQueue.current || descriptionGenerationQueueRef.current.length === 0) {
+        return;
+      }
+      isProcessingDescriptionQueue.current = true;
+
+      const { playerId, cardId, cardTitle, cardType } = descriptionGenerationQueueRef.current.shift()!;
+      
+      try {
+        // console.log(`Requesting description for: ${cardTitle} (Player: ${playerId}, ID: ${cardId})`);
+        const result = await generateCardDescription({ cardTitle, cardType });
+        setGameState(prevGS => {
+          if (!prevGS) return null;
+          const updatedPlayers = prevGS.players.map(p => {
+            if (p.id === playerId) {
+              return {
+                ...p,
+                hand: p.hand.map(c => c.id === cardId ? { ...c, description: result.description, isLoadingDescription: false } : c),
+                deck: p.deck.map(c => c.id === cardId ? { ...c, description: result.description, isLoadingDescription: false } : c),
+              };
+            }
+            return p;
+          });
+          return { ...prevGS, players: updatedPlayers as [PlayerData, PlayerData] };
+        });
+      } catch (error) {
+        console.error(`Description generation error for ${cardTitle} (ID: ${cardId}):`, error);
+        toast({ title: "AI Error", description: `Could not generate description for ${cardTitle}.`, variant: "destructive" });
+        setGameState(prevGS => {
+          if (!prevGS) return null;
+          const updatedPlayers = prevGS.players.map(p => {
+            if (p.id === playerId) {
+              return {
+                ...p,
+                hand: p.hand.map(c => c.id === cardId ? { ...c, description: "Effect details unavailable.", isLoadingDescription: false } : c),
+                deck: p.deck.map(c => c.id === cardId ? { ...c, description: "Effect details unavailable.", isLoadingDescription: false } : c),
+              };
+            }
+            return p;
+          });
+          return { ...prevGS, players: updatedPlayers as [PlayerData, PlayerData] };
+        });
+      } finally {
+        isProcessingDescriptionQueue.current = false;
+        // Introduce a small delay before processing next item to respect rate limits
+        setTimeout(processQueue, 1000); // 1 second delay, adjust as needed
+      }
+    };
+
+    if (descriptionGenerationQueueRef.current.length > 0 && !isProcessingDescriptionQueue.current) {
+      processQueue();
+    }
+
   }, [gameState?.players, gameState?.gamePhase, toast]);
 
 
@@ -211,7 +303,7 @@ export function GameBoard() {
 
   const resolveTurn = () => {
     setGameState(prev => {
-      if (!prev || (!prev.selectedCardP1 && !prev.selectedCardP2)) return prev; // Should not happen if called correctly
+      if (!prev || (!prev.selectedCardP1 && !prev.selectedCardP2)) return prev;
 
       let p1Data = { ...prev.players[0], hand: [...prev.players[0].hand], deck: [...prev.players[0].deck], discardPile: [...prev.players[0].discardPile] };
       let p2Data = { ...prev.players[1], hand: [...prev.players[1].hand], deck: [...prev.players[1].deck], discardPile: [...prev.players[1].discardPile] };
@@ -221,31 +313,24 @@ export function GameBoard() {
 
       const turnLogEntries: string[] = [];
 
-      // --- Spell Resolution (if any) ---
-      // Player 1's spell
       if (card1InPlay?.cardType === 'Spell') {
-        turnLogEntries.push(`${p1Data.name} casts ${card1InPlay.title}! Effect: ${card1InPlay.description}`);
-        // TODO: Implement actual spell effect logic here in future
+        turnLogEntries.push(`${p1Data.name} casts ${card1InPlay.title}! Effect: ${card1InPlay.description || 'A mysterious spell unfolds.'}`);
         p1Data.discardPile.push(card1InPlay);
         p1Data.hand = p1Data.hand.filter(c => c.id !== card1InPlay!.id);
-        card1InPlay = undefined; // Spell is used up
+        card1InPlay = undefined; 
       }
-      // Player 2's spell
       if (card2InPlay?.cardType === 'Spell') {
-        turnLogEntries.push(`${p2Data.name} casts ${card2InPlay.title}! Effect: ${card2InPlay.description}`);
-        // TODO: Implement actual spell effect logic here in future
+        turnLogEntries.push(`${p2Data.name} casts ${card2InPlay.title}! Effect: ${card2InPlay.description || 'A mysterious spell unfolds.'}`);
         p2Data.discardPile.push(card2InPlay);
         p2Data.hand = p2Data.hand.filter(c => c.id !== card2InPlay!.id);
-        card2InPlay = undefined; // Spell is used up
+        card2InPlay = undefined; 
       }
 
-      // --- Monster Combat (if monsters are in play) ---
       if (card1InPlay?.cardType === 'Monster' && card2InPlay?.cardType === 'Monster') {
         const monster1 = card1InPlay as MonsterCardData;
         const monster2 = card2InPlay as MonsterCardData;
         turnLogEntries.push(`Combat: ${monster1.title} (P1) vs ${monster2.title} (P2)!`);
 
-        // Monster 1 attacks Monster 2
         if (monster1.melee > 0) {
           const damageDealt = monster1.melee;
           turnLogEntries.push(`${monster1.title} attacks ${monster2.title} with ${damageDealt} melee.`);
@@ -269,7 +354,6 @@ export function GameBoard() {
           turnLogEntries.push(`${monster2.title} takes ${hpDamage} HP damage from magic. New HP: ${Math.max(0, monster2.hp)}`);
         }
 
-        // Monster 2 counter-attacks Monster 1 (if alive)
         if (monster2.hp > 0) {
           if (monster2.melee > 0) {
             const damageDealt = monster2.melee;
@@ -297,7 +381,6 @@ export function GameBoard() {
           turnLogEntries.push(`${monster2.title} was defeated before it could counter-attack.`);
         }
         
-        // Update card states or move to discard
         if (monster1.hp <= 0) {
           turnLogEntries.push(`${monster1.title} (P1) is defeated!`);
           p1Data.discardPile.push({...prev.selectedCardP1!, hp: 0, shield: 0, magicShield: 0 } as MonsterCardData);
@@ -315,13 +398,13 @@ export function GameBoard() {
           p2Data.hand = p2Data.hand.map(c => c.id === monster2.id ? monster2 : c);
         }
 
-      } else if (card1InPlay?.cardType === 'Monster') { // P1 monster attacks P2 directly (P2 played spell or no card)
+      } else if (card1InPlay?.cardType === 'Monster') { 
         const monster1 = card1InPlay as MonsterCardData;
         turnLogEntries.push(`${monster1.title} (P1) attacks ${p2Data.name} directly!`);
-        const damage = monster1.melee > 0 ? monster1.melee : monster1.magic; // Simplified direct damage
+        const damage = monster1.melee > 0 ? monster1.melee : monster1.magic; 
         p2Data.hp = Math.max(0, p2Data.hp - damage);
         turnLogEntries.push(`${p2Data.name} takes ${damage} direct damage. New HP: ${p2Data.hp}`);
-        if (monster1.hp <= 0) { // Should not happen if it's attacking directly, but for safety
+        if (monster1.hp <= 0) { 
              p1Data.discardPile.push({...prev.selectedCardP1!, hp: 0, shield: 0, magicShield: 0 } as MonsterCardData);
              p1Data.hand = p1Data.hand.filter(c => c.id !== monster1.id);
              card1InPlay = undefined;
@@ -329,7 +412,7 @@ export function GameBoard() {
              p1Data.hand = p1Data.hand.map(c => c.id === monster1.id ? monster1 : c);
         }
 
-      } else if (card2InPlay?.cardType === 'Monster') { // P2 monster attacks P1 directly
+      } else if (card2InPlay?.cardType === 'Monster') { 
         const monster2 = card2InPlay as MonsterCardData;
         turnLogEntries.push(`${monster2.title} (P2) attacks ${p1Data.name} directly!`);
         const damage = monster2.melee > 0 ? monster2.melee : monster2.magic;
@@ -343,17 +426,21 @@ export function GameBoard() {
              p2Data.hand = p2Data.hand.map(c => c.id === monster2.id ? monster2 : c);
         }
       }
-      // If both played spells, card1InPlay and card2InPlay are already undefined here.
 
-      // Draw new cards if hands are not full and decks have cards
       [p1Data, p2Data].forEach((playerData, index) => {
           const originalCardInPlay = index === 0 ? prev.selectedCardP1 : prev.selectedCardP2;
-          const currentCardInPlay = index === 0 ? card1InPlay : card2InPlay;
-          // Card was played and is now gone (defeated monster or cast spell)
-          if (originalCardInPlay && !currentCardInPlay) {
+          const currentCardInPlayAfterCombatOrSpell = index === 0 ? card1InPlay : card2InPlay;
+          
+          if (originalCardInPlay && !currentCardInPlayAfterCombatOrSpell) { // Card was played and is now gone
               if (playerData.hand.length < CARDS_IN_HAND && playerData.deck.length > 0) {
                   const { dealtCards: newCardsArr, remainingDeck: deckAfterDraw } = dealCards(playerData.deck, 1);
-                  const newDrawnCard = { ...newCardsArr[0], isLoadingArt: true, artUrl: undefined };
+                  const newDrawnCard = { 
+                    ...newCardsArr[0], 
+                    isLoadingArt: !newCardsArr[0].artUrl, // Only true if artUrl is missing
+                    artUrl: newCardsArr[0].artUrl, 
+                    description: newCardsArr[0].description, 
+                    isLoadingDescription: !newCardsArr[0].description // Only true if description is missing
+                  };
                   playerData.hand.push(newDrawnCard);
                   playerData.deck = deckAfterDraw;
                   turnLogEntries.push(`${playerData.name} draws a new card: ${newDrawnCard.title}.`);
@@ -384,8 +471,8 @@ export function GameBoard() {
       return {
         ...prev,
         players: [p1Data, p2Data],
-        selectedCardP1: card1InPlay, // This will be undefined if spell was cast or monster defeated
-        selectedCardP2: card2InPlay, // This will be undefined if spell was cast or monster defeated
+        selectedCardP1: card1InPlay, 
+        selectedCardP2: card2InPlay, 
         gamePhase: newGamePhase,
         winner,
         gameLogMessages: logMessagesForThisTurn,
@@ -396,7 +483,7 @@ export function GameBoard() {
   const handleProceedToNextTurn = () => {
     setGameState(prev => {
       if (!prev) return null;
-      const nextPlayerToSelect = prev.players[0]; // Player 1 always starts a new round of selections for now
+      const nextPlayerToSelect = prev.players[0]; 
       
       const persistentMessages = (prev.gameLogMessages || []).filter(msg => msg.startsWith("Game cards generated.") || msg.includes("wins the toss"));
       const newLogMessages = [
@@ -500,9 +587,11 @@ export function GameBoard() {
         isOpen={gamePhase === 'game_over'}
         winnerName={winner?.name}
         onRestart={() => {
-          hasInitialized.current = false; // Allow re-initialization
-          artGenerationQueueRef.current.clear(); // Clear art queue
-          setGameState(null); // This will trigger initializeGame in useEffect
+          hasInitialized.current = false; 
+          artGenerationQueueRef.current.clear(); 
+          descriptionGenerationQueueRef.current = [];
+          isProcessingDescriptionQueue.current = false;
+          setGameState(null); 
         }}
       />
     </div>

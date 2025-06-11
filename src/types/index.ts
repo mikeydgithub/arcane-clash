@@ -4,7 +4,8 @@ export interface BaseCardData {
   title: string;
   artUrl?: string;
   isLoadingArt: boolean;
-  description: string; // For Monsters: flavor text. For Spells: effect description.
+  description?: string; // For Monsters: flavor text. For Spells: effect description.
+  isLoadingDescription?: boolean;
 }
 
 export interface MonsterCardData extends BaseCardData {
