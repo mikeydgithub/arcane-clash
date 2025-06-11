@@ -8,9 +8,18 @@ const getRandomInt = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
+// Helper to introduce a delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Generates a pool of monster cards
 export const generateMonsterCards = async (titles: string[]): Promise<MonsterCardData[]> => {
-  const cardPromises = titles.map(async (title, index) => {
+  const monsterCards: MonsterCardData[] = [];
+  for (let i = 0; i < titles.length; i++) {
+    const title = titles[i];
+    if (i > 0) { // No delay for the very first call in this batch
+      await delay(4100); // Delay to stay within ~15 RPM (4s per request)
+    }
+
     let magic = 0;
     let melee = 0;
 
@@ -33,10 +42,16 @@ export const generateMonsterCards = async (titles: string[]): Promise<MonsterCar
       description = descriptionResult.description;
     } catch (error) {
       console.error(`Failed to generate description for monster ${title}:`, error);
+      // If a rate limit error specifically occurs, we might wait a bit longer before the next attempt
+      if (typeof error === 'string' && error.includes('429')) {
+        await delay(5000); // Additional delay if a 429 is caught, though the loop delay should prevent most.
+      } else if (error instanceof Error && error.message.includes('429')) {
+        await delay(5000);
+      }
     }
     
-    return {
-      id: `monster-${title.replace(/\s+/g, '-')}-${index}-${Date.now()}`, 
+    monsterCards.push({
+      id: `monster-${title.replace(/\s+/g, '-')}-${i}-${Date.now()}`, 
       title,
       cardType: 'Monster',
       isLoadingArt: false, 
@@ -51,32 +66,43 @@ export const generateMonsterCards = async (titles: string[]): Promise<MonsterCar
       magicShield: maxMagicShield,
       maxMagicShield: maxMagicShield,
       description,
-    };
-  });
-  return Promise.all(cardPromises);
+    });
+  }
+  return monsterCards;
 };
 
 // Generates a pool of spell cards
 export const generateSpellCards = async (titles: string[]): Promise<SpellCardData[]> => {
-  const cardPromises = titles.map(async (title, index) => {
+  const spellCards: SpellCardData[] = [];
+  for (let i = 0; i < titles.length; i++) {
+    const title = titles[i];
+    if (i > 0) { // No delay for the very first call in this batch
+      await delay(4100); // Delay to stay within ~15 RPM (4s per request)
+    }
+    
     let effectDescription = "Casts a generic magical effect.";
     try {
       const descriptionResult = await generateCardDescription({ cardTitle: title, cardType: 'Spell' });
       effectDescription = descriptionResult.description;
     } catch (error) {
       console.error(`Failed to generate effect description for spell ${title}:`, error);
+       if (typeof error === 'string' && error.includes('429')) {
+        await delay(5000);
+      } else if (error instanceof Error && error.message.includes('429')) {
+        await delay(5000);
+      }
     }
 
-    return {
-      id: `spell-${title.replace(/\s+/g, '-')}-${index}-${Date.now()}`,
+    spellCards.push({
+      id: `spell-${title.replace(/\s+/g, '-')}-${i}-${Date.now()}`,
       title,
       cardType: 'Spell',
-      isLoadingArt: false, // Spells can have art too
+      isLoadingArt: false, 
       artUrl: undefined,
-      description: effectDescription, // This is the effect text for spells
-    };
-  });
-  return Promise.all(cardPromises);
+      description: effectDescription, 
+    });
+  }
+  return spellCards;
 };
 
 
