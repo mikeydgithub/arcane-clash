@@ -2,11 +2,11 @@
 'use client';
 
 import Image from 'next/image';
-import type { CardData } from '@/types';
+import type { CardData, MonsterCardData, SpellCardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert, Zap } from 'lucide-react'; // Added Zap for spells
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 
@@ -81,21 +81,19 @@ interface CardViewProps {
 const MotionCard = motion(Card);
 
 const ghastlyGlowVariants = {
-  selected: { // This variant is now triggered by inBattleArena
+  selected: { 
     boxShadow: [
-      "0 0 10px 3px hsla(170, 70%, 60%, 0.5)", // Ethereal blue-green
+      "0 0 10px 3px hsla(170, 70%, 60%, 0.5)", 
       "0 0 22px 7px hsla(170, 70%, 60%, 0.8)",
       "0 0 10px 3px hsla(170, 70%, 60%, 0.5)",
     ],
     transition: {
-      duration: 2.0, // Slower, more "breathing"
+      duration: 2.0, 
       repeat: Infinity,
       ease: "easeInOut",
     },
   },
-  initial: {
-    // The boxShadow from the 'shadow-xl' class will apply here, or none if not defined
-  },
+  initial: {},
 };
 
 export function CardView({
@@ -112,27 +110,30 @@ export function CardView({
 
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
-  const imageSize = "h-24 md:h-32";
-  const contentPadding = "p-2"; // Reduced overall padding
+  const imageSize = "h-24 md:h-32"; // Same for monster and spell
+  const contentPadding = "p-2"; 
   const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
+
+  const isMonster = card.cardType === 'Monster';
 
   return (
     <MotionCard
       className={cn(
-        "flex flex-col overflow-hidden shadow-xl", // Default shadow
+        "flex flex-col overflow-hidden shadow-xl", 
         baseCardSize,
         cardHoverEffect,
-        isSelected && !inBattleArena ? "ring-2 ring-accent" : "", // Basic selection ring for hand only
+        isSelected && !inBattleArena ? "ring-2 ring-accent" : "", 
         isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
-        isOpponentCard && isPlayerTurnForThisCard && !inBattleArena ? "opacity-100" : ""
+        isOpponentCard && isPlayerTurnForThisCard && !inBattleArena ? "opacity-100" : "",
+        !isMonster ? "border-purple-500/50 ring-purple-500/30" : "" // Subtle visual cue for spell cards
       )}
       onClick={isPlayable ? onClick : undefined}
-      aria-label={`Card: ${card.title}`}
+      aria-label={`Card: ${card.title} (${card.cardType})`}
       role={isPlayable ? "button" : "img"}
       tabIndex={isPlayable ? 0 : -1}
       variants={ghastlyGlowVariants}
-      animate={inBattleArena ? "selected" : "initial"} // Glow only if inBattleArena
+      animate={inBattleArena ? "selected" : "initial"} 
       initial="initial"
     >
       <CardHeader className={cn("text-center", headerPadding)}>
@@ -148,42 +149,56 @@ export function CardView({
             alt={`Art for ${card.title}`}
             fill
             style={{ objectFit: 'contain' }}
-            data-ai-hint="fantasy creature"
+            data-ai-hint={isMonster ? "fantasy creature" : "magical spell"}
             className="rounded-t-sm"
           />
         ) : (
           <Image
-            src="https://placehold.co/300x400.png"
+            src={isMonster ? "https://placehold.co/300x400.png" : "https://placehold.co/300x400.png"} // Could use different placeholders
             alt={`Placeholder for ${card.title}`}
             fill
             style={{ objectFit: 'contain' }}
-            data-ai-hint="fantasy abstract"
+            data-ai-hint={isMonster ? "fantasy abstract" : "spell icon"}
             className="rounded-t-sm"
           />
         )}
       </div>
       
-      <CardContent className={cn("flex-grow flex flex-col items-center space-y-0.5", contentPadding, contentTextSize)}>
-        {card.melee > 0 && <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={card.melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} />}
-        {card.magic > 0 && <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={card.magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
-        <>
-          <StatDisplay
-            icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />}
-            currentValue={card.defense}
-            label="Defense"
-            isSingleValue={true}
-            animateStats={inBattleArena}
-          />
-        </>
-        <StatDisplay icon={<Heart className={cn(iconSize, "text-pink-400")} />} currentValue={card.hp} maxValue={card.maxHp} label="HP" animateStats={inBattleArena} />
-        
-        {card.maxShield > 0 && <StatDisplay icon={<ShieldCheck className={cn(iconSize, "text-yellow-400")} />} currentValue={card.shield} maxValue={card.maxShield} label="Physical Shield" animateStats={inBattleArena} />}
-        {card.maxMagicShield > 0 && <StatDisplay icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />} currentValue={card.magicShield} maxValue={card.maxMagicShield} label="Magic Shield" animateStats={inBattleArena} />}
+      <CardContent className={cn("flex-grow flex flex-col items-center justify-center space-y-0.5", contentPadding, contentTextSize)}>
+        {isMonster && (card as MonsterCardData).melee > 0 && <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={(card as MonsterCardData).melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} />}
+        {isMonster && (card as MonsterCardData).magic > 0 && <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={(card as MonsterCardData).magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} />}
+        {isMonster && (
+          <>
+            <StatDisplay
+              icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />}
+              currentValue={(card as MonsterCardData).defense}
+              label="Defense"
+              isSingleValue={true}
+              animateStats={inBattleArena}
+            />
+            <StatDisplay icon={<Heart className={cn(iconSize, "text-pink-400")} />} currentValue={(card as MonsterCardData).hp} maxValue={(card as MonsterCardData).maxHp} label="HP" animateStats={inBattleArena} />
+            {(card as MonsterCardData).maxShield > 0 && <StatDisplay icon={<ShieldCheck className={cn(iconSize, "text-yellow-400")} />} currentValue={(card as MonsterCardData).shield} maxValue={(card as MonsterCardData).maxShield} label="Physical Shield" animateStats={inBattleArena} />}
+            {(card as MonsterCardData).maxMagicShield > 0 && <StatDisplay icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />} currentValue={(card as MonsterCardData).magicShield} maxValue={(card as MonsterCardData).maxMagicShield} label="Magic Shield" animateStats={inBattleArena} />}
+          </>
+        )}
+        {!isMonster && ( // Display for Spell Cards
+          <div className="flex flex-col items-center text-center p-2">
+            <Zap className={cn(iconSize, "text-yellow-400 mb-1")} />
+            <p className="text-xs italic">Spell Effect</p>
+             {/* Effect is in description for spells, shown in footer when in hand.
+                 If inBattleArena, it's already logged. We can show it here too if desired.
+                 For now, this area is kept simple for spells.
+             */}
+          </div>
+        )}
       </CardContent>
 
       {card.description && !inBattleArena && (
         <CardFooter className="p-2 mt-auto">
-          <p className="text-xs text-muted-foreground italic truncate">{card.description}</p>
+          <p className="text-xs text-muted-foreground italic truncate">
+            {isMonster ? "Flavor: " : "Effect: "}
+            {card.description}
+          </p>
         </CardFooter>
       )}
     </MotionCard>

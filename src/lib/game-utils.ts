@@ -1,6 +1,6 @@
 
-import type { CardData } from '@/types';
-import { CARD_TITLES } from './card-definitions';
+import type { CardData, MonsterCardData, SpellCardData } from '@/types';
+import { MONSTER_CARD_TITLES, SPELL_CARD_TITLES } from './card-definitions';
 import { generateCardDescription } from '@/ai/flows/generate-card-description';
 
 // Helper to generate random number in a range
@@ -8,26 +8,17 @@ const getRandomInt = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-// Generates a pool of 40 unique-ish cards with AI descriptions
-export const generateInitialCards = async (): Promise<CardData[]> => {
-  if (CARD_TITLES.length < 40) {
-    console.warn("Not enough unique card titles to generate 40 unique cards. Some stats/descriptions might be reused or decks will be smaller.");
-  }
-  
-  const cardPromises = CARD_TITLES.slice(0, 40).map(async (title, index) => {
+// Generates a pool of monster cards
+export const generateMonsterCards = async (titles: string[]): Promise<MonsterCardData[]> => {
+  const cardPromises = titles.map(async (title, index) => {
     let magic = 0;
     let melee = 0;
 
     if (Math.random() < 0.5) {
-      // Melee focused
       melee = getRandomInt(8, 20);
-      magic = 0;
     } else {
-      // Magic focused
       magic = getRandomInt(8, 20);
-      melee = 0;
     }
-    // Ensure at least one attack type has a value if both somehow ended up 0
     if (melee === 0 && magic === 0) {
       if (Math.random() < 0.5) melee = getRandomInt(5,15); else magic = getRandomInt(5,15);
     }
@@ -36,22 +27,22 @@ export const generateInitialCards = async (): Promise<CardData[]> => {
     const maxPhysicalShield = getRandomInt(0, 15);
     const maxMagicShield = getRandomInt(0, 15);
     
-    let description = `A ${title} specializing in ${melee > 0 ? 'fierce melee' : 'powerful magic'}.`; // Default fallback description
+    let description = `A ${title} specializing in ${melee > 0 ? 'fierce melee' : 'powerful magic'}.`;
     try {
-      const descriptionResult = await generateCardDescription({ cardTitle: title });
+      const descriptionResult = await generateCardDescription({ cardTitle: title, cardType: 'Monster' });
       description = descriptionResult.description;
     } catch (error) {
-      console.error(`Failed to generate description for ${title}:`, error);
-      // Keep default description on error
+      console.error(`Failed to generate description for monster ${title}:`, error);
     }
     
     return {
-      id: `card-${index}-${Date.now()}-${Math.random().toString(36).substring(7)}`, 
+      id: `monster-${title.replace(/\s+/g, '-')}-${index}-${Date.now()}`, 
       title,
+      cardType: 'Monster',
       isLoadingArt: false, 
       artUrl: undefined,   
-      magic: magic,
-      melee: melee,
+      magic,
+      melee,
       defense: getRandomInt(1, 10), 
       hp: maxHp,
       maxHp,
@@ -59,11 +50,35 @@ export const generateInitialCards = async (): Promise<CardData[]> => {
       maxShield: maxPhysicalShield,
       magicShield: maxMagicShield,
       maxMagicShield: maxMagicShield,
-      description, // Use AI generated or default description
+      description,
     };
   });
   return Promise.all(cardPromises);
 };
+
+// Generates a pool of spell cards
+export const generateSpellCards = async (titles: string[]): Promise<SpellCardData[]> => {
+  const cardPromises = titles.map(async (title, index) => {
+    let effectDescription = "Casts a generic magical effect.";
+    try {
+      const descriptionResult = await generateCardDescription({ cardTitle: title, cardType: 'Spell' });
+      effectDescription = descriptionResult.description;
+    } catch (error) {
+      console.error(`Failed to generate effect description for spell ${title}:`, error);
+    }
+
+    return {
+      id: `spell-${title.replace(/\s+/g, '-')}-${index}-${Date.now()}`,
+      title,
+      cardType: 'Spell',
+      isLoadingArt: false, // Spells can have art too
+      artUrl: undefined,
+      description: effectDescription, // This is the effect text for spells
+    };
+  });
+  return Promise.all(cardPromises);
+};
+
 
 export const shuffleDeck = (deck: CardData[]): CardData[] => {
   const shuffled = [...deck];

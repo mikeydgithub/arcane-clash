@@ -1,20 +1,31 @@
 
-export interface CardData {
+export interface BaseCardData {
   id: string;
   title: string;
   artUrl?: string;
   isLoadingArt: boolean;
-  magic: number;
+  description: string; // For Monsters: flavor text. For Spells: effect description.
+}
+
+export interface MonsterCardData extends BaseCardData {
+  cardType: 'Monster';
   melee: number;
-  defense: number; // Physical defense
+  magic: number;
+  defense: number;
   hp: number;
   maxHp: number;
-  shield: number; // Physical shield
-  maxShield: number; // Max physical shield
+  shield: number;
+  maxShield: number;
   magicShield: number;
   maxMagicShield: number;
-  description: string;
 }
+
+export interface SpellCardData extends BaseCardData {
+  cardType: 'Spell';
+  // Future: Specific effect properties like target, power, duration could be added here.
+}
+
+export type CardData = MonsterCardData | SpellCardData;
 
 export interface PlayerData {
   id: string;
@@ -32,17 +43,16 @@ export type GamePhase =
   | "loading_art"
   | "player1_select_card"
   | "player2_select_card"
-  | "combat_animation"
-  | "combat_resolution" // This phase might be implicitly handled by combat_animation now
-  | "combat_summary"
+  | "combat_animation" // This phase will now also show spells being "cast"
+  | "combat_resolution" // Renamed from combat_summary to reflect turn resolution
   | "game_over";
 
 export interface GameState {
   players: [PlayerData, PlayerData];
   currentPlayerIndex: 0 | 1;
   gamePhase: GamePhase;
-  selectedCardP1?: CardData;
-  selectedCardP2?: CardData;
+  selectedCardP1?: CardData; // Can be Monster or Spell
+  selectedCardP2?: CardData; // Can be Monster or Spell
   winner?: PlayerData;
   gameLogMessages: string[];
 }
