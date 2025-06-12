@@ -82,76 +82,81 @@ export function BattleArena({
   }, []);
 
   useEffect(() => {
-    console.log('[BattleArena] Log effect triggered. gameLogMessages length:', gameLogMessages.length, 'gamePhase:', gamePhase, 'displayedLogEntries length:', displayedLogEntries.length, 'queue length:', entriesToAnimateRef.current.length);
+    console.log(`[BattleArena] Log effect triggered. gameLogMessages length: ${gameLogMessages.length}, displayedLogEntries length: ${displayedLogEntries.length}, gamePhase: ${gamePhase}`);
 
-    const currentDisplayedCount = displayedLogEntries.length;
-    let newEntriesToConsider: string[] = [];
-
-    if (gameLogMessages.length > currentDisplayedCount) {
-      newEntriesToConsider = gameLogMessages.slice(currentDisplayedCount);
-      console.log('[BattleArena] New entries to consider:', newEntriesToConsider);
-    } else if (gameLogMessages.length < currentDisplayedCount && gameLogMessages.length > 0) {
-      console.log('[BattleArena] Log shortened. Resetting.');
+    // Handle initial/reset phases by immediately syncing display
+    if (
+      (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') &&
+      JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries)
+    ) {
+      console.log('[BattleArena] Initial/reset phase detected. Syncing displayedLogEntries.');
       if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
-      entriesToAnimateRef.current = [];
-      setDisplayedLogEntries(gameLogMessages);
-      return; 
-    } else if (gameLogMessages.length === 0 && currentDisplayedCount > 0) {
-      console.log('[BattleArena] Log cleared. Resetting.');
-      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
-      animationTimeoutRef.current = null;
-      entriesToAnimateRef.current = [];
-      setDisplayedLogEntries([]);
-      return; 
-    } else if (gameLogMessages.length === currentDisplayedCount &&
-               JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries) &&
-               (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') ) {
-        console.log('[BattleArena] Logs same length but content/phase mismatch in initial phase. Resetting to gameLogMessages.');
+      entriesToAnimateRef.current = []; // Clear any pending animation queue
+      setDisplayedLogEntries([...gameLogMessages]); // Show all current logs immediately
+      return; // Exit early
+    }
+    
+    // If gameLogMessages is shorter than what's displayed (e.g. a reset not caught by phase check)
+    // This also handles the case where gameLogMessages is empty.
+    if (gameLogMessages.length < displayedLogEntries.length) {
+        console.log('[BattleArena] gameLogMessages shorter than displayed. Resetting display.');
         if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
         animationTimeoutRef.current = null;
         entriesToAnimateRef.current = [];
-        setDisplayedLogEntries(gameLogMessages || []);
-        return;
+        setDisplayedLogEntries([...gameLogMessages]); // Reset to exactly match gameLogMessages
+        // After resetting, the next useEffect run (if gameLogMessages changes again) or 
+        // the current run (if gameLogMessages is not empty) will correctly queue.
+        // For now, we return to let the state update and then potentially re-queue.
+        // If gameLogMessages is now empty, entriesToAnimateRef will be empty below.
     }
 
+    // Determine the entries that are in gameLogMessages but not yet in displayedLogEntries
+    // This slice will be empty if displayedLogEntries is already caught up.
+    const newEntriesForQueue = gameLogMessages.slice(displayedLogEntries.length);
+    
+    // Update the ref queue with these new entries. This is the definitive list of what's next.
+    entriesToAnimateRef.current = newEntriesForQueue;
 
-    if (newEntriesToConsider.length > 0) {
-      entriesToAnimateRef.current.push(...newEntriesToConsider);
-      console.log('[BattleArena] Updated animation queue:', [...entriesToAnimateRef.current]);
+    if (newEntriesForQueue.length > 0) {
+      console.log('[BattleArena] Animation queue updated/set. New queue contains:', newEntriesForQueue.length > 5 ? newEntriesForQueue.slice(0,3).concat(["..."]) : newEntriesForQueue);
     }
 
     const animateNextEntry = () => {
       if (entriesToAnimateRef.current.length > 0) {
-        const nextEntry = entriesToAnimateRef.current.shift();
+        const nextEntry = entriesToAnimateRef.current.shift(); // Get from the front of our ref queue
         if (nextEntry) {
-          console.log('[BattleArena] Animating next entry:', nextEntry);
-          setDisplayedLogEntries(prev => [...prev, nextEntry]);
+          console.log('[BattleArena] Animating next entry from queue:', nextEntry.length > 50 ? nextEntry.substring(0,50) + "..." : nextEntry);
+          setDisplayedLogEntries(prev => [...prev, nextEntry]); // Add to displayed state
         }
         
         if (entriesToAnimateRef.current.length > 0) {
-          animationTimeoutRef.current = setTimeout(animateNextEntry, 700);
+          // If queue still has items, schedule next animation
+          animationTimeoutRef.current = setTimeout(animateNextEntry, 300); // Animation speed
         } else {
+          // Queue is now empty
           console.log('[BattleArena] Animation queue empty.');
           animationTimeoutRef.current = null; 
         }
       } else {
+        // Should not happen if called correctly, but clear timer if queue is empty
         animationTimeoutRef.current = null;
       }
     };
     
+    // If our queue has items and no animation is currently scheduled, start one.
     if (entriesToAnimateRef.current.length > 0 && !animationTimeoutRef.current) {
-      console.log('[BattleArena] Starting animation chain.');
+      console.log('[BattleArena] Starting animation chain for queue of length:', entriesToAnimateRef.current.length);
       animateNextEntry(); 
     }
 
+    // Cleanup timeout on unmount or re-run
     return () => {
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
       }
     };
-  // IMPORTANT: Removed displayedLogEntries.length from dependencies to prevent infinite loops.
-  }, [gameLogMessages, gamePhase]); 
+  }, [gameLogMessages, gamePhase]); // Dependencies: only props that drive the logic
 
 
   useEffect(() => {
@@ -172,7 +177,7 @@ export function BattleArena({
           <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
             {displayedLogEntries.map((entry, index) => (
               <motion.p
-                key={`coin-log-${index}-${entry.slice(0,20)}`} // Key for coin flip log
+                key={`coin-log-${index}-${entry.slice(0,20)}`} 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
@@ -262,7 +267,7 @@ export function BattleArena({
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={`log-entry-${index}-${entry.slice(0,20)}`} // More stable key
+              key={`log-entry-${index}-${entry}`} 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -277,5 +282,3 @@ export function BattleArena({
     </div>
   );
 }
-
-    
