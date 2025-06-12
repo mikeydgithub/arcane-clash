@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { CardData, MonsterCardData } from '@/types'; 
+import type { CardData, MonsterCardData } from '@/types';
 import { CardView } from './CardView';
 import { CoinFlipAnimation } from './CoinFlipAnimation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,14 +10,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface BattleArenaProps {
-  player1Card?: MonsterCardData; 
-  player2Card?: MonsterCardData; 
+  player1Card?: MonsterCardData;
+  player2Card?: MonsterCardData;
   player1Name: string;
   player2Name: string;
   showClashAnimation?: boolean;
   gameLogMessages: string[];
   gamePhase: string;
-  
+
   onCoinFlipAnimationComplete?: () => void;
   winningPlayerNameForCoinFlip?: string;
 }
@@ -36,16 +36,16 @@ export function BattleArena({
   const cardVariants = {
     hidden: { opacity: 0, scale: 0.5, y: 50, x: 0 },
     visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
-    clashP1: { 
+    clashP1: {
       opacity: 1, x: ['0%', '60%', '0%'], rotate: [0, -2, 0], scale: [1, 1.05, 1], zIndex: [0, 10, 0],
       transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
-    clashP2: { 
+    clashP2: {
       opacity: 1, x: ['0%', '-60%', '0%'], rotate: [0, 2, 0], scale: [1, 1.05, 1], zIndex: [0, 5, 0],
       transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
-    
-    spellCastP1: { 
+
+    spellCastP1: {
         opacity: [0.5, 1, 0.5], scale: [0.8, 1.1, 0.8], y: [0, -20, 0],
         transition: { duration: 1.0, ease: 'easeInOut' }
     },
@@ -59,16 +59,17 @@ export function BattleArena({
   const [displayedLogEntries, setDisplayedLogEntries] = useState<string[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // entriesToAnimateRef will store messages from gameLogMessages that haven't been added to displayedLogEntries yet.
   const entriesToAnimateRef = useRef<string[]>([]);
-  
+
   const [clashTextVisible, setClashTextVisible] = useState(false);
   const hideClashTextTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (showClashAnimation && player1Card && player2Card) { 
+    if (showClashAnimation && player1Card && player2Card) {
       setClashTextVisible(true);
       if (hideClashTextTimerRef.current) clearTimeout(hideClashTextTimerRef.current);
-      hideClashTextTimerRef.current = setTimeout(() => setClashTextVisible(false), 2000); 
+      hideClashTextTimerRef.current = setTimeout(() => setClashTextVisible(false), 2000);
     } else {
       setClashTextVisible(false);
     }
@@ -78,85 +79,96 @@ export function BattleArena({
   useEffect(() => {
     return () => {
       if (hideClashTextTimerRef.current) clearTimeout(hideClashTextTimerRef.current);
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
     };
   }, []);
+
+
+  const animateNextEntry = () => {
+    if (entriesToAnimateRef.current.length > 0) {
+      const nextEntry = entriesToAnimateRef.current.shift(); // Get from the front of our ref queue
+      if (nextEntry) {
+        console.log('[BattleArena] Animating next entry from queue:', nextEntry.length > 70 ? nextEntry.substring(0,70) + "..." : nextEntry);
+        setDisplayedLogEntries(prev => {
+            // Basic guard against adding an exact duplicate of the very last entry.
+            // This might happen in complex, rapid state updates if queue isn't perfectly managed.
+            if (prev.length > 0 && prev[prev.length -1] === nextEntry) {
+                console.warn(`[BattleArena] Prevented adding duplicate log entry: ${nextEntry.substring(0,30)}...`);
+                return prev;
+            }
+            return [...prev, nextEntry];
+        });
+      }
+
+      if (entriesToAnimateRef.current.length > 0) {
+        animationTimeoutRef.current = setTimeout(animateNextEntry, 300); // Animation speed
+      } else {
+        console.log('[BattleArena] Animation queue empty.');
+        animationTimeoutRef.current = null;
+      }
+    } else {
+      // This can happen if queue becomes empty before timeout clears, or if called unnecessarily
+      console.log('[BattleArena] animateNextEntry called but queue is empty.');
+      animationTimeoutRef.current = null;
+    }
+  };
 
   useEffect(() => {
     console.log(`[BattleArena] Log effect triggered. gameLogMessages length: ${gameLogMessages.length}, displayedLogEntries length: ${displayedLogEntries.length}, gamePhase: ${gamePhase}`);
 
     // Handle initial/reset phases by immediately syncing display
     if (
-      (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') &&
-      JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries)
+      (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation')
     ) {
       console.log('[BattleArena] Initial/reset phase detected. Syncing displayedLogEntries.');
       if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
-      entriesToAnimateRef.current = []; // Clear any pending animation queue
-      setDisplayedLogEntries([...gameLogMessages]); // Show all current logs immediately
-      return; // Exit early
+      entriesToAnimateRef.current = [];
+      setDisplayedLogEntries([...gameLogMessages]);
+      return;
     }
-    
-    // If gameLogMessages is shorter than what's displayed (e.g. a reset not caught by phase check)
-    // This also handles the case where gameLogMessages is empty.
+
+    // If gameLogMessages (props) is shorter than what's displayed (e.g. a different kind of reset)
     if (gameLogMessages.length < displayedLogEntries.length) {
-        console.log('[BattleArena] gameLogMessages shorter than displayed. Resetting display.');
+        console.log('[BattleArena] gameLogMessages shorter than displayed. Resetting display and queue.');
         if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
         animationTimeoutRef.current = null;
         entriesToAnimateRef.current = [];
-        setDisplayedLogEntries([...gameLogMessages]); // Reset to exactly match gameLogMessages
-        // After resetting, the next useEffect run (if gameLogMessages changes again) or 
-        // the current run (if gameLogMessages is not empty) will correctly queue.
-        // For now, we return to let the state update and then potentially re-queue.
-        // If gameLogMessages is now empty, entriesToAnimateRef will be empty below.
+        setDisplayedLogEntries([...gameLogMessages]);
+        return;
     }
 
     // Determine the entries that are in gameLogMessages but not yet in displayedLogEntries
-    // This slice will be empty if displayedLogEntries is already caught up.
-    const newEntriesForQueue = gameLogMessages.slice(displayedLogEntries.length);
-    
-    // Update the ref queue with these new entries. This is the definitive list of what's next.
-    entriesToAnimateRef.current = newEntriesForQueue;
+    const newEntriesToPotentiallyQueue = gameLogMessages.slice(displayedLogEntries.length);
 
-    if (newEntriesForQueue.length > 0) {
-      console.log('[BattleArena] Animation queue updated/set. New queue contains:', newEntriesForQueue.length > 5 ? newEntriesForQueue.slice(0,3).concat(["..."]) : newEntriesForQueue);
-    }
+    if (newEntriesToPotentiallyQueue.length > 0) {
+        // We have new messages from props that aren't yet displayed.
+        // The entriesToAnimateRef should reflect these new messages.
+        // If an animation is already running, it will pick these up.
+        // If not, we'll start one.
+        console.log('[BattleArena] New entries to potentially queue:', newEntriesToPotentiallyQueue);
+        entriesToAnimateRef.current = [...newEntriesToPotentiallyQueue]; // Update the queue with the latest "to-do" list
 
-    const animateNextEntry = () => {
-      if (entriesToAnimateRef.current.length > 0) {
-        const nextEntry = entriesToAnimateRef.current.shift(); // Get from the front of our ref queue
-        if (nextEntry) {
-          console.log('[BattleArena] Animating next entry from queue:', nextEntry.length > 50 ? nextEntry.substring(0,50) + "..." : nextEntry);
-          setDisplayedLogEntries(prev => [...prev, nextEntry]); // Add to displayed state
-        }
-        
-        if (entriesToAnimateRef.current.length > 0) {
-          // If queue still has items, schedule next animation
-          animationTimeoutRef.current = setTimeout(animateNextEntry, 300); // Animation speed
+        if (!animationTimeoutRef.current) { // If no animation is currently scheduled, start one.
+            console.log('[BattleArena] Starting animation chain for queue of length:', entriesToAnimateRef.current.length);
+            animateNextEntry();
         } else {
-          // Queue is now empty
-          console.log('[BattleArena] Animation queue empty.');
-          animationTimeoutRef.current = null; 
+            // Animation is already in progress. The running animateNextEntry will consume the updated entriesToAnimateRef.current
+            console.log('[BattleArena] Animation already in progress. Queue ref updated. Current queue length:', entriesToAnimateRef.current.length);
         }
-      } else {
-        // Should not happen if called correctly, but clear timer if queue is empty
+    } else if (gameLogMessages.length === displayedLogEntries.length && JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries)) {
+        // Lengths match, but content differs (e.g., logs were replaced entirely). This is a full re-sync.
+        console.warn('[BattleArena] Log content mismatch at same length. Re-syncing display and queue.');
+        if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
         animationTimeoutRef.current = null;
-      }
-    };
-    
-    // If our queue has items and no animation is currently scheduled, start one.
-    if (entriesToAnimateRef.current.length > 0 && !animationTimeoutRef.current) {
-      console.log('[BattleArena] Starting animation chain for queue of length:', entriesToAnimateRef.current.length);
-      animateNextEntry(); 
+        setDisplayedLogEntries([...gameLogMessages]); // Force sync
+        entriesToAnimateRef.current = []; // Queue is now empty as display matches props
+    } else {
+        // No new entries and no content mismatch.
+        console.log('[BattleArena] No new log entries to animate, or display is already in sync.');
     }
 
-    // Cleanup timeout on unmount or re-run
-    return () => {
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
-    };
-  }, [gameLogMessages, gamePhase]); // Dependencies: only props that drive the logic
+  }, [gameLogMessages, gamePhase]); // displayedLogEntries is intentionally NOT a dependency here
 
 
   useEffect(() => {
@@ -177,7 +189,7 @@ export function BattleArena({
           <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
             {displayedLogEntries.map((entry, index) => (
               <motion.p
-                key={`coin-log-${index}-${entry.slice(0,20)}`} 
+                key={`coin-log-${index}-${entry.slice(0,20)}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
@@ -193,12 +205,12 @@ export function BattleArena({
     );
   }
 
-  
+
   const getArenaCardAnimation = (isP1Card: boolean) => {
     if (gamePhase === 'combat_phase' && player1Card && player2Card) {
       return isP1Card ? 'clashP1' : 'clashP2';
     }
-    
+
     return 'visible';
   };
 
@@ -219,7 +231,7 @@ export function BattleArena({
         )}
       </AnimatePresence>
       <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
-        
+
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player1Card && (
@@ -237,7 +249,7 @@ export function BattleArena({
           </AnimatePresence>
         </div>
 
-        
+
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player2Card && (
@@ -256,7 +268,7 @@ export function BattleArena({
         </div>
       </div>
 
-      
+
 
       <div className="w-full max-w-xl h-[30%] max-h-40 md:max-h-48 mb-1 md:mb-2">
         <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
@@ -267,7 +279,7 @@ export function BattleArena({
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={`log-entry-${index}-${entry}`} 
+              key={`log-entry-${index}-${entry}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
