@@ -82,87 +82,76 @@ export function BattleArena({
   }, []);
 
   useEffect(() => {
+    console.log('[BattleArena] Log effect triggered. gameLogMessages length:', gameLogMessages.length, 'gamePhase:', gamePhase, 'displayedLogEntries length:', displayedLogEntries.length, 'queue length:', entriesToAnimateRef.current.length);
+
     const currentDisplayedCount = displayedLogEntries.length;
     let newEntriesToConsider: string[] = [];
 
     if (gameLogMessages.length > currentDisplayedCount) {
       newEntriesToConsider = gameLogMessages.slice(currentDisplayedCount);
+      console.log('[BattleArena] New entries to consider:', newEntriesToConsider);
     } else if (gameLogMessages.length < currentDisplayedCount && gameLogMessages.length > 0) {
-      // Log was shortened (e.g., game reset). Stop current animations and reset.
+      console.log('[BattleArena] Log shortened. Resetting.');
       if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
       entriesToAnimateRef.current = [];
       setDisplayedLogEntries(gameLogMessages);
-      return; // Early exit after reset
+      return; 
     } else if (gameLogMessages.length === 0 && currentDisplayedCount > 0) {
-      // Log completely cleared. Stop current animations and reset.
+      console.log('[BattleArena] Log cleared. Resetting.');
       if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
       entriesToAnimateRef.current = [];
       setDisplayedLogEntries([]);
-      return; // Early exit after reset
+      return; 
     } else if (gameLogMessages.length === currentDisplayedCount &&
-               gamePhase !== 'initial' && gamePhase !== 'loading_art' && gamePhase !== 'coin_flip_animation' &&
-               JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries)
-              ) {
-      // This case handles if the content of messages changed but not the length,
-      // which might happen if logs are updated in place (though less common with append-only style).
-      // Or if the phase changed but logs are still catching up.
-      // For safety, if logs are the same length but different, or phase changes indicate a new context,
-      // we might want to re-evaluate.
-      // A simple approach if lengths match but content differs: reset.
-      // However, our primary path is length difference.
-      // If phase indicates initial states, just copy them over.
-      if (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') {
-          if (JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries)) {
-            if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
-            animationTimeoutRef.current = null;
-            entriesToAnimateRef.current = [];
-            setDisplayedLogEntries(gameLogMessages || []);
-          }
-          return;
-      }
+               JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries) &&
+               (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') ) {
+        console.log('[BattleArena] Logs same length but content/phase mismatch in initial phase. Resetting to gameLogMessages.');
+        if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+        entriesToAnimateRef.current = [];
+        setDisplayedLogEntries(gameLogMessages || []);
+        return;
     }
 
 
-    // If there are new entries, add them to the persistent queue
     if (newEntriesToConsider.length > 0) {
       entriesToAnimateRef.current.push(...newEntriesToConsider);
+      console.log('[BattleArena] Updated animation queue:', [...entriesToAnimateRef.current]);
     }
 
-    // If there are items in the queue and no animation is currently scheduled, start it.
     const animateNextEntry = () => {
       if (entriesToAnimateRef.current.length > 0) {
         const nextEntry = entriesToAnimateRef.current.shift();
         if (nextEntry) {
+          console.log('[BattleArena] Animating next entry:', nextEntry);
           setDisplayedLogEntries(prev => [...prev, nextEntry]);
         }
         
         if (entriesToAnimateRef.current.length > 0) {
           animationTimeoutRef.current = setTimeout(animateNextEntry, 700);
         } else {
-          animationTimeoutRef.current = null; // All items processed
+          console.log('[BattleArena] Animation queue empty.');
+          animationTimeoutRef.current = null; 
         }
       } else {
-        // Queue is empty, ensure timer is cleared
         animationTimeoutRef.current = null;
       }
     };
     
     if (entriesToAnimateRef.current.length > 0 && !animationTimeoutRef.current) {
-      animateNextEntry(); // Start the animation chain
+      console.log('[BattleArena] Starting animation chain.');
+      animateNextEntry(); 
     }
 
-    // Cleanup function for the effect
     return () => {
-      // If an animation timeout is active when the component unmounts or dependencies change,
-      // clear it to prevent state updates on an unmounted component.
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
-        // animationTimeoutRef.current = null; // Not strictly needed as component is unmounting or effect re-running
       }
     };
-  }, [gameLogMessages, gamePhase, displayedLogEntries.length]); // Added displayedLogEntries.length
+  // IMPORTANT: Removed displayedLogEntries.length from dependencies to prevent infinite loops.
+  }, [gameLogMessages, gamePhase]); 
 
 
   useEffect(() => {
@@ -183,7 +172,7 @@ export function BattleArena({
           <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
             {displayedLogEntries.map((entry, index) => (
               <motion.p
-                key={`coin-log-${index}-${entry.substring(0,10)}`}
+                key={`coin-log-${index}-${entry.slice(0,20)}`} // Key for coin flip log
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
@@ -273,7 +262,7 @@ export function BattleArena({
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={`log-${index}-${gamePhase}-${entry.substring(0,15)}`} 
+              key={`log-entry-${index}-${entry.slice(0,20)}`} // More stable key
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -289,3 +278,4 @@ export function BattleArena({
   );
 }
 
+    
