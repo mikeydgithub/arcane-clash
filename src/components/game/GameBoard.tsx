@@ -4,27 +4,29 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CardData, GameState, PlayerData, GamePhase, MonsterCardData, SpellCardData } from '@/types';
 import { generateMonsterCards, generateSpellCards, shuffleDeck, dealCards } from '@/lib/game-utils';
-// AI flows are no longer directly called from GameBoard for card content
 import { PlayerHand } from './PlayerHand';
 import { PlayerStatusDisplay } from './PlayerStatusDisplay';
 import { BattleArena } from './BattleArena';
 import { GameOverModal } from './GameOverModal';
+import { PlayerActions } from './PlayerActions'; // New component
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Layers3, Trash2 } from 'lucide-react';
+import { generateCardDescription } from '@/ai/flows/generate-card-description';
 
 const INITIAL_PLAYER_HP = 100;
 const CARDS_IN_HAND = 5;
 const MAX_MONSTERS_PER_DECK = 13;
 const MAX_SPELLS_PER_DECK = 12;
-// TOTAL_DECK_SIZE is derived from the sum of MAX_MONSTERS_PER_DECK and MAX_SPELLS_PER_DECK
 
 export function GameBoard() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const { toast } = useToast();
   const hasInitialized = useRef(false);
+  const descriptionQueueRef = useRef<CardData[]>([]);
+  const isFetchingDescriptionRef = useRef(false);
 
   const initializeGame = useCallback(async () => {
-    hasInitialized.current = true; 
+    hasInitialized.current = true;
     setGameState(prev => ({...(prev || {} as GameState), gamePhase: 'loading_art', gameLogMessages: ["Initializing Arcane Clash... Preparing cards..."]}));
 
     const masterMonsterPool = shuffleDeck(generateMonsterCards());
@@ -57,15 +59,15 @@ export function GameBoard() {
 
     const initialPlayer1: PlayerData = {
       id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP,
-      hand: p1InitialHand.map(c => ({ ...c, isLoadingArt: false, isLoadingDescription: false })), 
-      deck: p1DeckAfterDeal.map(c => ({ ...c, isLoadingArt: false, isLoadingDescription: false })),
+      hand: p1InitialHand.map(c => ({ ...c, description: undefined, isLoadingDescription: false })),
+      deck: p1DeckAfterDeal.map(c => ({ ...c, description: undefined, isLoadingDescription: false })),
       discardPile: [],
       avatarUrl: 'https://placehold.co/64x64.png?text=P1', 
     };
     const initialPlayer2: PlayerData = {
       id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
-      hand: p2InitialHand.map(c => ({ ...c, isLoadingArt: false, isLoadingDescription: false })), 
-      deck: p2DeckAfterDeal.map(c => ({ ...c, isLoadingArt: false, isLoadingDescription: false })),
+      hand: p2InitialHand.map(c => ({ ...c, description: undefined, isLoadingDescription: false })),
+      deck: p2DeckAfterDeal.map(c => ({ ...c, description: undefined, isLoadingDescription: false })),
       discardPile: [],
       avatarUrl: 'https://placehold.co/64x64.png?text=P2', 
     };
@@ -74,10 +76,11 @@ export function GameBoard() {
       players: [initialPlayer1, initialPlayer2],
       currentPlayerIndex: firstPlayerIndex,
       gamePhase: 'coin_flip_animation', 
-      selectedCardP1: undefined,
-      selectedCardP2: undefined,
+      activeMonsterP1: undefined,
+      activeMonsterP2: undefined,
       winner: undefined,
       gameLogMessages: [`Game cards ready. ${firstPlayerIndex === 0 ? initialPlayer1.name : initialPlayer2.name} will be determined by coin flip. Flipping coin...`],
+      isProcessingAction: false,
     });
   }, [toast]); 
 
@@ -85,266 +88,416 @@ export function GameBoard() {
     setGameState(prev => {
       if (!prev) return null;
       const firstPlayer = prev.players[prev.currentPlayerIndex];
-      const nextPhase = prev.currentPlayerIndex === 0 ? 'player1_select_card' : 'player2_select_card';
-      
-      const baseLog = (prev.gameLogMessages || []).filter(msg => msg.startsWith("Game cards ready."));
-      
       return {
         ...prev,
-        gamePhase: nextPhase,
+        gamePhase: 'player_action_phase',
         gameLogMessages: [
-          ...baseLog,
           `${firstPlayer.name} wins the toss and will go first!`,
-          `${firstPlayer.name}, select your card!`
-        ]
+          `${firstPlayer.name}, it's your turn. Choose an action.`
+        ],
+        isProcessingAction: false,
       };
     });
   }, []);
 
-  useEffect(() => {
-    if (!gameState && !hasInitialized.current) { 
-        const init = async () => {
-            await initializeGame();
-        };
-        init();
-    }
-  }, [gameState, initializeGame]);
+  const fetchAndSetCardDescription = useCallback(async (cardToFetch: CardData, playerIndex: number) => {
+    if (cardToFetch.description || cardToFetch.isLoadingDescription) return;
 
-
-  const handleCardSelect = (card: CardData) => {
-    if (!gameState) return;
-    const { currentPlayerIndex, gamePhase, players, gameLogMessages } = gameState;
-    const currentPlayer = players[currentPlayerIndex];
-    const opponentPlayer = players[1 - currentPlayerIndex];
-
-    const baseLog = (gameLogMessages || []).filter(msg => msg.startsWith("Game cards ready.") || msg.includes("wins the toss"));
-
-    if (gamePhase === 'player1_select_card' && currentPlayerIndex === 0) {
-      const message = card.cardType === 'Spell' 
-        ? `${currentPlayer.name} prepares to cast ${card.title}.` 
-        : `${currentPlayer.name} plays ${card.title}.`;
-      setGameState(prev => ({ ...prev!, selectedCardP1: card, gamePhase: 'player2_select_card', currentPlayerIndex: 1, gameLogMessages: [...baseLog, message, `${opponentPlayer.name}, select your card!`] }));
-    } 
-    else if (gamePhase === 'player2_select_card' && currentPlayerIndex === 1) {
-      if (!gameState.selectedCardP1) {
-        console.error("Error: Player 2 is selecting a card, but Player 1's card (selectedCardP1) is not set in gameState.");
-        toast({
-          title: "Game Logic Error",
-          description: "Player 1's card selection was not properly registered. Please try restarting the turn or game if this persists.",
-          variant: "destructive",
-        });
-        return; 
-      }
-      const messageP1 = gameState.selectedCardP1.cardType === 'Spell'
-        ? `${players[0].name} readied the spell ${gameState.selectedCardP1.title}.`
-        : `${players[0].name} played ${gameState.selectedCardP1.title}.`;
-      const messageP2 = card.cardType === 'Spell'
-        ? `${currentPlayer.name} responds by preparing the spell ${card.title}.`
-        : `${currentPlayer.name} responds with ${card.title}.`;
-      
-      setGameState(prev => ({ ...prev!, selectedCardP2: card, gamePhase: 'combat_animation', gameLogMessages: [...baseLog, messageP1, messageP2, "Prepare for the outcome!"] }));
-      setTimeout(() => resolveTurn(), 1200); 
-    }
-  };
-
-  const resolveTurn = () => {
     setGameState(prev => {
-      if (!prev || (!prev.selectedCardP1 && !prev.selectedCardP2)) return prev;
+        if (!prev) return null;
+        const updateCardInSource = (source: CardData[], cardId: string, updates: Partial<CardData>) => 
+            source.map(c => c.id === cardId ? { ...c, ...updates } : c);
 
-      let p1Data = { ...prev.players[0], hand: [...prev.players[0].hand], deck: [...prev.players[0].deck], discardPile: [...prev.players[0].discardPile] };
-      let p2Data = { ...prev.players[1], hand: [...prev.players[1].hand], deck: [...prev.players[1].deck], discardPile: [...prev.players[1].discardPile] };
-      
-      let card1InPlay = prev.selectedCardP1 ? { ...prev.selectedCardP1 } : undefined;
-      let card2InPlay = prev.selectedCardP2 ? { ...prev.selectedCardP2 } : undefined;
-
-      const turnLogEntries: string[] = [];
-
-      if (card1InPlay?.cardType === 'Spell') {
-        turnLogEntries.push(`${p1Data.name} casts ${card1InPlay.title}! Effect: ${card1InPlay.description || 'A mysterious spell unfolds.'}`);
-        p1Data.discardPile.push(card1InPlay);
-        p1Data.hand = p1Data.hand.filter(c => c.id !== card1InPlay!.id);
-        card1InPlay = undefined; 
-      }
-      if (card2InPlay?.cardType === 'Spell') {
-        turnLogEntries.push(`${p2Data.name} casts ${card2InPlay.title}! Effect: ${card2InPlay.description || 'A mysterious spell unfolds.'}`);
-        p2Data.discardPile.push(card2InPlay);
-        p2Data.hand = p2Data.hand.filter(c => c.id !== card2InPlay!.id);
-        card2InPlay = undefined; 
-      }
-
-      if (card1InPlay?.cardType === 'Monster' && card2InPlay?.cardType === 'Monster') {
-        const monster1 = card1InPlay as MonsterCardData;
-        const monster2 = card2InPlay as MonsterCardData;
-        turnLogEntries.push(`Combat: ${monster1.title} (P1) vs ${monster2.title} (P2)!`);
-
-        if (monster1.melee > 0) {
-          const damageDealt = monster1.melee;
-          turnLogEntries.push(`${monster1.title} attacks ${monster2.title} with ${damageDealt} melee.`);
-          const shieldAbsorbed = Math.min(monster2.shield, damageDealt);
-          if (shieldAbsorbed > 0) { monster2.shield -= shieldAbsorbed; turnLogEntries.push(`${monster2.title}'s shield absorbs ${shieldAbsorbed}.`); }
-          const damageAfterShield = damageDealt - shieldAbsorbed;
-          if (damageAfterShield > 0) {
-            const defenseBlocked = Math.min(monster2.defense, damageAfterShield);
-            if (defenseBlocked > 0) turnLogEntries.push(`${monster2.title}'s defense blocks ${defenseBlocked}.`);
-            const hpDamage = Math.max(0, damageAfterShield - defenseBlocked);
-            monster2.hp -= hpDamage;
-            turnLogEntries.push(`${monster2.title} takes ${hpDamage} HP damage. New HP: ${Math.max(0, monster2.hp)}`);
-          }
-        } else if (monster1.magic > 0) {
-          const damageDealt = monster1.magic;
-           turnLogEntries.push(`${monster1.title} attacks ${monster2.title} with ${damageDealt} magic.`);
-          const shieldAbsorbed = Math.min(monster2.magicShield, damageDealt);
-          if (shieldAbsorbed > 0) { monster2.magicShield -= shieldAbsorbed; turnLogEntries.push(`${monster2.title}'s magic shield absorbs ${shieldAbsorbed}.`); }
-          const hpDamage = Math.max(0, damageDealt - shieldAbsorbed);
-          monster2.hp -= hpDamage;
-          turnLogEntries.push(`${monster2.title} takes ${hpDamage} HP damage from magic. New HP: ${Math.max(0, monster2.hp)}`);
-        }
-
-        if (monster2.hp > 0) {
-          if (monster2.melee > 0) {
-            const damageDealt = monster2.melee;
-            turnLogEntries.push(`${monster2.title} counter-attacks ${monster1.title} with ${damageDealt} melee.`);
-            const shieldAbsorbed = Math.min(monster1.shield, damageDealt);
-            if (shieldAbsorbed > 0) { monster1.shield -= shieldAbsorbed; turnLogEntries.push(`${monster1.title}'s shield absorbs ${shieldAbsorbed}.`); }
-            const damageAfterShield = damageDealt - shieldAbsorbed;
-            if (damageAfterShield > 0) {
-              const defenseBlocked = Math.min(monster1.defense, damageAfterShield);
-              if (defenseBlocked > 0) turnLogEntries.push(`${monster1.title}'s defense blocks ${defenseBlocked}.`);
-              const hpDamage = Math.max(0, damageAfterShield - defenseBlocked);
-              monster1.hp -= hpDamage;
-              turnLogEntries.push(`${monster1.title} takes ${hpDamage} HP damage. New HP: ${Math.max(0, monster1.hp)}`);
+        const newPlayers = prev.players.map((p, idx) => {
+            if (idx === playerIndex) {
+                return {
+                    ...p,
+                    hand: updateCardInSource(p.hand, cardToFetch.id, { isLoadingDescription: true }),
+                    deck: updateCardInSource(p.deck, cardToFetch.id, { isLoadingDescription: true }),
+                };
             }
-          } else if (monster2.magic > 0) {
-             const damageDealt = monster2.magic;
-             turnLogEntries.push(`${monster2.title} counter-attacks ${monster1.title} with ${damageDealt} magic.`);
-            const shieldAbsorbed = Math.min(monster1.magicShield, damageDealt);
-            if (shieldAbsorbed > 0) { monster1.magicShield -= shieldAbsorbed; turnLogEntries.push(`${monster1.title}'s magic shield absorbs ${shieldAbsorbed}.`); }
-            const hpDamage = Math.max(0, damageDealt - shieldAbsorbed);
-            monster1.hp -= hpDamage;
-            turnLogEntries.push(`${monster1.title} takes ${hpDamage} HP damage from magic. New HP: ${Math.max(0, monster1.hp)}`);
-          }
-        } else {
-          turnLogEntries.push(`${monster2.title} was defeated before it could counter-attack.`);
-        }
-        
-        if (monster1.hp <= 0) {
-          turnLogEntries.push(`${monster1.title} (P1) is defeated!`);
-          p1Data.discardPile.push({...prev.selectedCardP1!, hp: 0, shield: 0, magicShield: 0 } as MonsterCardData);
-          p1Data.hand = p1Data.hand.filter(c => c.id !== monster1.id);
-          card1InPlay = undefined;
-        } else {
-          p1Data.hand = p1Data.hand.map(c => c.id === monster1.id ? monster1 : c);
-        }
-        if (monster2.hp <= 0) {
-          turnLogEntries.push(`${monster2.title} (P2) is defeated!`);
-          p2Data.discardPile.push({...prev.selectedCardP2!, hp: 0, shield: 0, magicShield: 0 } as MonsterCardData);
-          p2Data.hand = p2Data.hand.filter(c => c.id !== monster2.id);
-          card2InPlay = undefined;
-        } else {
-          p2Data.hand = p2Data.hand.map(c => c.id === monster2.id ? monster2 : c);
-        }
-
-      } else if (card1InPlay?.cardType === 'Monster') { 
-        const monster1 = card1InPlay as MonsterCardData;
-        turnLogEntries.push(`${monster1.title} (P1) attacks ${p2Data.name} directly!`);
-        const damage = monster1.melee > 0 ? monster1.melee : monster1.magic; 
-        p2Data.hp = Math.max(0, p2Data.hp - damage);
-        turnLogEntries.push(`${p2Data.name} takes ${damage} direct damage. New HP: ${p2Data.hp}`);
-        if (monster1.hp <= 0) { 
-             p1Data.discardPile.push({...prev.selectedCardP1!, hp: 0, shield: 0, magicShield: 0 } as MonsterCardData);
-             p1Data.hand = p1Data.hand.filter(c => c.id !== monster1.id);
-             card1InPlay = undefined;
-        } else {
-             p1Data.hand = p1Data.hand.map(c => c.id === monster1.id ? monster1 : c);
-        }
-
-      } else if (card2InPlay?.cardType === 'Monster') { 
-        const monster2 = card2InPlay as MonsterCardData;
-        turnLogEntries.push(`${monster2.title} (P2) attacks ${p1Data.name} directly!`);
-        const damage = monster2.melee > 0 ? monster2.melee : monster2.magic;
-        p1Data.hp = Math.max(0, p1Data.hp - damage);
-        turnLogEntries.push(`${p1Data.name} takes ${damage} direct damage. New HP: ${p1Data.hp}`);
-         if (monster2.hp <= 0) {
-             p2Data.discardPile.push({...prev.selectedCardP2!, hp: 0, shield: 0, magicShield: 0 } as MonsterCardData);
-             p2Data.hand = p2Data.hand.filter(c => c.id !== monster2.id);
-             card2InPlay = undefined;
-        } else {
-             p2Data.hand = p2Data.hand.map(c => c.id === monster2.id ? monster2 : c);
-        }
-      }
-
-      [p1Data, p2Data].forEach((playerData, index) => {
-          const originalCardInPlay = index === 0 ? prev.selectedCardP1 : prev.selectedCardP2;
-          const currentCardInPlayAfterCombatOrSpell = index === 0 ? card1InPlay : card2InPlay;
-          
-          if (originalCardInPlay && !currentCardInPlayAfterCombatOrSpell) { 
-              if (playerData.hand.length < CARDS_IN_HAND && playerData.deck.length > 0) {
-                  const { dealtCards: newCardsArr, remainingDeck: deckAfterDraw } = dealCards(playerData.deck, 1);
-                  const newDrawnCard = { 
-                    ...newCardsArr[0], 
-                    isLoadingArt: false, 
-                    isLoadingDescription: false 
-                  };
-                  playerData.hand.push(newDrawnCard);
-                  playerData.deck = deckAfterDraw;
-                  turnLogEntries.push(`${playerData.name} draws a new card: ${newDrawnCard.title}.`);
-              } else if (playerData.hand.length < CARDS_IN_HAND) {
-                  turnLogEntries.push(`${playerData.name} has no cards in deck to draw.`);
-              }
-          }
-      });
-
-
-      let newGamePhase: GamePhase = 'combat_resolution';
-      let winner: PlayerData | undefined = undefined;
-
-      if (p1Data.hp <= 0 && p2Data.hp <= 0) {
-        winner = undefined; newGamePhase = 'game_over';
-        turnLogEntries.push("It's a draw! Both players are defeated.");
-      } else if (p1Data.hp <= 0) {
-        winner = prev.players[1]; newGamePhase = 'game_over';
-        turnLogEntries.push(`${prev.players[1].name} wins! ${prev.players[0].name} is defeated.`);
-      } else if (p2Data.hp <= 0) {
-        winner = prev.players[0]; newGamePhase = 'game_over';
-        turnLogEntries.push(`${prev.players[0].name} wins! ${prev.players[1].name} is defeated.`);
-      }
-      
-      const persistentMessages = (prev.gameLogMessages || []).filter(msg => msg.startsWith("Game cards ready.") || msg.includes("wins the toss") || msg.includes("select your card") || msg.includes("plays") || msg.includes("prepares to cast") || msg.includes("responds with") || msg.includes("readied the spell") );
-      const logMessagesForThisTurn = [...new Set([...persistentMessages, ...turnLogEntries])];
-
-      return {
-        ...prev,
-        players: [p1Data, p2Data],
-        selectedCardP1: card1InPlay, 
-        selectedCardP2: card2InPlay, 
-        gamePhase: newGamePhase,
-        winner,
-        gameLogMessages: logMessagesForThisTurn,
-      };
+            return p;
+        }) as [PlayerData, PlayerData];
+        return { ...prev, players: newPlayers };
     });
-  };
 
-  const handleProceedToNextTurn = () => {
+    try {
+        const descResult = await generateCardDescription({ cardTitle: cardToFetch.title, cardType: cardToFetch.cardType });
+        setGameState(prev => {
+            if (!prev) return null;
+            const updateCardInSource = (source: CardData[], cardId: string, updates: Partial<CardData>) => 
+                source.map(c => c.id === cardId ? { ...c, ...updates } : c);
+            
+            const newPlayers = prev.players.map((p, idx) => {
+                 if (idx === playerIndex) {
+                    return {
+                        ...p,
+                        hand: updateCardInSource(p.hand, cardToFetch.id, { description: descResult.description, isLoadingDescription: false }),
+                        deck: updateCardInSource(p.deck, cardToFetch.id, { description: descResult.description, isLoadingDescription: false }),
+                    };
+                }
+                return p;
+            }) as [PlayerData, PlayerData];
+            return { ...prev, players: newPlayers };
+        });
+    } catch (error) {
+        console.error(`Failed to generate description for ${cardToFetch.title}:`, error);
+        toast({ title: "AI Error", description: `Could not fetch description for ${cardToFetch.title}. Using default.`, variant: "destructive" });
+        setGameState(prev => {
+            if (!prev) return null;
+            const defaultDesc = cardToFetch.cardType === "Monster" ? "A mysterious creature." : "A potent spell.";
+            const updateCardInSource = (source: CardData[], cardId: string, updates: Partial<CardData>) =>
+                source.map(c => c.id === cardId ? { ...c, ...updates } : c);
+
+            const newPlayers = prev.players.map((p, idx) => {
+                if (idx === playerIndex) {
+                    return {
+                        ...p,
+                        hand: updateCardInSource(p.hand, cardToFetch.id, { description: defaultDesc, isLoadingDescription: false }),
+                        deck: updateCardInSource(p.deck, cardToFetch.id, { description: defaultDesc, isLoadingDescription: false }),
+                    };
+                }
+                return p;
+            }) as [PlayerData, PlayerData];
+            return { ...prev, players: newPlayers };
+        });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (!gameState || hasInitialized.current) return;
+    const init = async () => {
+        await initializeGame();
+    };
+    init();
+  }, [gameState, initializeGame]);
+  
+  useEffect(() => {
+    if (!gameState || isFetchingDescriptionRef.current || descriptionQueueRef.current.length === 0) return;
+
+    const processQueue = async () => {
+        if (descriptionQueueRef.current.length > 0) {
+            isFetchingDescriptionRef.current = true;
+            const { card, playerIndex } = descriptionQueueRef.current.shift() as { card: CardData, playerIndex: number };
+            if (card && !card.description && !card.isLoadingDescription) {
+                 await fetchAndSetCardDescription(card, playerIndex);
+            }
+            isFetchingDescriptionRef.current = false;
+            if (descriptionQueueRef.current.length > 0) {
+                 setTimeout(processQueue, 100); // Small delay before processing next in queue
+            }
+        }
+    };
+    processQueue();
+  }, [gameState, fetchAndSetCardDescription]);
+
+
+  useEffect(() => {
+    if (!gameState) return;
+    gameState.players.forEach((player, playerIndex) => {
+        player.hand.forEach(card => {
+            if (!card.description && !card.isLoadingDescription) {
+                const alreadyQueued = descriptionQueueRef.current.some(item => item.card.id === card.id);
+                if (!alreadyQueued) {
+                    descriptionQueueRef.current.push({ card, playerIndex });
+                }
+            }
+        });
+    });
+    // Trigger queue processing if not already running
+    if (!isFetchingDescriptionRef.current && descriptionQueueRef.current.length > 0) {
+        const processQueue = async () => {
+            if (descriptionQueueRef.current.length > 0 && !isFetchingDescriptionRef.current) {
+                isFetchingDescriptionRef.current = true;
+                const { card, playerIndex } = descriptionQueueRef.current.shift() as { card: CardData, playerIndex: number };
+                 if (card && !card.description && !card.isLoadingDescription) {
+                    await fetchAndSetCardDescription(card, playerIndex);
+                }
+                isFetchingDescriptionRef.current = false;
+                if (descriptionQueueRef.current.length > 0) {
+                    setTimeout(processQueue, 100);
+                }
+            }
+        };
+        processQueue();
+    }
+  }, [gameState?.players, fetchAndSetCardDescription]);
+
+
+  const appendLog = (message: string) => {
     setGameState(prev => {
       if (!prev) return null;
-      const nextPlayerToSelect = prev.players[0]; 
+      return { ...prev, gameLogMessages: [...prev.gameLogMessages, message] };
+    });
+  };
+
+  const processTurnEnd = () => {
+    setGameState(prev => {
+      if (!prev) return null;
+      let { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2, gameLogMessages } = prev;
+      const actingPlayer = players[currentPlayerIndex];
+      const opponentPlayerIndex = 1 - currentPlayerIndex;
+      const opponentPlayer = players[opponentPlayerIndex];
+
+      let newLogMessages = [...gameLogMessages];
+      let actingPlayerHand = [...actingPlayer.hand];
+      let actingPlayerDeck = [...actingPlayer.deck];
+
+      // Card Draw Logic (simplified: always try to draw if hand < max, after any action that might free up hand space)
+      if (actingPlayerHand.length < CARDS_IN_HAND && actingPlayerDeck.length > 0) {
+        const { dealtCards, remainingDeck } = dealCards(actingPlayerDeck, 1);
+        const drawnCard = { ...dealtCards[0], description: undefined, isLoadingDescription: false };
+        actingPlayerHand.push(drawnCard);
+        actingPlayerDeck = remainingDeck;
+        newLogMessages.push(`${actingPlayer.name} draws ${drawnCard.title}.`);
+        // Add to description queue
+        const alreadyQueued = descriptionQueueRef.current.some(item => item.card.id === drawnCard.id);
+        if (!alreadyQueued && !drawnCard.description && !drawnCard.isLoadingDescription) {
+            descriptionQueueRef.current.push({ card: drawnCard, playerIndex: currentPlayerIndex });
+        }
+      } else if (actingPlayerHand.length < CARDS_IN_HAND) {
+        newLogMessages.push(`${actingPlayer.name} has no cards left in their deck to draw.`);
+      }
       
-      const persistentMessages = (prev.gameLogMessages || []).filter(msg => msg.startsWith("Game cards ready.") || msg.includes("wins the toss"));
-      const newLogMessages = [
-          ...persistentMessages, 
-          `A new round begins! ${nextPlayerToSelect.name}, select your card!`
-      ];
+      const updatedPlayers = [...players] as [PlayerData, PlayerData];
+      updatedPlayers[currentPlayerIndex] = { ...actingPlayer, hand: actingPlayerHand, deck: actingPlayerDeck };
+
+      // Check for game over
+      if (players[0].hp <= 0 && players[1].hp <= 0) {
+        newLogMessages.push("It's a draw! Both players are defeated.");
+        return { ...prev, players: updatedPlayers, winner: undefined, gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
+      } else if (players[0].hp <= 0) {
+        newLogMessages.push(`${players[1].name} wins! ${players[0].name} is defeated.`);
+        return { ...prev, players: updatedPlayers, winner: players[1], gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
+      } else if (players[1].hp <= 0) {
+        newLogMessages.push(`${players[0].name} wins! ${players[1].name} is defeated.`);
+        return { ...prev, players: updatedPlayers, winner: players[0], gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
+      }
+      
+      newLogMessages.push(`Turn ends. It's now ${opponentPlayer.name}'s turn.`);
+      newLogMessages.push(`${opponentPlayer.name}, choose your action.`);
 
       return {
         ...prev,
-        selectedCardP1: undefined, 
-        selectedCardP2: undefined, 
+        players: updatedPlayers,
+        currentPlayerIndex: opponentPlayerIndex as 0 | 1,
+        gamePhase: 'player_action_phase',
         gameLogMessages: newLogMessages,
-        currentPlayerIndex: 0, 
-        gamePhase: 'player1_select_card',
+        isProcessingAction: false,
       };
     });
   };
+
+  const handlePlayMonsterFromHand = (card: MonsterCardData) => {
+    if (!gameState || gameState.isProcessingAction) return;
+    const { players, currentPlayerIndex } = gameState;
+    const player = players[currentPlayerIndex];
+
+    setGameState(prev => ({...prev!, isProcessingAction: true}));
+    appendLog(`${player.name} summons ${card.title} to the arena!`);
+
+    const newHand = player.hand.filter(c => c.id !== card.id);
+    const updatedPlayer = { ...player, hand: newHand };
+    const newPlayers = [...players] as [PlayerData, PlayerData];
+    newPlayers[currentPlayerIndex] = updatedPlayer;
+
+    setGameState(prev => ({
+      ...prev!,
+      players: newPlayers,
+      [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: card,
+      gamePhase: 'turn_resolution_phase', // Proceed to end turn
+    }));
+    setTimeout(() => processTurnEnd(), 500);
+  };
+
+  const handlePlaySpellFromHand = (card: SpellCardData) => {
+    if (!gameState || gameState.isProcessingAction) return;
+    const { players, currentPlayerIndex } = gameState;
+    const player = players[currentPlayerIndex];
+
+    setGameState(prev => ({...prev!, isProcessingAction: true}));
+    appendLog(`${player.name} casts ${card.title}! Effect: ${card.description || "A mysterious enchantment unfolds."}`);
+    
+    // TODO: Implement actual spell effects here. For now, just log and discard.
+
+    const newHand = player.hand.filter(c => c.id !== card.id);
+    const newDiscardPile = [...player.discardPile, card];
+    const updatedPlayer = { ...player, hand: newHand, discardPile: newDiscardPile };
+    const newPlayers = [...players] as [PlayerData, PlayerData];
+    newPlayers[currentPlayerIndex] = updatedPlayer;
+
+    setGameState(prev => ({
+      ...prev!,
+      players: newPlayers,
+      gamePhase: 'spell_effect_phase', // Short phase for spell
+    }));
+    setTimeout(() => {
+        setGameState(g => ({...g!, gamePhase: 'turn_resolution_phase'}));
+        setTimeout(() => processTurnEnd(), 500);
+    }, 1000); // Animation time for spell
+  };
+
+  const handleMonsterAttack = () => {
+    if (!gameState || gameState.isProcessingAction) return;
+    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = gameState;
+    const attackerPlayer = players[currentPlayerIndex];
+    const defenderPlayerIndex = 1 - currentPlayerIndex;
+    const defenderPlayer = players[defenderPlayerIndex];
+    
+    let currentAttackerMonster = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
+    let currentDefenderMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
+
+    if (!currentAttackerMonster) {
+        toast({ title: "No active monster", description: "You need an active monster to attack.", variant: "destructive" });
+        return;
+    }
+    setGameState(prev => ({...prev!, isProcessingAction: true, gamePhase: 'combat_phase'}));
+
+    let p1Data = { ...players[0] };
+    let p2Data = { ...players[1] };
+    let attacker = { ...currentAttackerMonster } as MonsterCardData;
+    let defender = currentDefenderMonster ? { ...currentDefenderMonster } as MonsterCardData : undefined;
+    let newLogMessages: string[] = [...gameState.gameLogMessages];
+
+    newLogMessages.push(`${attackerPlayer.name}'s ${attacker.title} attacks!`);
+
+    if (defender) { // Monster vs Monster
+        newLogMessages.push(`${attacker.title} clashes with ${defender.title}!`);
+        // Attacker deals damage
+        if (attacker.melee > 0) {
+            const damageDealt = attacker.melee;
+            newLogMessages.push(`${attacker.title} strikes ${defender.title} with ${damageDealt} melee.`);
+            const shieldAbsorbed = Math.min(defender.shield, damageDealt);
+            if (shieldAbsorbed > 0) { defender.shield -= shieldAbsorbed; newLogMessages.push(`${defender.title}'s shield absorbs ${shieldAbsorbed}.`); }
+            const damageAfterShield = damageDealt - shieldAbsorbed;
+            if (damageAfterShield > 0) {
+                const defenseBlocked = Math.min(defender.defense, damageAfterShield);
+                if (defenseBlocked > 0) newLogMessages.push(`${defender.title}'s defense blocks ${defenseBlocked}.`);
+                const hpDamage = Math.max(0, damageAfterShield - defenseBlocked);
+                defender.hp -= hpDamage;
+                newLogMessages.push(`${defender.title} takes ${hpDamage} HP damage. New HP: ${Math.max(0, defender.hp)}`);
+            }
+        } else if (attacker.magic > 0) {
+            const damageDealt = attacker.magic;
+            newLogMessages.push(`${attacker.title} blasts ${defender.title} with ${damageDealt} magic.`);
+            const shieldAbsorbed = Math.min(defender.magicShield, damageDealt);
+            if (shieldAbsorbed > 0) { defender.magicShield -= shieldAbsorbed; newLogMessages.push(`${defender.title}'s magic shield absorbs ${shieldAbsorbed}.`); }
+            const hpDamage = Math.max(0, damageDealt - shieldAbsorbed);
+            defender.hp -= hpDamage;
+            newLogMessages.push(`${defender.title} takes ${hpDamage} HP damage from magic. New HP: ${Math.max(0, defender.hp)}`);
+        }
+
+        // Defender counter-attacks if still alive
+        if (defender.hp > 0) {
+            if (defender.melee > 0) {
+                const damageDealt = defender.melee;
+                newLogMessages.push(`${defender.title} counter-attacks ${attacker.title} with ${damageDealt} melee.`);
+                const shieldAbsorbed = Math.min(attacker.shield, damageDealt);
+                if (shieldAbsorbed > 0) { attacker.shield -= shieldAbsorbed; newLogMessages.push(`${attacker.title}'s shield absorbs ${shieldAbsorbed}.`); }
+                const damageAfterShield = damageDealt - shieldAbsorbed;
+                if (damageAfterShield > 0) {
+                    const defenseBlocked = Math.min(attacker.defense, damageAfterShield);
+                    if (defenseBlocked > 0) newLogMessages.push(`${attacker.title}'s defense blocks ${defenseBlocked}.`);
+                    const hpDamage = Math.max(0, damageAfterShield - defenseBlocked);
+                    attacker.hp -= hpDamage;
+                    newLogMessages.push(`${attacker.title} takes ${hpDamage} HP damage. New HP: ${Math.max(0, attacker.hp)}`);
+                }
+            } else if (defender.magic > 0) {
+                const damageDealt = defender.magic;
+                newLogMessages.push(`${defender.title} counter-attacks ${attacker.title} with ${damageDealt} magic.`);
+                const shieldAbsorbed = Math.min(attacker.magicShield, damageDealt);
+                if (shieldAbsorbed > 0) { attacker.magicShield -= shieldAbsorbed; newLogMessages.push(`${attacker.title}'s magic shield absorbs ${shieldAbsorbed}.`); }
+                const hpDamage = Math.max(0, damageDealt - shieldAbsorbed);
+                attacker.hp -= hpDamage;
+                newLogMessages.push(`${attacker.title} takes ${hpDamage} HP damage from magic. New HP: ${Math.max(0, attacker.hp)}`);
+            }
+        } else {
+            newLogMessages.push(`${defender.title} was defeated before it could counter-attack.`);
+        }
+    } else { // Monster vs Player
+        newLogMessages.push(`${attacker.title} attacks ${defenderPlayer.name} directly!`);
+        const damage = attacker.melee > 0 ? attacker.melee : attacker.magic;
+        if (currentPlayerIndex === 0) { // P1 attacking P2
+            p2Data.hp = Math.max(0, p2Data.hp - damage);
+            newLogMessages.push(`${p2Data.name} takes ${damage} direct damage. New HP: ${p2Data.hp}`);
+        } else { // P2 attacking P1
+            p1Data.hp = Math.max(0, p1Data.hp - damage);
+            newLogMessages.push(`${p1Data.name} takes ${damage} direct damage. New HP: ${p1Data.hp}`);
+        }
+    }
+
+    let nextActiveMonsterP1 = currentPlayerIndex === 0 ? (attacker.hp > 0 ? attacker : undefined) : activeMonsterP1;
+    let nextActiveMonsterP2 = currentPlayerIndex === 1 ? (attacker.hp > 0 ? attacker : undefined) : activeMonsterP2;
+
+    if (defender && defender.hp <= 0) {
+        newLogMessages.push(`${defender.title} is defeated!`);
+        if (currentPlayerIndex === 0) { // P1 attacked, P2's monster defeated
+            p2Data.discardPile.push({...currentDefenderMonster!, hp:0, shield:0, magicShield:0});
+            nextActiveMonsterP2 = undefined;
+        } else { // P2 attacked, P1's monster defeated
+            p1Data.discardPile.push({...currentDefenderMonster!, hp:0, shield:0, magicShield:0});
+            nextActiveMonsterP1 = undefined;
+        }
+    } else if (defender) {
+         if (currentPlayerIndex === 0) nextActiveMonsterP2 = defender; else nextActiveMonsterP1 = defender;
+    }
+
+    if (attacker.hp <= 0) {
+        newLogMessages.push(`${attacker.title} is defeated!`);
+         if (currentPlayerIndex === 0) {
+            p1Data.discardPile.push({...currentAttackerMonster!, hp:0, shield:0, magicShield:0});
+            nextActiveMonsterP1 = undefined;
+        } else {
+            p2Data.discardPile.push({...currentAttackerMonster!, hp:0, shield:0, magicShield:0});
+            nextActiveMonsterP2 = undefined;
+        }
+    }
+    
+    const finalPlayers = [p1Data, p2Data] as [PlayerData, PlayerData];
+
+    setGameState(prev => ({
+        ...prev!,
+        players: finalPlayers,
+        activeMonsterP1: nextActiveMonsterP1,
+        activeMonsterP2: nextActiveMonsterP2,
+        gameLogMessages: newLogMessages,
+        // gamePhase will be set by processTurnEnd after delay
+    }));
+    
+    setTimeout(() => {
+        setGameState(g => ({...g!, gamePhase: 'turn_resolution_phase'}));
+        setTimeout(() => processTurnEnd(), 500);
+    }, 2000); // Animation time for combat
+  };
+
+  const handleRetreatMonster = () => {
+    if (!gameState || gameState.isProcessingAction) return;
+    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = gameState;
+    const player = players[currentPlayerIndex];
+    const monsterToRetreat = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
+
+    if (!monsterToRetreat) {
+      toast({ title: "No monster to retreat", description: "You don't have an active monster in the arena.", variant: "destructive" });
+      return;
+    }
+    
+    setGameState(prev => ({...prev!, isProcessingAction: true}));
+    appendLog(`${player.name} retreats ${monsterToRetreat.title} back to their hand.`);
+
+    const newHand = [...player.hand, monsterToRetreat]; // Monster retains its current HP/shields
+    const updatedPlayer = { ...player, hand: newHand };
+    const newPlayers = [...players] as [PlayerData, PlayerData];
+    newPlayers[currentPlayerIndex] = updatedPlayer;
+
+    setGameState(prev => ({
+      ...prev!,
+      players: newPlayers,
+      [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: undefined,
+      gamePhase: 'turn_resolution_phase',
+    }));
+    setTimeout(() => processTurnEnd(), 500);
+  };
+
 
   if (!gameState || gameState.gamePhase === 'loading_art') {
     return (
@@ -355,83 +508,114 @@ export function GameBoard() {
     );
   }
   
-  const { players, currentPlayerIndex, gamePhase, selectedCardP1, selectedCardP2, winner, gameLogMessages } = gameState;
+  const { players, currentPlayerIndex, gamePhase, activeMonsterP1, activeMonsterP2, winner, gameLogMessages, isProcessingAction } = gameState;
   const player1 = players[0];
   const player2 = players[1];
+  const currentPlayer = players[currentPlayerIndex];
 
   return (
     <div className="flex flex-row h-screen w-screen overflow-hidden bg-background text-foreground p-1 md:p-2">
+      {/* Player 1 Side */}
       <div className="w-1/4 flex flex-col items-center p-1 md:p-2 space-y-1 md:space-y-2 flex-shrink-0">
          <div className="w-full flex flex-col items-center space-y-1 text-xs text-muted-foreground mb-1">
           <div className="flex items-center space-x-1">
-            <Layers3 className="w-3 h-3" />
-            <span>Deck: {player1.deck.length}</span>
+            <Layers3 className="w-3 h-3" /><span>Deck: {player1.deck.length}</span>
           </div>
           <div className="flex items-center space-x-1">
-            <Trash2 className="w-3 h-3" />
-            <span>Discard: {player1.discardPile.length}</span>
+            <Trash2 className="w-3 h-3" /><span>Discard: {player1.discardPile.length}</span>
           </div>
         </div>
         <PlayerStatusDisplay
           player={player1}
-          isCurrentPlayer={currentPlayerIndex === 0 && (gamePhase === 'player1_select_card' || (gamePhase === 'coin_flip_animation' && gameState.currentPlayerIndex === 0))}
+          isCurrentPlayer={currentPlayerIndex === 0 && gamePhase !== 'game_over_phase' && gamePhase !== 'coin_flip_animation'}
         />
         <PlayerHand
           cards={player1.hand}
-          onCardSelect={handleCardSelect}
-          isPlayerTurn={currentPlayerIndex === 0 && gamePhase === 'player1_select_card'}
-          selectedCardId={selectedCardP1?.id}
-          hasCommittedCard={!!selectedCardP1 && (gamePhase === 'player2_select_card' || gamePhase === 'combat_animation' || gamePhase === 'combat_resolution')}
+          onCardSelect={(card) => {
+            if (currentPlayerIndex === 0 && gamePhase === 'player_action_phase' && !isProcessingAction) {
+              if (card.cardType === 'Monster' && !activeMonsterP1) {
+                handlePlayMonsterFromHand(card as MonsterCardData);
+              } else if (card.cardType === 'Spell') {
+                handlePlaySpellFromHand(card as SpellCardData);
+              }
+            }
+          }}
+          isPlayerTurn={currentPlayerIndex === 0 && gamePhase === 'player_action_phase' && !isProcessingAction}
+          canPlayMonster={!activeMonsterP1}
           isOpponent={false}
         />
       </div>
 
-      <div className="flex-grow flex flex-col items-center justify-center min-w-0">
+      {/* Center Area: Battle Arena and Actions */}
+      <div className="flex-grow flex flex-col items-center justify-between min-w-0">
         <BattleArena
-          player1Card={selectedCardP1}
-          player2Card={selectedCardP2}
+          player1Card={activeMonsterP1}
+          player2Card={activeMonsterP2}
           player1Name={player1.name}
           player2Name={player2.name}
-          showClashAnimation={gamePhase === 'combat_animation' && !!selectedCardP1 && !!selectedCardP2 && selectedCardP1.cardType === 'Monster' && selectedCardP2.cardType === 'Monster'}
+          showClashAnimation={gamePhase === 'combat_phase' && !!activeMonsterP1 && !!activeMonsterP2}
           gameLogMessages={gameLogMessages || []}
           gamePhase={gamePhase}
-          onProceedToNextTurn={gamePhase === 'combat_resolution' ? handleProceedToNextTurn : undefined}
           onCoinFlipAnimationComplete={handleCoinFlipAnimationComplete}
           winningPlayerNameForCoinFlip={players[gameState.currentPlayerIndex]?.name}
         />
+         {gamePhase === 'player_action_phase' && !isProcessingAction && (
+          <PlayerActions
+            currentPlayer={currentPlayer}
+            activeMonster={currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2}
+            onAttack={handleMonsterAttack}
+            onRetreat={handleRetreatMonster}
+            // Play monster/spell is handled by PlayerHand click for now
+          />
+        )}
+         {gamePhase === 'turn_resolution_phase' && !isProcessingAction && (
+             <button 
+                onClick={processTurnEnd} 
+                className="my-2 px-4 py-2 bg-accent text-accent-foreground rounded hover:bg-accent/90">
+                End Turn
+             </button>
+         )}
       </div>
 
+      {/* Player 2 Side */}
       <div className="w-1/4 flex flex-col items-center p-1 md:p-2 space-y-1 md:space-y-2 flex-shrink-0">
-         <div className="w-full flex flex-col items-center space-y-1 text-xs text-muted-foreground mb-1">
+        <div className="w-full flex flex-col items-center space-y-1 text-xs text-muted-foreground mb-1">
           <div className="flex items-center space-x-1">
-            <Layers3 className="w-3 h-3" />
-            <span>Deck: {player2.deck.length}</span>
+            <Layers3 className="w-3 h-3" /><span>Deck: {player2.deck.length}</span>
           </div>
           <div className="flex items-center space-x-1">
-            <Trash2 className="w-3 h-3" />
-            <span>Discard: {player2.discardPile.length}</span>
+            <Trash2 className="w-3 h-3" /><span>Discard: {player2.discardPile.length}</span>
           </div>
         </div>
         <PlayerStatusDisplay
           player={player2}
-          isCurrentPlayer={currentPlayerIndex === 1 && (gamePhase === 'player2_select_card' || (gamePhase === 'coin_flip_animation' && gameState.currentPlayerIndex === 1))}
+          isCurrentPlayer={currentPlayerIndex === 1 && gamePhase !== 'game_over_phase' && gamePhase !== 'coin_flip_animation'}
           isOpponent={true}
         />
         <PlayerHand
           cards={player2.hand}
-          onCardSelect={handleCardSelect}
-          isPlayerTurn={currentPlayerIndex === 1 && gamePhase === 'player2_select_card'}
+           onCardSelect={(card) => {
+            if (currentPlayerIndex === 1 && gamePhase === 'player_action_phase' && !isProcessingAction) {
+              if (card.cardType === 'Monster' && !activeMonsterP2) {
+                handlePlayMonsterFromHand(card as MonsterCardData);
+              } else if (card.cardType === 'Spell') {
+                handlePlaySpellFromHand(card as SpellCardData);
+              }
+            }
+          }}
+          isPlayerTurn={currentPlayerIndex === 1 && gamePhase === 'player_action_phase' && !isProcessingAction}
+          canPlayMonster={!activeMonsterP2}
           isOpponent={true}
-          selectedCardId={selectedCardP2?.id}
-          hasCommittedCard={!!selectedCardP2 && (gamePhase === 'player1_select_card' || gamePhase === 'combat_animation' || gamePhase === 'combat_resolution')}
         />
       </div>
 
       <GameOverModal
-        isOpen={gamePhase === 'game_over'}
+        isOpen={gamePhase === 'game_over_phase'}
         winnerName={winner?.name}
         onRestart={() => {
           hasInitialized.current = false; 
+          descriptionQueueRef.current = [];
+          isFetchingDescriptionRef.current = false;
           setGameState(null); 
         }}
       />

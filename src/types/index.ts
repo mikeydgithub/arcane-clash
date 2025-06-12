@@ -4,7 +4,7 @@ export interface BaseCardData {
   title: string;
   artUrl?: string;
   isLoadingArt: boolean;
-  description?: string; // For Monsters: flavor text. For Spells: effect description.
+  description?: string;
   isLoadingDescription?: boolean;
 }
 
@@ -23,7 +23,6 @@ export interface MonsterCardData extends BaseCardData {
 
 export interface SpellCardData extends BaseCardData {
   cardType: 'Spell';
-  // Future: Specific effect properties like target, power, duration could be added here.
 }
 
 export type CardData = MonsterCardData | SpellCardData;
@@ -42,18 +41,19 @@ export type GamePhase =
   | "initial"
   | "coin_flip_animation"
   | "loading_art"
-  | "player1_select_card"
-  | "player2_select_card"
-  | "combat_animation" // This phase will now also show spells being "cast"
-  | "combat_resolution" // Renamed from combat_summary to reflect turn resolution
-  | "game_over";
+  | "player_action_phase" // Player decides to play monster, spell, attack, or retreat
+  | "spell_effect_phase"  // Visualizing spell effect (mostly logging for now)
+  | "combat_phase"        // Monster vs Monster or Monster vs Player
+  | "turn_resolution_phase" // After action: check defeated monsters, draw card, check game over
+  | "game_over_phase";
 
 export interface GameState {
   players: [PlayerData, PlayerData];
-  currentPlayerIndex: 0 | 1;
+  currentPlayerIndex: 0 | 1; // Index of the player whose turn it is to act
   gamePhase: GamePhase;
-  selectedCardP1?: CardData; // Can be Monster or Spell
-  selectedCardP2?: CardData; // Can be Monster or Spell
+  activeMonsterP1?: MonsterCardData; // Monster P1 has in the arena
+  activeMonsterP2?: MonsterCardData; // Monster P2 has in the arena
   winner?: PlayerData;
   gameLogMessages: string[];
+  isProcessingAction?: boolean; // To disable inputs during animations/AI calls
 }
