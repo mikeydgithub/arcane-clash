@@ -1,23 +1,23 @@
 
 'use client';
 
-import type { CardData, MonsterCardData } from '@/types'; // Ensure MonsterCardData is imported if specific monster props are accessed
+import type { CardData, MonsterCardData } from '@/types'; 
 import { CardView } from './CardView';
 import { CoinFlipAnimation } from './CoinFlipAnimation';
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react';
-// Button for "Continue" is removed as turn progression is handled differently
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface BattleArenaProps {
-  player1Card?: MonsterCardData; // Now specifically MonsterCardData or undefined
-  player2Card?: MonsterCardData; // Now specifically MonsterCardData or undefined
+  player1Card?: MonsterCardData; 
+  player2Card?: MonsterCardData; 
   player1Name: string;
   player2Name: string;
   showClashAnimation?: boolean;
   gameLogMessages: string[];
   gamePhase: string;
-  // onProceedToNextTurn is removed
+  
   onCoinFlipAnimationComplete?: () => void;
   winningPlayerNameForCoinFlip?: string;
 }
@@ -44,8 +44,8 @@ export function BattleArena({
       opacity: 1, x: ['0%', '-60%', '0%'], rotate: [0, 2, 0], scale: [1, 1.05, 1], zIndex: [0, 5, 0],
       transition: { delay: 0.5, duration: 0.7, ease: 'easeInOut', times: [0, 0.5, 1] },
     },
-    // Spell casting animation could be a new variant if needed, or handled by a spell effect phase visual
-    spellCastP1: { // Example for a spell effect visualization (if a spell card was temporarily shown here)
+    
+    spellCastP1: { 
         opacity: [0.5, 1, 0.5], scale: [0.8, 1.1, 0.8], y: [0, -20, 0],
         transition: { duration: 1.0, ease: 'easeInOut' }
     },
@@ -65,7 +65,7 @@ export function BattleArena({
   const hideClashTextTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (showClashAnimation && player1Card && player2Card) { // Assumes both are monsters for clash
+    if (showClashAnimation && player1Card && player2Card) { 
       setClashTextVisible(true);
       if (hideClashTextTimerRef.current) clearTimeout(hideClashTextTimerRef.current);
       hideClashTextTimerRef.current = setTimeout(() => setClashTextVisible(false), 2000); 
@@ -85,19 +85,18 @@ export function BattleArena({
     if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
     entriesToAnimateRef.current = [];
 
-    // Simpler log update: if gameLogMessages change, update displayedLogEntries after a short delay for effect
-    // This avoids complex diffing if logs can be fully reset or appended to.
+    
     if (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') {
         setDisplayedLogEntries(gameLogMessages || []);
         return;
     }
     
-    // For other phases, animate new entries
+    
     const currentDisplayedCount = displayedLogEntries.length;
     if (gameLogMessages.length > currentDisplayedCount) {
       entriesToAnimateRef.current = gameLogMessages.slice(currentDisplayedCount);
     } else if (gameLogMessages.length < currentDisplayedCount && gameLogMessages.length > 0) {
-       // If log messages are externally reset or shortened, reflect immediately
+       
       setDisplayedLogEntries(gameLogMessages);
     } else if (gameLogMessages.length === 0 && currentDisplayedCount > 0) {
         setDisplayedLogEntries([]);
@@ -144,7 +143,7 @@ export function BattleArena({
           <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
             {displayedLogEntries.map((entry, index) => (
               <motion.p
-                key={`coin-log-${index}`}
+                key={`coin-log-${index}-${entry.substring(0,10)}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
@@ -160,13 +159,12 @@ export function BattleArena({
     );
   }
 
-  // Determine animation for cards in the arena (active monsters)
+  
   const getArenaCardAnimation = (isP1Card: boolean) => {
     if (gamePhase === 'combat_phase' && player1Card && player2Card) {
       return isP1Card ? 'clashP1' : 'clashP2';
     }
-    // Could add spell effect animations here if spells were temporarily shown in arena
-    // e.g., if gamePhase === 'spell_effect_phase' && a spell was just "cast"
+    
     return 'visible';
   };
 
@@ -187,7 +185,7 @@ export function BattleArena({
         )}
       </AnimatePresence>
       <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
-        {/* Player 1's Active Monster */}
+        
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player1Card && (
@@ -205,7 +203,7 @@ export function BattleArena({
           </AnimatePresence>
         </div>
 
-        {/* Player 2's Active Monster */}
+        
         <div className="w-1/2 flex justify-center items-center h-full">
           <AnimatePresence>
             {player2Card && (
@@ -224,7 +222,7 @@ export function BattleArena({
         </div>
       </div>
 
-      {/* "Continue" button is removed; turn progression is via PlayerActions or automatic */}
+      
 
       <div className="w-full max-w-xl h-[30%] max-h-40 md:max-h-48 mb-1 md:mb-2">
         <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
@@ -235,11 +233,11 @@ export function BattleArena({
           )}
           {displayedLogEntries.map((entry, index) => (
             <motion.p
-              key={`${gamePhase}-log-${index}`} 
+              key={`log-${index}-${gamePhase}-${entry.substring(0,15)}`} 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="text-[10px] md:text-xs text-foreground mb-1 last:mb-0"
+              className="text-[10px] md:text-xs text-foreground mb-1 last:mb-0 whitespace-pre-line"
             >
               {entry}
             </motion.p>
@@ -250,3 +248,4 @@ export function BattleArena({
     </div>
   );
 }
+
