@@ -38,7 +38,7 @@ export function GameBoard() {
 
   useEffect(() => {
     const prevState = previousGameStateRef.current;
-    const nextState = gameStateRef.current; // Use the ref for the most current state
+    const nextState = gameStateRef.current; 
 
     if (nextState && prevState) {
       let changed = false;
@@ -63,11 +63,6 @@ export function GameBoard() {
             });
             changed = true;
       }
-      // Add other state comparisons here if needed for logging
-      // if (changed) {
-      //   console.log('[GAME STATE CHANGED]', { prevState, nextState });
-      // }
-
     } else if (nextState && !prevState && nextState.gamePhase) {
         console.log(`[GAME STATE INITIALIZED] Phase: ${nextState.gamePhase}`);
         if(nextState.gameLogMessages?.length > 0) {
@@ -77,91 +72,119 @@ export function GameBoard() {
             });
         }
     }
-    previousGameStateRef.current = nextState ? { ...nextState } : null; // Store a copy
+    previousGameStateRef.current = nextState ? { ...nextState } : null; 
   }, [gameState]);
 
 
   const initializeGame = useCallback(async () => {
-    if (hasInitialized.current && gameStateRef.current) {
-        console.log('[GameBoard] InitializeGame called, but game is already initialized and has state. Skipping.');
-        return;
+    if (
+      hasInitialized.current &&
+      gameStateRef.current &&
+      gameStateRef.current.gamePhase !== 'loading_art' &&
+      gameStateRef.current.gamePhase !== 'initial' &&
+      gameStateRef.current.gamePhase !== 'coin_flip_animation' // Avoid re-init if already starting coin flip
+    ) {
+      console.log('[GameBoard] InitializeGame: Game appears to be in a valid, post-initialization state. Skipping full re-init.');
+      return;
     }
-     if (gameStateRef.current && !hasInitialized.current) {
-        console.warn('[GameBoard] InitializeGame called, gameStateRef exists but not initialized. This might be a re-init attempt. Proceeding.');
+    console.log('[GameBoard] Initializing game sequence starting...');
+
+    logAndSetGameState(prev => ({
+      ...(prev || {} as GameState),
+      gamePhase: 'loading_art',
+      gameLogMessages: ["Initializing Arcane Clash... Preparing cards..."],
+      isProcessingAction: true 
+    }));
+
+    try {
+      const masterMonsterPool = shuffleDeck(generateMonsterCards());
+      const masterSpellPool = shuffleDeck(generateSpellCards());
+
+      if (masterMonsterPool.length < MAX_MONSTERS_PER_DECK * 2 || masterSpellPool.length < MAX_SPELLS_PER_DECK * 2) {
+          console.error("Not enough pregenerated cards to build decks. Run 'npm run pregenerate:cards'.");
+          toast({
+              title: "Card Data Missing",
+              description: "Pregenerated card data is incomplete. Please run the generation script or check console.",
+              variant: "destructive",
+              duration: 10000,
+          });
+          logAndSetGameState(prev => ({
+            ...(prev || {} as GameState), 
+            gamePhase: 'initial', 
+            gameLogMessages: ["Error: Card data missing. Pregenerate cards."],
+            isProcessingAction: false
+          }));
+          hasInitialized.current = false;
+          return;
+      }
+
+      const p1Monsters = masterMonsterPool.slice(0, MAX_MONSTERS_PER_DECK);
+      const p1Spells = masterSpellPool.slice(0, MAX_SPELLS_PER_DECK);
+      const player1DeckFull = shuffleDeck([...p1Monsters, ...p1Spells]);
+
+      const p2Monsters = masterMonsterPool.slice(MAX_MONSTERS_PER_DECK, MAX_MONSTERS_PER_DECK * 2);
+      const p2Spells = masterSpellPool.slice(MAX_SPELLS_PER_DECK, MAX_SPELLS_PER_DECK * 2);
+      const player2DeckFull = shuffleDeck([...p2Monsters, ...p2Spells]);
+
+      const { dealtCards: p1InitialHand, remainingDeck: p1DeckAfterDeal } = dealCards(player1DeckFull, CARDS_IN_HAND);
+      const { dealtCards: p2InitialHand, remainingDeck: p2DeckAfterDeal } = dealCards(player2DeckFull, CARDS_IN_HAND);
+
+      const firstPlayerIndex = Math.random() < 0.5 ? 0 : 1;
+
+      const initialPlayer1: PlayerData = {
+        id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP,
+        hand: p1InitialHand.map(c => ({ ...c, isLoadingDescription: false })),
+        deck: p1DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: false })),
+        discardPile: [],
+        avatarUrl: 'https://placehold.co/64x64.png?text=P1',
+      };
+      const initialPlayer2: PlayerData = {
+        id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
+        hand: p2InitialHand.map(c => ({ ...c, isLoadingDescription: false })),
+        deck: p2DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: false })),
+        discardPile: [],
+        avatarUrl: 'https://placehold.co/64x64.png?text=P2',
+      };
+
+      logAndSetGameState({
+        players: [initialPlayer1, initialPlayer2],
+        currentPlayerIndex: firstPlayerIndex,
+        gamePhase: 'coin_flip_animation',
+        activeMonsterP1: undefined,
+        activeMonsterP2: undefined,
+        winner: undefined,
+        gameLogMessages: ["Game cards ready. First player will be determined by coin flip. Flipping coin..."],
+        isProcessingAction: false,
+      });
+      
+      hasInitialized.current = true; // Set only on full successful initialization
+      
+      descriptionQueueRef.current = [];
+      [...initialPlayer1.hand, ...initialPlayer2.hand].forEach((card, globalIndex) => {
+          if (!card.description && card.isLoadingDescription !== true) { 
+              const playerIndex = globalIndex < initialPlayer1.hand.length ? 0 : 1;
+              descriptionQueueRef.current.push({ card, playerIndex });
+          }
+      });
+      if (descriptionQueueRef.current.length > 0) {
+          console.log(`[GameBoard] Initial description queue length: ${descriptionQueueRef.current.length}`);
+      }
+    } catch (error) {
+      console.error("Unexpected error during game initialization:", error);
+      toast({
+          title: "Initialization Error",
+          description: "A critical error occurred during game setup. Please try refreshing.",
+          variant: "destructive",
+          duration: 10000,
+      });
+      logAndSetGameState(prev => ({
+          ...(prev || {} as GameState),
+          gamePhase: 'initial',
+          gameLogMessages: [...(prev?.gameLogMessages?.slice(0, -1) || []), "Error: Critical problem during game setup. Refresh may be needed."],
+          isProcessingAction: false
+      }));
+      hasInitialized.current = false; // Ensure initialization can be retried
     }
-
-
-    console.log('[GameBoard] Initializing game...');
-    hasInitialized.current = true;
-    logAndSetGameState(prev => ({...(prev || {} as GameState), gamePhase: 'loading_art', gameLogMessages: ["Initializing Arcane Clash... Preparing cards..."]}));
-
-    const masterMonsterPool = shuffleDeck(generateMonsterCards());
-    const masterSpellPool = shuffleDeck(generateSpellCards());
-
-    if (masterMonsterPool.length < MAX_MONSTERS_PER_DECK * 2 || masterSpellPool.length < MAX_SPELLS_PER_DECK * 2) {
-        console.error("Not enough pregenerated cards to build decks. Run 'npm run pregenerate:cards'.");
-        toast({
-            title: "Card Data Missing",
-            description: "Pregenerated card data is incomplete. Please run the generation script or check console.",
-            variant: "destructive",
-            duration: 10000,
-        });
-        logAndSetGameState(prev => ({...(prev || {} as GameState), gamePhase: 'initial', gameLogMessages: ["Error: Card data missing. Pregenerate cards."]}));
-        hasInitialized.current = false;
-        return;
-    }
-
-    const p1Monsters = masterMonsterPool.slice(0, MAX_MONSTERS_PER_DECK);
-    const p1Spells = masterSpellPool.slice(0, MAX_SPELLS_PER_DECK);
-    const player1DeckFull = shuffleDeck([...p1Monsters, ...p1Spells]);
-
-    const p2Monsters = masterMonsterPool.slice(MAX_MONSTERS_PER_DECK, MAX_MONSTERS_PER_DECK * 2);
-    const p2Spells = masterSpellPool.slice(MAX_SPELLS_PER_DECK, MAX_SPELLS_PER_DECK * 2);
-    const player2DeckFull = shuffleDeck([...p2Monsters, ...p2Spells]);
-
-    const { dealtCards: p1InitialHand, remainingDeck: p1DeckAfterDeal } = dealCards(player1DeckFull, CARDS_IN_HAND);
-    const { dealtCards: p2InitialHand, remainingDeck: p2DeckAfterDeal } = dealCards(player2DeckFull, CARDS_IN_HAND);
-
-    const firstPlayerIndex = Math.random() < 0.5 ? 0 : 1;
-
-    const initialPlayer1: PlayerData = {
-      id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP,
-      hand: p1InitialHand.map(c => ({ ...c, isLoadingDescription: false })),
-      deck: p1DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: false })),
-      discardPile: [],
-      avatarUrl: 'https://placehold.co/64x64.png?text=P1',
-    };
-    const initialPlayer2: PlayerData = {
-      id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
-      hand: p2InitialHand.map(c => ({ ...c, isLoadingDescription: false })),
-      deck: p2DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: false })),
-      discardPile: [],
-      avatarUrl: 'https://placehold.co/64x64.png?text=P2',
-    };
-
-    logAndSetGameState({
-      players: [initialPlayer1, initialPlayer2],
-      currentPlayerIndex: firstPlayerIndex,
-      gamePhase: 'coin_flip_animation',
-      activeMonsterP1: undefined,
-      activeMonsterP2: undefined,
-      winner: undefined,
-      gameLogMessages: ["Game cards ready. First player will be determined by coin flip. Flipping coin..."],
-      isProcessingAction: false,
-    });
-    
-    descriptionQueueRef.current = [];
-    [...initialPlayer1.hand, ...initialPlayer2.hand].forEach((card, globalIndex) => {
-        if (!card.description && card.isLoadingDescription !== true) { 
-            const playerIndex = globalIndex < initialPlayer1.hand.length ? 0 : 1;
-            console.log(`[GameBoard] Queuing ${card.title} for description fetch for player ${playerIndex + 1} (init). Has description: ${!!card.description}, isLoading: ${card.isLoadingDescription}`);
-            descriptionQueueRef.current.push({ card, playerIndex });
-        }
-    });
-    if (descriptionQueueRef.current.length > 0) {
-        console.log(`[GameBoard] Initial description queue length: ${descriptionQueueRef.current.length}`);
-    }
-
   }, [toast, logAndSetGameState]);
 
   const handleCoinFlipAnimationComplete = useCallback(() => {
@@ -280,24 +303,27 @@ export function GameBoard() {
 
   useEffect(() => {
     console.log('[GameBoard] Effect: Checking game state for initialization.');
-    if (!gameStateRef.current) { // Check ref
-      console.log('[GameBoard] gameState is null, ensuring hasInitialized is false.');
-      hasInitialized.current = false;
+    if (!gameStateRef.current) {
+      console.log('[GameBoard] Effect: gameState is null. Ensuring hasInitialized is false for new init attempt.');
+      if(hasInitialized.current) hasInitialized.current = false; 
     }
 
-    if (!gameStateRef.current && !hasInitialized.current) { // Check ref
-      console.log('[GameBoard] Effect: gameState is null and not initialized. Calling initializeGame.');
-      initializeGame();
-    } else if (gameStateRef.current && hasInitialized.current) { // Check ref
-      console.log('[GameBoard] Effect: Game state exists and is initialized.');
-    } else if (!gameStateRef.current && hasInitialized.current) { // Check ref
-      console.log('[GameBoard] Effect: gameState is null, but hasInitialized is true. Game might have been reset. Preparing for re-initialization if triggered (e.g. by GameOverModal).');
-    } else if (gameStateRef.current && !hasInitialized.current) { // Check ref
-      console.warn('[GameBoard] Effect: gameState exists, but hasInitialized is false. This state is unexpected. Attempting to re-initialize.');
-      initializeGame();
+    // Primary condition to start or restart initialization
+    if (!hasInitialized.current) {
+      // If gameStateRef.current is null OR if it exists but stuck in a pre-game phase, try initializing.
+      if (!gameStateRef.current || 
+          (gameStateRef.current && (gameStateRef.current.gamePhase === 'initial' || gameStateRef.current.gamePhase === 'loading_art'))) {
+        console.log('[GameBoard] Effect: Conditions met to call initializeGame().');
+        initializeGame();
+      } else if (gameStateRef.current) {
+        // hasInitialized is false, but game is in some other phase (e.g. player_action_phase after an HMR).
+        // This state is unusual. Log it, but might not need to auto-reinit unless it's a problem.
+        console.warn(`[GameBoard] Effect: hasInitialized is false, but gamePhase is ${gameStateRef.current.gamePhase}. Will not re-initialize automatically unless reset occurs.`);
+      }
+    } else if (gameStateRef.current && hasInitialized.current) {
+      console.log('[GameBoard] Effect: Game state exists and is marked as initialized.');
     }
-  }, [initializeGame]); // gameState (state variable) is not a dependency here
-
+  }, [initializeGame, gameState]); // Added gameState to deps to re-evaluate if game state externally becomes null
 
   useEffect(() => {
     if (!gameStateRef.current || isFetchingDescriptionRef.current || descriptionQueueRef.current.length === 0) return;
@@ -333,7 +359,6 @@ export function GameBoard() {
                     }
                 }
 
-
                 if (cardNeedsFetching) {
                      console.log(`[ProcessQueue] Fetching for ${card.title} from queue for player ${playerIndex}.`);
                      await fetchAndSetCardDescription(card, playerIndex);
@@ -353,7 +378,7 @@ export function GameBoard() {
         console.log(`[GameBoard] Starting to process description queue of length: ${descriptionQueueRef.current.length}`);
         processQueue();
     }
-  }, [fetchAndSetCardDescription]); // gameState (state variable) is not needed, processQueue uses gameStateRef.current
+  }, [fetchAndSetCardDescription]); 
 
 
   const appendLog = (message: string) => {
@@ -552,7 +577,6 @@ export function GameBoard() {
         return {...prev, isProcessingAction: true, gamePhase: 'combat_phase'};
     });
 
-    // Short delay to allow phase change to reflect before heavy computation and logging
     setTimeout(() => {
         const latestGameState = gameStateRef.current;
         if (!latestGameState) return;
@@ -762,12 +786,12 @@ export function GameBoard() {
                 players: finalPlayers,
                 activeMonsterP1: nextActiveMonsterP1,
                 activeMonsterP2: nextActiveMonsterP2,
-                gameLogMessages: [...(prev.gameLogMessages || []), ...combatLogMessages], // Append combat logs
-                gamePhase: 'turn_resolution_phase', // Move to resolution after combat
+                gameLogMessages: [...(prev.gameLogMessages || []), ...combatLogMessages], 
+                gamePhase: 'turn_resolution_phase', 
             };
         });
-        setTimeout(() => processTurnEnd(), 500); // Shorter delay as turn_resolution_phase is set now
-    }, 100); // Short delay for phase change, was 2000
+        setTimeout(() => processTurnEnd(), 500); 
+    }, 100); 
   };
 
   const handleRetreatMonster = () => {
@@ -806,10 +830,14 @@ export function GameBoard() {
 
 
   if (!gameStateRef.current || gameStateRef.current.gamePhase === 'loading_art' || gameStateRef.current.gamePhase === 'initial') {
+    const currentLog = gameStateRef.current?.gameLogMessages?.slice(-1)[0];
+    const displayMessage = currentLog && currentLog.startsWith("Error:") 
+      ? currentLog 
+      : "Initializing Arcane Clash...";
     return (
       <div className="flex flex-col items-center justify-center h-screen w-screen p-4 bg-background text-foreground">
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
-        <p className="text-xl">{gameStateRef.current?.gameLogMessages?.slice(-1)[0] || "Initializing Arcane Clash..."}</p>
+        <p className="text-xl">{displayMessage}</p>
         {gameStateRef.current && <p className="text-sm mt-2">Current Phase: {gameStateRef.current.gamePhase}</p>}
       </div>
     );
@@ -868,7 +896,6 @@ export function GameBoard() {
           winningPlayerNameForCoinFlip={players[gameStateRef.current.currentPlayerIndex]?.name}
         />
          
-         {console.log("DEBUG RENDER GameBoard PlayerActions condition:", { gamePhase, isProcessingAction, currentPlayerName: currentPlayer.name })}
          {gamePhase === 'player_action_phase' && !isProcessingAction && (
           <PlayerActions
             currentPlayer={currentPlayer}
@@ -932,7 +959,7 @@ export function GameBoard() {
         isOpen={gamePhase === 'game_over_phase'}
         winnerName={winner?.name}
         onRestart={() => {
-          console.log('[GameBoard] Restarting game...');
+          console.log('[GameBoard] Restarting game by setting gameState to null and hasInitialized to false.');
           hasInitialized.current = false; 
           descriptionQueueRef.current = [];
           isFetchingDescriptionRef.current = false;
@@ -942,5 +969,3 @@ export function GameBoard() {
     </div>
   );
 }
-
-    
