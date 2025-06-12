@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CardData, GameState, PlayerData, GamePhase, MonsterCardData, SpellCardData } from '@/types';
 import { generateMonsterCards, generateSpellCards, shuffleDeck, dealCards } from '@/lib/game-utils';
-import { MONSTER_CARD_TITLES, SPELL_CARD_TITLES } from '@/lib/card-definitions';
 // AI flows are no longer directly called from GameBoard for card content
 import { PlayerHand } from './PlayerHand';
 import { PlayerStatusDisplay } from './PlayerStatusDisplay';
@@ -21,17 +20,13 @@ const MAX_SPELLS_PER_DECK = 12;
 
 export function GameBoard() {
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const { toast } = useToast(); // Still useful for other game notifications
+  const { toast } = useToast();
   const hasInitialized = useRef(false);
 
   const initializeGame = useCallback(async () => {
     hasInitialized.current = true; 
     setGameState(prev => ({...(prev || {} as GameState), gamePhase: 'loading_art', gameLogMessages: ["Initializing Arcane Clash... Preparing cards..."]}));
 
-    // Fetch all pregenerated monsters and spells
-    // The titles from card-definitions are implicitly used by game-utils if it filters by them,
-    // or game-utils can just return all pregenerated cards of a type.
-    // For simplicity, let's assume generateMonsterCards/generateSpellCards now return all their respective pregenerated types.
     const masterMonsterPool = shuffleDeck(generateMonsterCards());
     const masterSpellPool = shuffleDeck(generateSpellCards());
 
@@ -43,7 +38,6 @@ export function GameBoard() {
             variant: "destructive",
             duration: 10000,
         });
-        // Potentially set a game state that indicates an error and stops further initialization
         setGameState(prev => ({...(prev || {} as GameState), gamePhase: 'initial', gameLogMessages: ["Error: Card data missing. Pregenerate cards."]}));
         return;
     }
@@ -116,7 +110,6 @@ export function GameBoard() {
     }
   }, [gameState, initializeGame]);
 
-  // Removed useEffects for art and description generation as data is now preloaded.
 
   const handleCardSelect = (card: CardData) => {
     if (!gameState) return;
@@ -133,9 +126,18 @@ export function GameBoard() {
       setGameState(prev => ({ ...prev!, selectedCardP1: card, gamePhase: 'player2_select_card', currentPlayerIndex: 1, gameLogMessages: [...baseLog, message, `${opponentPlayer.name}, select your card!`] }));
     } 
     else if (gamePhase === 'player2_select_card' && currentPlayerIndex === 1) {
-      const messageP1 = gameState.selectedCardP1?.cardType === 'Spell'
+      if (!gameState.selectedCardP1) {
+        console.error("Error: Player 2 is selecting a card, but Player 1's card (selectedCardP1) is not set in gameState.");
+        toast({
+          title: "Game Logic Error",
+          description: "Player 1's card selection was not properly registered. Please try restarting the turn or game if this persists.",
+          variant: "destructive",
+        });
+        return; 
+      }
+      const messageP1 = gameState.selectedCardP1.cardType === 'Spell'
         ? `${players[0].name} readied the spell ${gameState.selectedCardP1.title}.`
-        : `${players[0].name} played ${gameState.selectedCardP1!.title}.`;
+        : `${players[0].name} played ${gameState.selectedCardP1.title}.`;
       const messageP2 = card.cardType === 'Spell'
         ? `${currentPlayer.name} responds by preparing the spell ${card.title}.`
         : `${currentPlayer.name} responds with ${card.title}.`;
