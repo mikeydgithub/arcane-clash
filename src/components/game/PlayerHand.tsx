@@ -7,11 +7,10 @@ import { cn } from '@/lib/utils';
 
 interface PlayerHandProps {
   cards: CardData[];
-  onCardSelect: (card: CardData) => void; // Called when a card is clicked for playing
+  onCardSelect: (card: CardData) => void; 
   isPlayerTurn: boolean;
   isOpponent?: boolean;
-  canPlayMonster?: boolean; // True if the player can play a monster (e.g., arena slot empty)
-  // selectedCardId and hasCommittedCard are no longer relevant in the new system
+  canPlayMonster?: boolean; 
 }
 
 export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = false, canPlayMonster = true }: PlayerHandProps) {
@@ -21,9 +20,9 @@ export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = fal
     <div className={cn(
       "flex flex-col items-center space-y-1 md:space-y-2 p-1 md:p-2 transition-all duration-500 ease-in-out w-full overflow-y-auto max-h-[calc(100vh-200px)] flex-shrink-0",
       "min-h-[200px] md:min-h-[300px]", 
+      isPlayerTurn ? "bg-primary/5" : "" // Subtle indication of active player's hand
     )}>
       {cards.map((card) => {
-        // Determine if the card is playable based on turn and type
         let cardIsActuallyPlayable = false;
         if (isPlayerTurn) {
           if (card.cardType === 'Monster' && canPlayMonster) {
@@ -34,23 +33,25 @@ export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = fal
         }
 
         return (
-          <div key={card.id} className="transition-opacity duration-300">
+          <div key={card.id} className={cn(
+            "transition-opacity duration-300",
+            cardIsActuallyPlayable ? "cursor-pointer" : "cursor-not-allowed opacity-80"
+          )}>
             <CardView 
               card={card}
               onClick={() => cardIsActuallyPlayable && onCardSelect(card)}
               isPlayable={cardIsActuallyPlayable} 
               isOpponentCard={isOpponent}
-              // isPlayerTurnForThisCard is mainly for opponent's hand visual cue, might be less relevant now
               isPlayerTurnForThisCard={isPlayerTurn && isOpponent} 
+              showDescriptionTooltip={true} // Enable tooltip for cards in hand
             />
           </div>
         );
       })}
-      {cards.length === 0 && isPlayerTurn && (
-        <p className="text-muted-foreground text-center">No cards in hand.</p>
-      )}
-       {cards.length === 0 && !isPlayerTurn && (
-        <p className="text-muted-foreground text-center text-xs italic h-full flex items-center">Waiting for cards...</p>
+      {cards.length === 0 && (
+        <p className="text-muted-foreground text-center text-xs italic h-full flex items-center p-4">
+          {isPlayerTurn ? "No cards in hand. Waiting to draw..." : "Hand is empty."}
+        </p>
       )}
     </div>
   );

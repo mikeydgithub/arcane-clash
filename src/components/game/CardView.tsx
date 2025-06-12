@@ -6,9 +6,10 @@ import type { CardData, MonsterCardData, SpellCardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert, Zap } from 'lucide-react'; 
+import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert, Zap, HelpCircle } from 'lucide-react'; 
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AnimatedNumberProps {
   value: number;
@@ -76,6 +77,7 @@ interface CardViewProps {
   isOpponentCard?: boolean;
   inBattleArena?: boolean;
   isPlayerTurnForThisCard?: boolean;
+  showDescriptionTooltip?: boolean; // New prop
 }
 
 const MotionCard = motion(Card);
@@ -103,7 +105,8 @@ export function CardView({
   isPlayable,
   isOpponentCard = false,
   inBattleArena = false,
-  isPlayerTurnForThisCard = false
+  isPlayerTurnForThisCard = false,
+  showDescriptionTooltip = false, // Default to false
 }: CardViewProps) {
   const baseCardSize = "w-40 h-56 md:w-48 md:h-64";
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-lg transition-transform duration-200 cursor-pointer" : "";
@@ -117,7 +120,7 @@ export function CardView({
 
   const isMonster = card.cardType === 'Monster';
 
-  return (
+  const cardElement = (
     <MotionCard
       className={cn(
         "flex flex-col overflow-hidden shadow-xl", 
@@ -133,7 +136,7 @@ export function CardView({
       role={isPlayable ? "button" : "img"}
       tabIndex={isPlayable ? 0 : -1}
       variants={ghastlyGlowVariants}
-      animate={inBattleArena ? "selected" : "initial"} 
+      animate={inBattleArena && isMonster ? "selected" : "initial"} // Only monsters glow in arena
       initial="initial"
     >
       <CardHeader className={cn("text-center", headerPadding)}>
@@ -141,7 +144,7 @@ export function CardView({
       </CardHeader>
 
       <div className={cn("relative w-full bg-muted/50", imageSize)}>
-        {card.isLoadingArt ? ( // This condition should ideally be false if pregenerated
+        {card.isLoadingArt ? ( 
           <Skeleton className="w-full h-full rounded-none" />
         ) : card.artUrl ? (
           <Image
@@ -151,7 +154,7 @@ export function CardView({
             style={{ objectFit: 'contain' }}
             data-ai-hint={isMonster ? "fantasy creature" : "magical spell"}
             className="rounded-t-sm"
-            priority={true} // Since art is preloaded, mark as priority
+            priority={true} 
           />
         ) : (
           <Image
@@ -193,20 +196,44 @@ export function CardView({
 
       {!inBattleArena && (
         <CardFooter className="p-2 mt-auto min-h-[2.5rem] flex items-center justify-center">
-          {card.isLoadingDescription ? ( // This should ideally be false
-            <p className="text-xs text-muted-foreground italic">Loading description...</p>
+          {card.isLoadingDescription ? ( 
+            <p className="text-xs text-muted-foreground italic">Generating info...</p>
           ) : card.description ? (
             <p className="text-xs text-muted-foreground italic truncate">
               {isMonster ? "Flavor: " : "Effect: "}
               {card.description}
             </p>
           ) : (
-             <p className="text-xs text-muted-foreground italic">
-              {isMonster ? "Flavor text unavailable." : "Effect unavailable."}
+             <p className="text-xs text-muted-foreground italic flex items-center">
+              <HelpCircle className="w-3 h-3 mr-1"/> No info yet.
             </p>
           )}
         </CardFooter>
       )}
     </MotionCard>
   );
+
+  if (showDescriptionTooltip && (card.description || card.isLoadingDescription)) {
+    return (
+      <TooltipProvider>
+        <Tooltip delayDuration={100}>
+          <TooltipTrigger asChild>{cardElement}</TooltipTrigger>
+          <TooltipContent 
+            side="top" 
+            align="center" 
+            className="max-w-[200px] break-words bg-popover text-popover-foreground p-3 rounded-md shadow-lg text-sm border border-border"
+          >
+            <p className="font-bold text-base mb-1">{card.title}</p>
+            {card.isLoadingDescription ? (
+              <p className="text-xs italic">Generating details...</p>
+            ) : card.description ? (
+              <p className="text-xs italic">{card.description}</p>
+            ) : null}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return cardElement;
 }
