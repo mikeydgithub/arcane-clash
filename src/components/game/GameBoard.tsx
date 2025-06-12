@@ -154,7 +154,7 @@ export function GameBoard() {
         activeMonsterP2: undefined,
         winner: undefined,
         gameLogMessages: ["Game cards ready. First player will be determined by coin flip. Flipping coin..."],
-        isProcessingAction: false, // Processing is false here to allow coin flip interaction
+        isProcessingAction: false, 
         isInitialMonsterEngagement: true, 
       });
 
@@ -835,51 +835,58 @@ export function GameBoard() {
         return;
     }
 
-    logAndSetGameState(prev => ({
-      ...prev!, 
-      isProcessingAction: true, 
-      gamePhase: 'selecting_swap_monster_phase',
-      gameLogMessages: [...(prev?.gameLogMessages || []), `${player.name} is choosing a monster to swap with ${monsterToSwapOut.title}.`]
-    }));
+    logAndSetGameState(prev => {
+      if (!prev) return null;
+      // Do NOT set isProcessingAction: true here, as player input is expected.
+      return {
+        ...prev, 
+        gamePhase: 'selecting_swap_monster_phase',
+        gameLogMessages: [...(prev.gameLogMessages || []), `${player.name} is choosing a monster to swap with ${monsterToSwapOut.title}.`]
+      };
+    });
   };
 
   const handleConfirmSwapMonster = (cardToSwapIn: MonsterCardData) => {
-    const currentGS = gameStateRef.current;
-    if (!currentGS || currentGS.gamePhase !== 'selecting_swap_monster_phase') return;
+    logAndSetGameState(prev => {
+        if (!prev || prev.gamePhase !== 'selecting_swap_monster_phase') return prev;
 
-    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = currentGS;
-    const player = { ...players[currentPlayerIndex] };
-    const monsterToSwapOut = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
+        const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = prev;
+        const player = { ...players[currentPlayerIndex] }; 
+        const monsterToSwapOut = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
 
-    if (!monsterToSwapOut) { // Should not happen if UI guards are correct
-        console.error("Error: handleConfirmSwapMonster called without an active monster to swap out.");
-        logAndSetGameState(prev => ({...prev!, gamePhase: 'player_action_phase', isProcessingAction: false}));
-        return;
-    }
-    if (player.hand.length >= CARDS_IN_HAND) { // Double check, though UI should prevent this
-         toast({ title: "Hand Full", description: "Cannot complete swap, hand became full.", variant: "destructive" });
-         logAndSetGameState(prev => ({...prev!, gamePhase: 'player_action_phase', isProcessingAction: false}));
-         return;
-    }
+        if (!monsterToSwapOut) { 
+            console.error("Error: handleConfirmSwapMonster called without an active monster to swap out.");
+            return {...prev, gamePhase: 'player_action_phase', isProcessingAction: false};
+        }
+        // This check might be slightly redundant if PlayerActions disables button, but good for safety.
+        if (player.hand.length >= CARDS_IN_HAND) {
+             toast({ title: "Hand Full", description: "Cannot complete swap, hand became full.", variant: "destructive" });
+             // Revert to player_action_phase, isProcessingAction should be false as player needs to act.
+             return {...prev, gamePhase: 'player_action_phase', isProcessingAction: false};
+        }
 
+        const newHand = player.hand.filter(c => c.id !== cardToSwapIn.id); 
+        newHand.push({ ...monsterToSwapOut }); 
 
-    const newHand = player.hand.filter(c => c.id !== cardToSwapIn.id); // Remove new monster from hand
-    newHand.push({ ...monsterToSwapOut }); // Add old active monster to hand (preserving its state)
+        const updatedPlayer = { ...player, hand: newHand };
+        const newPlayers = [...players] as [PlayerData, PlayerData];
+        newPlayers[currentPlayerIndex] = updatedPlayer;
 
-    const updatedPlayer = { ...player, hand: newHand };
-    const newPlayers = [...players] as [PlayerData, PlayerData];
-    newPlayers[currentPlayerIndex] = updatedPlayer;
-
-    appendLog(`${player.name} swaps out ${monsterToSwapOut.title} for ${cardToSwapIn.title}!`);
-
-    logAndSetGameState(prev => ({
-      ...prev!,
-      players: newPlayers,
-      [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: cardToSwapIn,
-      gamePhase: 'turn_resolution_phase',
-      // isProcessingAction will be set to false by processTurnEnd
-    }));
-    setTimeout(() => processTurnEnd(), 500);
+        const newLogMessages = [...(prev.gameLogMessages || []), `${player.name} swaps out ${monsterToSwapOut.title} for ${cardToSwapIn.title}!`];
+        
+        const nextState = {
+          ...prev,
+          players: newPlayers,
+          [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: cardToSwapIn,
+          gamePhase: 'turn_resolution_phase', 
+          gameLogMessages: newLogMessages,
+          isProcessingAction: true, // System will now process the turn end.
+        };
+        
+        setTimeout(() => processTurnEnd(), 500); 
+        
+        return nextState;
+    });
   };
 
 
@@ -922,11 +929,11 @@ export function GameBoard() {
           cards={player1.hand}
           onCardSelect={(card) => {
             const latestGS = gameStateRef.current;
-            if (!latestGS || latestGS.isProcessingAction || latestGS.currentPlayerIndex !== 0) return;
+            if (!latestGS || latestGS.currentPlayerIndex !== 0) return;
 
             if (latestGS.gamePhase === 'selecting_swap_monster_phase' && card.cardType === 'Monster') {
               handleConfirmSwapMonster(card as MonsterCardData);
-            } else if (latestGS.gamePhase === 'player_action_phase') {
+            } else if (latestGS.gamePhase === 'player_action_phase' && !latestGS.isProcessingAction) {
               if (card.cardType === 'Monster' && !latestGS.activeMonsterP1) {
                 handlePlayMonsterFromHand(card as MonsterCardData);
               } else if (card.cardType === 'Spell') {
@@ -973,7 +980,7 @@ export function GameBoard() {
                 End Turn
              </button>
          )}
-         {(isProcessingAction  && gamePhase !== 'selecting_swap_monster_phase') && ( // Keep UI interactive for swap selection
+         {(isProcessingAction  && gamePhase !== 'selecting_swap_monster_phase') && ( 
             <div className="my-2 flex items-center space-x-2 text-sm text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>Processing action...</span>
@@ -1000,11 +1007,11 @@ export function GameBoard() {
           cards={player2.hand}
            onCardSelect={(card) => {
             const latestGS = gameStateRef.current;
-            if (!latestGS || latestGS.isProcessingAction || latestGS.currentPlayerIndex !== 1) return;
+            if (!latestGS || latestGS.currentPlayerIndex !== 1) return;
 
             if (latestGS.gamePhase === 'selecting_swap_monster_phase' && card.cardType === 'Monster') {
               handleConfirmSwapMonster(card as MonsterCardData);
-            } else if (latestGS.gamePhase === 'player_action_phase') {
+            } else if (latestGS.gamePhase === 'player_action_phase' && !latestGS.isProcessingAction) {
               if (card.cardType === 'Monster' && !latestGS.activeMonsterP2) {
                 handlePlayMonsterFromHand(card as MonsterCardData);
               } else if (card.cardType === 'Spell') {
