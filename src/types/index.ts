@@ -41,7 +41,8 @@ export type GamePhase =
   | "initial"
   | "coin_flip_animation"
   | "loading_art"
-  | "player_action_phase" // Player decides to play monster, spell, attack, or retreat
+  | "player_action_phase" // Player decides to play monster, spell, attack, or initiate swap
+  | "selecting_swap_monster_phase" // Player is selecting a monster from hand to swap with active one
   | "spell_effect_phase"  // Visualizing spell effect (mostly logging for now)
   | "combat_phase"        // Monster vs Monster or Monster vs Player
   | "turn_resolution_phase" // After action: check defeated monsters, draw card, check game over

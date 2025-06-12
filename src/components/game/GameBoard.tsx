@@ -93,7 +93,7 @@ export function GameBoard() {
         gamePhase: 'loading_art',
         gameLogMessages: ["Initializing Arcane Clash... Preparing cards..."],
         isProcessingAction: true,
-        isInitialMonsterEngagement: true, // Reset for new game
+        isInitialMonsterEngagement: true,
       }));
 
       const masterMonsterPool = shuffleDeck(generateMonsterCards());
@@ -154,7 +154,7 @@ export function GameBoard() {
         activeMonsterP2: undefined,
         winner: undefined,
         gameLogMessages: ["Game cards ready. First player will be determined by coin flip. Flipping coin..."],
-        isProcessingAction: false,
+        isProcessingAction: false, // Processing is false here to allow coin flip interaction
         isInitialMonsterEngagement: true, 
       });
 
@@ -491,7 +491,7 @@ export function GameBoard() {
         ...prev,
         players: newPlayers,
         [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: card,
-        isInitialMonsterEngagement: false, // Once any monster is played, this becomes false
+        isInitialMonsterEngagement: false, 
       };
     });
 
@@ -810,39 +810,74 @@ export function GameBoard() {
             };
         });
         setTimeout(() => processTurnEnd(), 500);
-    }, 1000); // Increased delay for clash animation visibility
+    }, 1000); 
   };
 
-  const handleRetreatMonster = () => {
-    const currentBoardGameState = gameStateRef.current; 
-    if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
-    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = currentBoardGameState;
-    const player = players[currentPlayerIndex];
-    const monsterToRetreat = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
+  const handleInitiateSwap = () => {
+    const currentGS = gameStateRef.current;
+    if (!currentGS || currentGS.isProcessingAction) return;
 
-    if (!monsterToRetreat) {
-      toast({ title: "No monster to retreat", description: "You don't have an active monster in the arena.", variant: "destructive" });
+    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = currentGS;
+    const player = players[currentPlayerIndex];
+    const monsterToSwapOut = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
+
+    if (!monsterToSwapOut) {
+      toast({ title: "No monster to swap", description: "You don't have an active monster.", variant: "destructive" });
       return;
     }
     if (player.hand.length >= CARDS_IN_HAND) {
-        toast({ title: "Hand Full", description: "Cannot retreat monster, your hand is full.", variant: "destructive" });
+        toast({ title: "Hand Full", description: "Cannot swap monster, your hand is full.", variant: "destructive" });
+        return;
+    }
+    const hasOtherMonsterInHand = player.hand.some(c => c.cardType === 'Monster' && c.id !== monsterToSwapOut.id);
+    if (!hasOtherMonsterInHand) {
+        toast({ title: "No Monster to Swap In", description: "You need another monster in your hand to swap.", variant: "destructive" });
         return;
     }
 
-    logAndSetGameState(prev => ({...prev!, isProcessingAction: true}));
-    appendLog(`${player.name} retreats ${monsterToRetreat.title} back to their hand.`);
+    logAndSetGameState(prev => ({
+      ...prev!, 
+      isProcessingAction: true, 
+      gamePhase: 'selecting_swap_monster_phase',
+      gameLogMessages: [...(prev?.gameLogMessages || []), `${player.name} is choosing a monster to swap with ${monsterToSwapOut.title}.`]
+    }));
+  };
 
-    const retreatedCard = { ...monsterToRetreat, isLoadingDescription: false };
-    const newHand = [...player.hand, retreatedCard];
+  const handleConfirmSwapMonster = (cardToSwapIn: MonsterCardData) => {
+    const currentGS = gameStateRef.current;
+    if (!currentGS || currentGS.gamePhase !== 'selecting_swap_monster_phase') return;
+
+    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = currentGS;
+    const player = { ...players[currentPlayerIndex] };
+    const monsterToSwapOut = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
+
+    if (!monsterToSwapOut) { // Should not happen if UI guards are correct
+        console.error("Error: handleConfirmSwapMonster called without an active monster to swap out.");
+        logAndSetGameState(prev => ({...prev!, gamePhase: 'player_action_phase', isProcessingAction: false}));
+        return;
+    }
+    if (player.hand.length >= CARDS_IN_HAND) { // Double check, though UI should prevent this
+         toast({ title: "Hand Full", description: "Cannot complete swap, hand became full.", variant: "destructive" });
+         logAndSetGameState(prev => ({...prev!, gamePhase: 'player_action_phase', isProcessingAction: false}));
+         return;
+    }
+
+
+    const newHand = player.hand.filter(c => c.id !== cardToSwapIn.id); // Remove new monster from hand
+    newHand.push({ ...monsterToSwapOut }); // Add old active monster to hand (preserving its state)
+
     const updatedPlayer = { ...player, hand: newHand };
     const newPlayers = [...players] as [PlayerData, PlayerData];
     newPlayers[currentPlayerIndex] = updatedPlayer;
 
+    appendLog(`${player.name} swaps out ${monsterToSwapOut.title} for ${cardToSwapIn.title}!`);
+
     logAndSetGameState(prev => ({
       ...prev!,
       players: newPlayers,
-      [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: undefined,
+      [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: cardToSwapIn,
       gamePhase: 'turn_resolution_phase',
+      // isProcessingAction will be set to false by processTurnEnd
     }));
     setTimeout(() => processTurnEnd(), 500);
   };
@@ -886,18 +921,23 @@ export function GameBoard() {
         <PlayerHand
           cards={player1.hand}
           onCardSelect={(card) => {
-            const latestBoardGameState = gameStateRef.current; 
-            if (latestBoardGameState?.currentPlayerIndex === 0 && latestBoardGameState?.gamePhase === 'player_action_phase' && !latestBoardGameState?.isProcessingAction) {
-              if (card.cardType === 'Monster' && !latestBoardGameState?.activeMonsterP1) {
+            const latestGS = gameStateRef.current;
+            if (!latestGS || latestGS.isProcessingAction || latestGS.currentPlayerIndex !== 0) return;
+
+            if (latestGS.gamePhase === 'selecting_swap_monster_phase' && card.cardType === 'Monster') {
+              handleConfirmSwapMonster(card as MonsterCardData);
+            } else if (latestGS.gamePhase === 'player_action_phase') {
+              if (card.cardType === 'Monster' && !latestGS.activeMonsterP1) {
                 handlePlayMonsterFromHand(card as MonsterCardData);
               } else if (card.cardType === 'Spell') {
                 handlePlaySpellFromHand(card as SpellCardData);
               }
             }
           }}
-          isPlayerTurn={currentPlayerIndex === 0 && gamePhase === 'player_action_phase' && !isProcessingAction}
-          canPlayMonster={!activeMonsterP1}
+          isPlayerTurn={currentPlayerIndex === 0 && (gamePhase === 'player_action_phase' || gamePhase === 'selecting_swap_monster_phase') && !isProcessingAction}
+          canPlayMonster={!activeMonsterP1 && gamePhase === 'player_action_phase'}
           isOpponent={false}
+          currentPhase={gamePhase}
         />
       </div>
 
@@ -920,7 +960,7 @@ export function GameBoard() {
             currentPlayer={currentPlayer}
             activeMonster={currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2}
             onAttack={handleMonsterAttack}
-            onRetreat={handleRetreatMonster}
+            onInitiateSwap={handleInitiateSwap}
             canPlayMonsterFromHand={currentPlayer.hand.some(c => c.cardType === 'Monster') && !(currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2)}
             canPlaySpellFromHand={currentPlayer.hand.some(c => c.cardType === 'Spell')}
             playerHandFull={currentPlayer.hand.length >= CARDS_IN_HAND}
@@ -933,7 +973,7 @@ export function GameBoard() {
                 End Turn
              </button>
          )}
-         {isProcessingAction && (
+         {(isProcessingAction  && gamePhase !== 'selecting_swap_monster_phase') && ( // Keep UI interactive for swap selection
             <div className="my-2 flex items-center space-x-2 text-sm text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>Processing action...</span>
@@ -959,18 +999,23 @@ export function GameBoard() {
         <PlayerHand
           cards={player2.hand}
            onCardSelect={(card) => {
-            const latestBoardGameState = gameStateRef.current; 
-            if (latestBoardGameState?.currentPlayerIndex === 1 && latestBoardGameState?.gamePhase === 'player_action_phase' && !latestBoardGameState?.isProcessingAction) {
-              if (card.cardType === 'Monster' && !latestBoardGameState?.activeMonsterP2) {
+            const latestGS = gameStateRef.current;
+            if (!latestGS || latestGS.isProcessingAction || latestGS.currentPlayerIndex !== 1) return;
+
+            if (latestGS.gamePhase === 'selecting_swap_monster_phase' && card.cardType === 'Monster') {
+              handleConfirmSwapMonster(card as MonsterCardData);
+            } else if (latestGS.gamePhase === 'player_action_phase') {
+              if (card.cardType === 'Monster' && !latestGS.activeMonsterP2) {
                 handlePlayMonsterFromHand(card as MonsterCardData);
               } else if (card.cardType === 'Spell') {
                 handlePlaySpellFromHand(card as SpellCardData);
               }
             }
           }}
-          isPlayerTurn={currentPlayerIndex === 1 && gamePhase === 'player_action_phase' && !isProcessingAction}
-          canPlayMonster={!activeMonsterP2}
+          isPlayerTurn={currentPlayerIndex === 1 && (gamePhase === 'player_action_phase' || gamePhase === 'selecting_swap_monster_phase') && !isProcessingAction}
+          canPlayMonster={!activeMonsterP2 && gamePhase === 'player_action_phase'}
           isOpponent={true}
+          currentPhase={gamePhase}
         />
       </div>
 
@@ -987,4 +1032,3 @@ export function GameBoard() {
     </div>
   );
 }
-

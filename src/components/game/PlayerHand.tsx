@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { CardData, MonsterCardData } from '@/types';
+import type { CardData, MonsterCardData, GamePhase } from '@/types'; // Added GamePhase
 import { CardView } from './CardView';
 import { cn } from '@/lib/utils';
 
@@ -11,24 +11,43 @@ interface PlayerHandProps {
   isPlayerTurn: boolean;
   isOpponent?: boolean;
   canPlayMonster?: boolean; 
+  currentPhase: GamePhase; // Added currentPhase
 }
 
-export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = false, canPlayMonster = true }: PlayerHandProps) {
+export function PlayerHand({ 
+  cards, 
+  onCardSelect, 
+  isPlayerTurn, 
+  isOpponent = false, 
+  canPlayMonster = true,
+  currentPhase 
+}: PlayerHandProps) {
   if (!cards) return null;
 
   return (
     <div className={cn(
       "flex flex-col items-center space-y-1 md:space-y-2 p-1 md:p-2 transition-all duration-500 ease-in-out w-full overflow-y-auto max-h-[calc(100vh-200px)] flex-shrink-0",
       "min-h-[200px] md:min-h-[300px]", 
-      isPlayerTurn ? "bg-primary/5" : "" // Subtle indication of active player's hand
+      isPlayerTurn ? "bg-primary/5" : "" 
     )}>
+      {currentPhase === 'selecting_swap_monster_phase' && isPlayerTurn && (
+        <p className="text-center text-sm text-accent p-2 bg-accent/10 rounded-md my-1">
+          Select a Monster from your hand to swap in.
+        </p>
+      )}
       {cards.map((card) => {
         let cardIsActuallyPlayable = false;
         if (isPlayerTurn) {
-          if (card.cardType === 'Monster' && canPlayMonster) {
-            cardIsActuallyPlayable = true;
-          } else if (card.cardType === 'Spell') {
-            cardIsActuallyPlayable = true;
+          if (currentPhase === 'selecting_swap_monster_phase') {
+            if (card.cardType === 'Monster') {
+              cardIsActuallyPlayable = true; // Only monsters are selectable for swap
+            }
+          } else { // Standard play phase
+            if (card.cardType === 'Monster' && canPlayMonster) {
+              cardIsActuallyPlayable = true;
+            } else if (card.cardType === 'Spell') {
+              cardIsActuallyPlayable = true;
+            }
           }
         }
 
@@ -43,7 +62,7 @@ export function PlayerHand({ cards, onCardSelect, isPlayerTurn, isOpponent = fal
               isPlayable={cardIsActuallyPlayable} 
               isOpponentCard={isOpponent}
               isPlayerTurnForThisCard={isPlayerTurn && isOpponent} 
-              showDescriptionTooltip={true} // Enable tooltip for cards in hand
+              showDescriptionTooltip={true}
             />
           </div>
         );
