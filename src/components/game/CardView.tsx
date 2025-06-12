@@ -77,7 +77,7 @@ interface CardViewProps {
   isOpponentCard?: boolean;
   inBattleArena?: boolean;
   isPlayerTurnForThisCard?: boolean;
-  showDescriptionTooltip?: boolean; // New prop
+  showDescriptionTooltip?: boolean; 
 }
 
 const MotionCard = motion(Card);
@@ -106,7 +106,7 @@ export function CardView({
   isOpponentCard = false,
   inBattleArena = false,
   isPlayerTurnForThisCard = false,
-  showDescriptionTooltip = false, // Default to false
+  showDescriptionTooltip = false, 
 }: CardViewProps) {
   const baseCardSize = "w-40 h-56 md:w-48 md:h-64";
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-lg transition-transform duration-200 cursor-pointer" : "";
@@ -114,12 +114,12 @@ export function CardView({
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
   const imageSize = "h-24 md:h-32"; 
+  const imageSizesProp = "(max-width: 767px) 160px, 192px";
   const contentPadding = "p-2"; 
   const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
   const isMonster = card.cardType === 'Monster';
-  const imageSizesProp = "(max-width: 767px) 160px, 192px";
 
   const cardElement = (
     <MotionCard
@@ -137,7 +137,7 @@ export function CardView({
       role={isPlayable ? "button" : "img"}
       tabIndex={isPlayable ? 0 : -1}
       variants={ghastlyGlowVariants}
-      animate={inBattleArena && isMonster ? "selected" : "initial"} // Only monsters glow in arena
+      animate={inBattleArena && isMonster ? "selected" : "initial"} 
       initial="initial"
     >
       <CardHeader className={cn("text-center", headerPadding)}>
