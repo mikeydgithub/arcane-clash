@@ -113,8 +113,8 @@ export function CardView({
 
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
-  const imageSize = "h-24 md:h-32"; 
-  const imageSizesProp = "(max-width: 767px) 160px, 192px";
+  // imageSize variable removed, aspect ratio class will handle height relative to width
+  const imageSizesProp = "(max-width: 767px) 160px, 192px"; // This refers to the Image component's occupied width
   const contentPadding = "p-2"; 
   const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
@@ -144,7 +144,8 @@ export function CardView({
         <CardTitle className={cn("truncate", titleSize)}>{card.title}</CardTitle>
       </CardHeader>
 
-      <div className={cn("relative w-full bg-muted/50", imageSize)}>
+      {/* Image container now uses aspect-[4/3] for a consistent 4:3 (width:height) aspect ratio */}
+      <div className="relative w-full aspect-[4/3] bg-muted/50">
         {card.isLoadingArt ? ( 
           <Skeleton className="w-full h-full rounded-none" />
         ) : card.artUrl ? (
@@ -153,7 +154,7 @@ export function CardView({
             alt={`Art for ${card.title}`}
             fill
             sizes={imageSizesProp}
-            style={{ objectFit: 'contain' }}
+            style={{ objectFit: 'contain' }} // Retain 'contain' to prevent cropping art
             data-ai-hint={isMonster ? "fantasy creature" : "magical spell"}
             className="rounded-t-sm"
             priority={true} 
@@ -240,3 +241,5 @@ export function CardView({
 
   return cardElement;
 }
+
+    
