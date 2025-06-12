@@ -39,6 +39,17 @@ export function GameBoard() {
       if (prevState?.isProcessingAction !== nextState?.isProcessingAction) {
         console.log(`[PROCESSING ACTION CHANGED] To: ${nextState?.isProcessingAction}`);
       }
+      if (prevState?.gameLogMessages?.length !== nextState?.gameLogMessages?.length ||
+          (prevState?.gameLogMessages && nextState?.gameLogMessages && prevState.gameLogMessages.some((msg, i) => msg !== nextState.gameLogMessages[i]))) {
+            const prevLast = prevState?.gameLogMessages?.slice(-3) || [];
+            const nextLast = nextState?.gameLogMessages?.slice(-3) || [];
+            console.log('[GAME LOG CHANGED]', {
+                prevLength: prevState?.gameLogMessages?.length,
+                nextLength: nextState?.gameLogMessages?.length,
+                prevTail: prevLast,
+                nextTail: nextLast
+            });
+      }
       return nextState;
     });
   }, []);
@@ -49,13 +60,13 @@ export function GameBoard() {
         console.log('[GameBoard] InitializeGame called, but game is already initialized and has state. Skipping.');
         return;
     }
-    if (hasInitialized.current && !gameStateRef.current) {
-        console.log('[GameBoard] InitializeGame called, hasInitialized is true but gameState is null. This might be a reset. Allowing re-init.');
+    if (gameStateRef.current) {
+        console.log('[GameBoard] InitializeGame called, but gameStateRef.current exists. Skipping to prevent re-init.');
+        return;
     }
-
-
-    console.log('[GameBoard] Initializing game...');
+    
     hasInitialized.current = true;
+    console.log('[GameBoard] Initializing game...');
     logAndSetGameState(prev => ({...(prev || {} as GameState), gamePhase: 'loading_art', gameLogMessages: ["Initializing Arcane Clash... Preparing cards..."]}));
 
     const masterMonsterPool = shuffleDeck(generateMonsterCards());
@@ -89,15 +100,15 @@ export function GameBoard() {
 
     const initialPlayer1: PlayerData = {
       id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP,
-      hand: p1InitialHand.map(c => ({ ...c, isLoadingDescription: !c.description ? undefined : false })),
-      deck: p1DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: !c.description ? undefined : false })),
+      hand: p1InitialHand.map(c => ({ ...c, isLoadingDescription: false })),
+      deck: p1DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: false })),
       discardPile: [],
       avatarUrl: 'https://placehold.co/64x64.png?text=P1',
     };
     const initialPlayer2: PlayerData = {
       id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
-      hand: p2InitialHand.map(c => ({ ...c, isLoadingDescription: !c.description ? undefined : false })),
-      deck: p2DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: !c.description ? undefined : false })),
+      hand: p2InitialHand.map(c => ({ ...c, isLoadingDescription: false })),
+      deck: p2DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: false })),
       discardPile: [],
       avatarUrl: 'https://placehold.co/64x64.png?text=P2',
     };
@@ -113,11 +124,13 @@ export function GameBoard() {
       isProcessingAction: false,
     });
     
+    // Descriptions should be pre-loaded from JSON, so queue processing might not be strictly needed
+    // but kept for robustness if any card data somehow misses it.
     descriptionQueueRef.current = [];
     [...initialPlayer1.hand, ...initialPlayer2.hand].forEach((card, globalIndex) => {
-        if (!card.description && card.isLoadingDescription !== true && card.isLoadingDescription !== false) {
+        if (!card.description && card.isLoadingDescription !== true) { // Check isLoadingDescription !== true to avoid re-queueing
             const playerIndex = globalIndex < initialPlayer1.hand.length ? 0 : 1;
-            console.log(`[GameBoard] Queuing ${card.title} for description fetch for player ${playerIndex + 1}. Has description: ${!!card.description}, isLoading: ${card.isLoadingDescription}`);
+            console.log(`[GameBoard] Queuing ${card.title} for description fetch for player ${playerIndex + 1} (init). Has description: ${!!card.description}, isLoading: ${card.isLoadingDescription}`);
             descriptionQueueRef.current.push({ card, playerIndex });
         }
     });
@@ -145,8 +158,8 @@ export function GameBoard() {
   }, [logAndSetGameState]);
 
   const fetchAndSetCardDescription = useCallback(async (cardToFetch: CardData, playerIndex: number) => {
-    if (cardToFetch.description || cardToFetch.isLoadingDescription === false) {
-        console.log(`[fetchAndSetCardDescription] Skipping ${cardToFetch.title}, already has description or explicitly not loading.`);
+    if (cardToFetch.description || cardToFetch.isLoadingDescription === true) { // check isLoadingDescription === true
+        console.log(`[fetchAndSetCardDescription] Skipping ${cardToFetch.title}, already has description or is currently loading.`);
         return;
     }
     console.log(`[fetchAndSetCardDescription] Attempting to fetch for ${cardToFetch.title}`);
@@ -242,22 +255,18 @@ export function GameBoard() {
   }, [toast, logAndSetGameState]);
 
   useEffect(() => {
+    console.log('[GameBoard] Effect: Checking game state for initialization.');
     if (!gameState && !hasInitialized.current) {
       console.log('[GameBoard] Effect: gameState is null and not initialized. Calling initializeGame.');
-      const init = async () => {
-        await initializeGame();
-      };
-      init();
+      initializeGame();
     } else if (gameState && hasInitialized.current) {
       console.log('[GameBoard] Effect: Game state exists and is initialized.');
     } else if (!gameState && hasInitialized.current) {
-      console.log('[GameBoard] Effect: gameState is null, but hasInitialized is true. Game might have been reset. Ready for re-initialization if triggered.');
+      console.log('[GameBoard] Effect: gameState is null, but hasInitialized is true. Game might have been reset. Preparing for re-initialization if triggered (e.g. by GameOverModal).');
+       // This state is fine if awaiting restart. initializeGame will be called by restart logic.
     } else if (gameState && !hasInitialized.current) {
       console.warn('[GameBoard] Effect: gameState exists, but hasInitialized is false. This state is unexpected. Re-initializing.');
-      const init = async () => {
-        await initializeGame();
-      };
-      init();
+      initializeGame();
     }
   }, [gameState, initializeGame]);
 
@@ -282,18 +291,23 @@ export function GameBoard() {
                     const activeMonster = playerIndex === 0 ? latestGameState.activeMonsterP1 : latestGameState.activeMonsterP2;
                     const cardIsActive = activeMonster?.id === card.id;
 
-                    if ((cardInHand && (cardInHand.description || cardInHand.isLoadingDescription === false)) ||
-                        (cardIsActive && activeMonster && (activeMonster.description || activeMonster.isLoadingDescription === false)) ||
-                        (cardInDeck && (cardInDeck.description || cardInDeck.isLoadingDescription === false)) 
+                    if ((cardInHand && (cardInHand.description || cardInHand.isLoadingDescription === false || cardInHand.isLoadingDescription === true)) ||
+                        (cardIsActive && activeMonster && (activeMonster.description || activeMonster.isLoadingDescription === false || activeMonster.isLoadingDescription === true)) ||
+                        (cardInDeck && (cardInDeck.description || cardInDeck.isLoadingDescription === false || cardInDeck.isLoadingDescription === true)) 
                         ) {
-                        cardNeedsFetching = false;
-                        console.log(`[ProcessQueue] Card ${card.title} already has description or is explicitly not loading in latest state. Skipping fetch.`);
+                        if( (cardInHand && cardInHand.description) || (cardIsActive && activeMonster && activeMonster.description) || (cardInDeck && cardInDeck.description) ) {
+                           cardNeedsFetching = false;
+                           console.log(`[ProcessQueue] Card ${card.title} already has description in latest state. Skipping fetch.`);
+                        } else if ( (cardInHand && cardInHand.isLoadingDescription === true) || (cardIsActive && activeMonster && activeMonster.isLoadingDescription === true) || (cardInDeck && cardInDeck.isLoadingDescription === true) ) {
+                           cardNeedsFetching = false;
+                           console.log(`[ProcessQueue] Card ${card.title} is already loading description in latest state. Skipping fetch.`);
+                        }
                     }
                 }
 
 
                 if (cardNeedsFetching) {
-                     console.log(`[ProcessQueue] Fetching for ${card.title} from queue.`);
+                     console.log(`[ProcessQueue] Fetching for ${card.title} from queue for player ${playerIndex}.`);
                      await fetchAndSetCardDescription(card, playerIndex);
                 }
             }
@@ -814,7 +828,7 @@ export function GameBoard() {
           winningPlayerNameForCoinFlip={players[gameState.currentPlayerIndex]?.name}
         />
          
-
+         {console.log("DEBUG RENDER GameBoard PlayerActions condition:", { gamePhase, isProcessingAction, currentPlayerName: currentPlayer.name })}
          {gamePhase === 'player_action_phase' && !isProcessingAction && (
           <PlayerActions
             currentPlayer={currentPlayer}

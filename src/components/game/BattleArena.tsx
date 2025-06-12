@@ -82,47 +82,87 @@ export function BattleArena({
   }, []);
 
   useEffect(() => {
-    if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
-    entriesToAnimateRef.current = [];
-
-    
-    if (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') {
-        setDisplayedLogEntries(gameLogMessages || []);
-        return;
-    }
-    
-    
     const currentDisplayedCount = displayedLogEntries.length;
+    let newEntriesToConsider: string[] = [];
+
     if (gameLogMessages.length > currentDisplayedCount) {
-      entriesToAnimateRef.current = gameLogMessages.slice(currentDisplayedCount);
+      newEntriesToConsider = gameLogMessages.slice(currentDisplayedCount);
     } else if (gameLogMessages.length < currentDisplayedCount && gameLogMessages.length > 0) {
-       
+      // Log was shortened (e.g., game reset). Stop current animations and reset.
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+      entriesToAnimateRef.current = [];
       setDisplayedLogEntries(gameLogMessages);
+      return; // Early exit after reset
     } else if (gameLogMessages.length === 0 && currentDisplayedCount > 0) {
-        setDisplayedLogEntries([]);
+      // Log completely cleared. Stop current animations and reset.
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+      entriesToAnimateRef.current = [];
+      setDisplayedLogEntries([]);
+      return; // Early exit after reset
+    } else if (gameLogMessages.length === currentDisplayedCount &&
+               gamePhase !== 'initial' && gamePhase !== 'loading_art' && gamePhase !== 'coin_flip_animation' &&
+               JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries)
+              ) {
+      // This case handles if the content of messages changed but not the length,
+      // which might happen if logs are updated in place (though less common with append-only style).
+      // Or if the phase changed but logs are still catching up.
+      // For safety, if logs are the same length but different, or phase changes indicate a new context,
+      // we might want to re-evaluate.
+      // A simple approach if lengths match but content differs: reset.
+      // However, our primary path is length difference.
+      // If phase indicates initial states, just copy them over.
+      if (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation') {
+          if (JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries)) {
+            if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+            animationTimeoutRef.current = null;
+            entriesToAnimateRef.current = [];
+            setDisplayedLogEntries(gameLogMessages || []);
+          }
+          return;
+      }
     }
 
 
+    // If there are new entries, add them to the persistent queue
+    if (newEntriesToConsider.length > 0) {
+      entriesToAnimateRef.current.push(...newEntriesToConsider);
+    }
+
+    // If there are items in the queue and no animation is currently scheduled, start it.
     const animateNextEntry = () => {
       if (entriesToAnimateRef.current.length > 0) {
         const nextEntry = entriesToAnimateRef.current.shift();
         if (nextEntry) {
           setDisplayedLogEntries(prev => [...prev, nextEntry]);
         }
-        animationTimeoutRef.current = setTimeout(animateNextEntry, 700); 
+        
+        if (entriesToAnimateRef.current.length > 0) {
+          animationTimeoutRef.current = setTimeout(animateNextEntry, 700);
+        } else {
+          animationTimeoutRef.current = null; // All items processed
+        }
       } else {
+        // Queue is empty, ensure timer is cleared
         animationTimeoutRef.current = null;
       }
     };
-
+    
     if (entriesToAnimateRef.current.length > 0 && !animationTimeoutRef.current) {
-      animateNextEntry();
+      animateNextEntry(); // Start the animation chain
     }
 
+    // Cleanup function for the effect
     return () => {
-      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+      // If an animation timeout is active when the component unmounts or dependencies change,
+      // clear it to prevent state updates on an unmounted component.
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+        // animationTimeoutRef.current = null; // Not strictly needed as component is unmounting or effect re-running
+      }
     };
-  }, [gameLogMessages, gamePhase]);
+  }, [gameLogMessages, gamePhase, displayedLogEntries.length]); // Added displayedLogEntries.length
 
 
   useEffect(() => {
