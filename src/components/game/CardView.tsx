@@ -80,7 +80,7 @@ interface CardViewProps {
   showDescriptionTooltip?: boolean; 
 }
 
-const MotionCard = motion(Card);
+const MotionCard = motion.create(Card);
 
 const ghastlyGlowVariants = {
   selected: { 
