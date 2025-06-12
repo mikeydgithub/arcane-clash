@@ -119,6 +119,7 @@ export function CardView({
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
   const isMonster = card.cardType === 'Monster';
+  const imageSizesProp = "(max-width: 767px) 160px, 192px";
 
   const cardElement = (
     <MotionCard
@@ -151,6 +152,7 @@ export function CardView({
             src={card.artUrl}
             alt={`Art for ${card.title}`}
             fill
+            sizes={imageSizesProp}
             style={{ objectFit: 'contain' }}
             data-ai-hint={isMonster ? "fantasy creature" : "magical spell"}
             className="rounded-t-sm"
@@ -161,6 +163,7 @@ export function CardView({
             src={isMonster ? "https://placehold.co/300x400.png" : "https://placehold.co/300x400.png"} 
             alt={`Placeholder for ${card.title}`}
             fill
+            sizes={imageSizesProp}
             style={{ objectFit: 'contain' }}
             data-ai-hint={isMonster ? "fantasy abstract" : "spell icon"}
             className="rounded-t-sm"
