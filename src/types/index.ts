@@ -56,4 +56,6 @@ export interface GameState {
   winner?: PlayerData;
   gameLogMessages: string[];
   isProcessingAction?: boolean; // To disable inputs during animations/AI calls
+  isInitialMonsterEngagement: boolean; // True if no monster has been played yet, false otherwise
 }
+
