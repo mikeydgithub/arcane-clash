@@ -25,34 +25,51 @@ export function GameBoard() {
   const descriptionQueueRef = useRef<{ card: CardData, playerIndex: number }[]>([]);
   const isFetchingDescriptionRef = useRef(false);
   const gameStateRef = useRef<GameState | null>(null);
+  const previousGameStateRef = useRef<GameState | null>(null);
+
 
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
 
   const logAndSetGameState = useCallback((updater: React.SetStateAction<GameState | null>) => {
-    setGameState(prevState => {
-      const nextState = typeof updater === 'function' ? updater(prevState) : updater;
-      if (prevState?.gamePhase !== nextState?.gamePhase) {
-        console.log(`[GAME PHASE CHANGED] From: ${prevState?.gamePhase || 'null'} To: ${nextState?.gamePhase}`);
+    setGameState(updater);
+  }, []);
+
+  useEffect(() => {
+    const prevState = previousGameStateRef.current;
+    const nextState = gameState;
+
+    if (nextState && prevState) {
+      if (prevState.gamePhase !== nextState.gamePhase) {
+        console.log(`[GAME PHASE CHANGED] From: ${prevState.gamePhase || 'null'} To: ${nextState.gamePhase}`);
       }
-      if (prevState?.isProcessingAction !== nextState?.isProcessingAction) {
-        console.log(`[PROCESSING ACTION CHANGED] To: ${nextState?.isProcessingAction}`);
+      if (prevState.isProcessingAction !== nextState.isProcessingAction) {
+        console.log(`[PROCESSING ACTION CHANGED] To: ${nextState.isProcessingAction}`);
       }
-      if (prevState?.gameLogMessages?.length !== nextState?.gameLogMessages?.length ||
-          (prevState?.gameLogMessages && nextState?.gameLogMessages && prevState.gameLogMessages.some((msg, i) => msg !== nextState.gameLogMessages[i]))) {
-            const prevLast = prevState?.gameLogMessages?.slice(-3) || [];
-            const nextLast = nextState?.gameLogMessages?.slice(-3) || [];
+      if (prevState.gameLogMessages?.length !== nextState.gameLogMessages?.length ||
+          (prevState.gameLogMessages && nextState.gameLogMessages && prevState.gameLogMessages.some((msg, i) => msg !== nextState.gameLogMessages[i]))) {
+            const prevLast = prevState.gameLogMessages?.slice(-3) || [];
+            const nextLast = nextState.gameLogMessages?.slice(-3) || [];
             console.log('[GAME LOG CHANGED]', {
-                prevLength: prevState?.gameLogMessages?.length,
-                nextLength: nextState?.gameLogMessages?.length,
+                prevLength: prevState.gameLogMessages?.length,
+                nextLength: nextState.gameLogMessages?.length,
                 prevTail: prevLast,
                 nextTail: nextLast
             });
       }
-      return nextState;
-    });
-  }, []);
+    } else if (nextState && !prevState && nextState.gamePhase) {
+        // Log initial state setup if needed, e.g. first time gameState is set
+        console.log(`[GAME STATE INITIALIZED] Phase: ${nextState.gamePhase}`);
+        if(nextState.gameLogMessages?.length > 0) {
+            console.log('[INITIAL GAME LOG]', {
+                length: nextState.gameLogMessages.length,
+                tail: nextState.gameLogMessages.slice(-3)
+            });
+        }
+    }
+    previousGameStateRef.current = nextState;
+  }, [gameState]);
 
 
   const initializeGame = useCallback(async () => {
@@ -60,13 +77,13 @@ export function GameBoard() {
         console.log('[GameBoard] InitializeGame called, but game is already initialized and has state. Skipping.');
         return;
     }
-    if (gameStateRef.current) {
-        console.log('[GameBoard] InitializeGame called, but gameStateRef.current exists. Skipping to prevent re-init.');
-        return;
+     if (gameStateRef.current && !hasInitialized.current) {
+        console.warn('[GameBoard] InitializeGame called, gameStateRef exists but not initialized. This might be a re-init attempt. Proceeding.');
     }
-    
-    hasInitialized.current = true;
+
+
     console.log('[GameBoard] Initializing game...');
+    hasInitialized.current = true;
     logAndSetGameState(prev => ({...(prev || {} as GameState), gamePhase: 'loading_art', gameLogMessages: ["Initializing Arcane Clash... Preparing cards..."]}));
 
     const masterMonsterPool = shuffleDeck(generateMonsterCards());
@@ -124,11 +141,9 @@ export function GameBoard() {
       isProcessingAction: false,
     });
     
-    // Descriptions should be pre-loaded from JSON, so queue processing might not be strictly needed
-    // but kept for robustness if any card data somehow misses it.
     descriptionQueueRef.current = [];
     [...initialPlayer1.hand, ...initialPlayer2.hand].forEach((card, globalIndex) => {
-        if (!card.description && card.isLoadingDescription !== true) { // Check isLoadingDescription !== true to avoid re-queueing
+        if (!card.description && card.isLoadingDescription !== true) { 
             const playerIndex = globalIndex < initialPlayer1.hand.length ? 0 : 1;
             console.log(`[GameBoard] Queuing ${card.title} for description fetch for player ${playerIndex + 1} (init). Has description: ${!!card.description}, isLoading: ${card.isLoadingDescription}`);
             descriptionQueueRef.current.push({ card, playerIndex });
@@ -158,7 +173,7 @@ export function GameBoard() {
   }, [logAndSetGameState]);
 
   const fetchAndSetCardDescription = useCallback(async (cardToFetch: CardData, playerIndex: number) => {
-    if (cardToFetch.description || cardToFetch.isLoadingDescription === true) { // check isLoadingDescription === true
+    if (cardToFetch.description || cardToFetch.isLoadingDescription === true) { 
         console.log(`[fetchAndSetCardDescription] Skipping ${cardToFetch.title}, already has description or is currently loading.`);
         return;
     }
@@ -256,6 +271,11 @@ export function GameBoard() {
 
   useEffect(() => {
     console.log('[GameBoard] Effect: Checking game state for initialization.');
+    if (!gameState) {
+      console.log('[GameBoard] gameState is null, ensuring hasInitialized is false.');
+      hasInitialized.current = false;
+    }
+
     if (!gameState && !hasInitialized.current) {
       console.log('[GameBoard] Effect: gameState is null and not initialized. Calling initializeGame.');
       initializeGame();
@@ -263,9 +283,8 @@ export function GameBoard() {
       console.log('[GameBoard] Effect: Game state exists and is initialized.');
     } else if (!gameState && hasInitialized.current) {
       console.log('[GameBoard] Effect: gameState is null, but hasInitialized is true. Game might have been reset. Preparing for re-initialization if triggered (e.g. by GameOverModal).');
-       // This state is fine if awaiting restart. initializeGame will be called by restart logic.
     } else if (gameState && !hasInitialized.current) {
-      console.warn('[GameBoard] Effect: gameState exists, but hasInitialized is false. This state is unexpected. Re-initializing.');
+      console.warn('[GameBoard] Effect: gameState exists, but hasInitialized is false. This state is unexpected. Attempting to re-initialize.');
       initializeGame();
     }
   }, [gameState, initializeGame]);
@@ -515,219 +534,231 @@ export function GameBoard() {
     fetchDescIfNeededAndProceed();
   };
 
-  const handleMonsterAttack = () => {
+ const handleMonsterAttack = () => {
     const currentGameState = gameStateRef.current;
     if (!currentGameState || currentGameState.isProcessingAction) return;
-    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = currentGameState;
-    const attackerPlayer = players[currentPlayerIndex];
-    const defenderPlayerIndex = 1 - currentPlayerIndex;
-    const defenderPlayer = players[defenderPlayerIndex];
 
-    let currentAttackerMonster = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
-    let currentDefenderMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
+    logAndSetGameState(prev => {
+        if (!prev) return null;
+        return {...prev, isProcessingAction: true, gamePhase: 'combat_phase'};
+    });
 
-    if (!currentAttackerMonster) {
-        toast({ title: "No active monster", description: "You need an active monster to attack.", variant: "destructive" });
-        return;
-    }
-    logAndSetGameState(prev => ({...prev!, isProcessingAction: true, gamePhase: 'combat_phase'}));
+    // Short delay to allow phase change to reflect before heavy computation and logging
+    setTimeout(() => {
+        const latestGameState = gameStateRef.current;
+        if (!latestGameState) return;
 
-    let p1Data = { ...players[0] };
-    let p2Data = { ...players[1] };
-    let attacker = { ...currentAttackerMonster } as MonsterCardData;
-    let defender = currentDefenderMonster ? { ...currentDefenderMonster } as MonsterCardData : undefined;
-    let newLogMessages: string[] = [...(currentGameState.gameLogMessages || [])];
+        const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = latestGameState;
+        const attackerPlayer = players[currentPlayerIndex];
+        const defenderPlayerIndex = 1 - currentPlayerIndex;
+        const defenderPlayer = players[defenderPlayerIndex];
 
-    newLogMessages.push(`${attackerPlayer.name}'s ${attacker.title} initiates an attack!`);
+        let currentAttackerMonster = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
+        let currentDefenderMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
 
-    if (defender) {
-        newLogMessages.push(`${attacker.title} (M: ${attacker.melee}, A: ${attacker.magic}) clashes with ${defender.title} (HP: ${defender.hp}, Def: ${defender.defense}, Sh: ${defender.shield}, M.Sh: ${defender.magicShield}).`);
-
-        const initialDefenderHp = defender.hp;
-        const initialDefenderShield = defender.shield;
-        const initialDefenderMagicShield = defender.magicShield;
-        let defenderTookDamageThisTurn = false;
-
-        if (attacker.melee > 0) { 
-            let damageDealt = attacker.melee;
-            newLogMessages.push(`> ${attacker.title} strikes with ${damageDealt} melee power.`);
-            
-            let shieldAbsorbed = Math.min(defender.shield, damageDealt);
-            if (shieldAbsorbed > 0) {
-                defender.shield -= shieldAbsorbed;
-                newLogMessages.push(`  L ${defender.title}'s physical shield absorbs ${shieldAbsorbed}. Shield: ${initialDefenderShield} -> ${defender.shield}.`);
-            }
-            let damageAfterShield = damageDealt - shieldAbsorbed;
-            
-            if (damageAfterShield > 0) {
-                newLogMessages.push(`  L Melee damage after shield: ${damageAfterShield}.`);
-                let defenseBlocked = Math.min(defender.defense, damageAfterShield);
-                if (defenseBlocked > 0) {
-                    newLogMessages.push(`  L ${defender.title}'s defense blocks ${defenseBlocked}.`);
-                }
-                const hpDamage = Math.max(0, damageAfterShield - defenseBlocked);
-                if (hpDamage > 0) {
-                    defender.hp -= hpDamage;
-                    defenderTookDamageThisTurn = true;
-                    newLogMessages.push(`  L ${defender.title} takes ${hpDamage} HP damage. HP: ${initialDefenderHp} -> ${Math.max(0, defender.hp)}.`);
-                } else {
-                    newLogMessages.push(`  L ${defender.title} takes no HP damage from melee after shield & defense.`);
-                }
-            } else if (shieldAbsorbed > 0) {
-                newLogMessages.push(`  L ${defender.title} takes no further damage; melee attack fully absorbed by shield.`);
-            } else {
-                 newLogMessages.push(`  L ${attacker.title} dealt no melee damage (perhaps 0 attack or already absorbed).`);
-            }
-        } else if (attacker.magic > 0) { 
-            let damageDealt = attacker.magic;
-            newLogMessages.push(`> ${attacker.title} blasts with ${damageDealt} magic power.`);
-
-            let magicShieldAbsorbed = Math.min(defender.magicShield, damageDealt);
-            if (magicShieldAbsorbed > 0) {
-                defender.magicShield -= magicShieldAbsorbed;
-                newLogMessages.push(`  L ${defender.title}'s magic shield absorbs ${magicShieldAbsorbed}. Magic Shield: ${initialDefenderMagicShield} -> ${defender.magicShield}.`);
-            }
-            const hpDamage = Math.max(0, damageDealt - magicShieldAbsorbed); 
-            if (hpDamage > 0) {
-                defender.hp -= hpDamage;
-                defenderTookDamageThisTurn = true;
-                newLogMessages.push(`  L ${defender.title} takes ${hpDamage} HP damage from magic. HP: ${initialDefenderHp} -> ${Math.max(0, defender.hp)}.`);
-            } else if (magicShieldAbsorbed > 0) {
-                 newLogMessages.push(`  L ${defender.title} takes no further damage; magic attack fully absorbed by magic shield.`);
-            } else {
-                 newLogMessages.push(`  L ${attacker.title} dealt no magic damage (perhaps 0 attack or already absorbed).`);
-            }
-        } else {
-            newLogMessages.push(`> ${attacker.title} has no attack power this turn.`);
-        }
-        if (!defenderTookDamageThisTurn && (attacker.melee > 0 || attacker.magic > 0)) {
-             newLogMessages.push(`  L ${defender.title} ultimately received no HP damage from ${attacker.title}'s attack this sequence.`);
+        if (!currentAttackerMonster) {
+            toast({ title: "No active monster", description: "You need an active monster to attack.", variant: "destructive" });
+            logAndSetGameState(prev => ({...prev!, isProcessingAction: false, gamePhase: 'player_action_phase'}));
+            return;
         }
 
+        let p1Data = { ...players[0] };
+        let p2Data = { ...players[1] };
+        let attacker = { ...currentAttackerMonster } as MonsterCardData;
+        let defender = currentDefenderMonster ? { ...currentDefenderMonster } as MonsterCardData : undefined;
+        let combatLogMessages: string[] = [];
 
-        if (defender.hp > 0) {
-            newLogMessages.push(`${defender.title} survives and prepares to counter-attack! (HP: ${defender.hp})`);
-            const initialAttackerHp = attacker.hp;
-            const initialAttackerShield = attacker.shield;
-            const initialAttackerMagicShield = attacker.magicShield;
-            let attackerTookDamageThisCounter = false;
+        combatLogMessages.push(`${attackerPlayer.name}'s ${attacker.title} initiates an attack!`);
 
-            if (defender.melee > 0) { 
-                let counterDamage = defender.melee;
-                newLogMessages.push(`> ${defender.title} counter-attacks with ${counterDamage} melee power.`);
-                let shieldAbsorbed = Math.min(attacker.shield, counterDamage);
+        if (defender) {
+            combatLogMessages.push(`${attacker.title} (M: ${attacker.melee}, A: ${attacker.magic}) clashes with ${defender.title} (HP: ${defender.hp}, Def: ${defender.defense}, Sh: ${defender.shield}, M.Sh: ${defender.magicShield}).`);
+
+            const initialDefenderHp = defender.hp;
+            const initialDefenderShield = defender.shield;
+            const initialDefenderMagicShield = defender.magicShield;
+            let defenderTookDamageThisTurn = false;
+
+            if (attacker.melee > 0) { 
+                let damageDealt = attacker.melee;
+                combatLogMessages.push(`> ${attacker.title} strikes with ${damageDealt} melee power.`);
+                
+                let shieldAbsorbed = Math.min(defender.shield, damageDealt);
                 if (shieldAbsorbed > 0) {
-                    attacker.shield -= shieldAbsorbed;
-                    newLogMessages.push(`  L ${attacker.title}'s physical shield absorbs ${shieldAbsorbed}. Shield: ${initialAttackerShield} -> ${attacker.shield}.`);
+                    defender.shield -= shieldAbsorbed;
+                    combatLogMessages.push(`  L ${defender.title}'s physical shield absorbs ${shieldAbsorbed}. Shield: ${initialDefenderShield} -> ${defender.shield}.`);
                 }
-                let damageAfterShield = counterDamage - shieldAbsorbed;
+                let damageAfterShield = damageDealt - shieldAbsorbed;
+                
                 if (damageAfterShield > 0) {
-                    newLogMessages.push(`  L Melee counter-damage after shield: ${damageAfterShield}.`);
-                    let defenseBlocked = Math.min(attacker.defense, damageAfterShield);
+                    combatLogMessages.push(`  L Melee damage after shield: ${damageAfterShield}.`);
+                    let defenseBlocked = Math.min(defender.defense, damageAfterShield);
                     if (defenseBlocked > 0) {
-                        newLogMessages.push(`  L ${attacker.title}'s defense blocks ${defenseBlocked}.`);
+                        combatLogMessages.push(`  L ${defender.title}'s defense blocks ${defenseBlocked}.`);
                     }
                     const hpDamage = Math.max(0, damageAfterShield - defenseBlocked);
                     if (hpDamage > 0) {
-                        attacker.hp -= hpDamage;
-                        attackerTookDamageThisCounter = true;
-                        newLogMessages.push(`  L ${attacker.title} takes ${hpDamage} HP damage from counter. HP: ${initialAttackerHp} -> ${Math.max(0, attacker.hp)}.`);
+                        defender.hp -= hpDamage;
+                        defenderTookDamageThisTurn = true;
+                        combatLogMessages.push(`  L ${defender.title} takes ${hpDamage} HP damage. HP: ${initialDefenderHp} -> ${Math.max(0, defender.hp)}.`);
                     } else {
-                         newLogMessages.push(`  L ${attacker.title} takes no HP damage from melee counter after shield & defense.`);
+                        combatLogMessages.push(`  L ${defender.title} takes no HP damage from melee after shield & defense.`);
                     }
                 } else if (shieldAbsorbed > 0) {
-                     newLogMessages.push(`  L ${attacker.title} takes no further damage; counter fully absorbed by shield.`);
+                    combatLogMessages.push(`  L ${defender.title} takes no further damage; melee attack fully absorbed by shield.`);
                 } else {
-                    newLogMessages.push(`  L ${defender.title} dealt no melee counter-damage.`);
+                    combatLogMessages.push(`  L ${attacker.title} dealt no melee damage (perhaps 0 attack or already absorbed).`);
                 }
-            } else if (defender.magic > 0) { 
-                let counterDamage = defender.magic;
-                newLogMessages.push(`> ${defender.title} counter-attacks with ${counterDamage} magic power.`);
-                let magicShieldAbsorbed = Math.min(attacker.magicShield, counterDamage);
-                 if (magicShieldAbsorbed > 0) {
-                    attacker.magicShield -= magicShieldAbsorbed;
-                    newLogMessages.push(`  L ${attacker.title}'s magic shield absorbs ${magicShieldAbsorbed}. Magic Shield: ${initialAttackerMagicShield} -> ${attacker.magicShield}.`);
+            } else if (attacker.magic > 0) { 
+                let damageDealt = attacker.magic;
+                combatLogMessages.push(`> ${attacker.title} blasts with ${damageDealt} magic power.`);
+
+                let magicShieldAbsorbed = Math.min(defender.magicShield, damageDealt);
+                if (magicShieldAbsorbed > 0) {
+                    defender.magicShield -= magicShieldAbsorbed;
+                    combatLogMessages.push(`  L ${defender.title}'s magic shield absorbs ${magicShieldAbsorbed}. Magic Shield: ${initialDefenderMagicShield} -> ${defender.magicShield}.`);
                 }
-                const hpDamage = Math.max(0, counterDamage - magicShieldAbsorbed);
+                const hpDamage = Math.max(0, damageDealt - magicShieldAbsorbed); 
                 if (hpDamage > 0) {
-                    attacker.hp -= hpDamage;
-                    attackerTookDamageThisCounter = true;
-                    newLogMessages.push(`  L ${attacker.title} takes ${hpDamage} HP damage from magic counter. HP: ${initialAttackerHp} -> ${Math.max(0, attacker.hp)}.`);
+                    defender.hp -= hpDamage;
+                    defenderTookDamageThisTurn = true;
+                    combatLogMessages.push(`  L ${defender.title} takes ${hpDamage} HP damage from magic. HP: ${initialDefenderHp} -> ${Math.max(0, defender.hp)}.`);
                 } else if (magicShieldAbsorbed > 0) {
-                    newLogMessages.push(`  L ${attacker.title} takes no further damage; magic counter fully absorbed by magic shield.`);
+                    combatLogMessages.push(`  L ${defender.title} takes no further damage; magic attack fully absorbed by magic shield.`);
                 } else {
-                     newLogMessages.push(`  L ${defender.title} dealt no magic counter-damage.`);
+                    combatLogMessages.push(`  L ${attacker.title} dealt no magic damage (perhaps 0 attack or already absorbed).`);
                 }
             } else {
-                 newLogMessages.push(`> ${defender.title} has no power to counter-attack with.`);
+                combatLogMessages.push(`> ${attacker.title} has no attack power this turn.`);
             }
-            if (!attackerTookDamageThisCounter && (defender.melee > 0 || defender.magic > 0)) {
-                newLogMessages.push(`  L ${attacker.title} ultimately received no HP damage from ${defender.title}'s counter-attack.`);
+            if (!defenderTookDamageThisTurn && (attacker.melee > 0 || attacker.magic > 0)) {
+                combatLogMessages.push(`  L ${defender.title} ultimately received no HP damage from ${attacker.title}'s attack this sequence.`);
             }
 
-        } else {
-            newLogMessages.push(`${defender.title} was defeated before it could counter-attack.`);
-        }
-    } else { 
-        newLogMessages.push(`${attacker.title} attacks ${defenderPlayer.name} directly!`);
-        const damage = attacker.melee > 0 ? attacker.melee : attacker.magic;
-        const attackType = attacker.melee > 0 ? "melee" : "magic";
-        
-        let targetPlayerOriginalHp: number;
-        if (currentPlayerIndex === 0) { 
-            targetPlayerOriginalHp = p2Data.hp;
-            p2Data.hp = Math.max(0, p2Data.hp - damage);
-            newLogMessages.push(`> ${p2Data.name} takes ${damage} direct ${attackType} damage. HP: ${targetPlayerOriginalHp} -> ${p2Data.hp}.`);
+
+            if (defender.hp > 0) {
+                combatLogMessages.push(`${defender.title} survives and prepares to counter-attack! (HP: ${defender.hp})`);
+                const initialAttackerHp = attacker.hp;
+                const initialAttackerShield = attacker.shield;
+                const initialAttackerMagicShield = attacker.magicShield;
+                let attackerTookDamageThisCounter = false;
+
+                if (defender.melee > 0) { 
+                    let counterDamage = defender.melee;
+                    combatLogMessages.push(`> ${defender.title} counter-attacks with ${counterDamage} melee power.`);
+                    let shieldAbsorbed = Math.min(attacker.shield, counterDamage);
+                    if (shieldAbsorbed > 0) {
+                        attacker.shield -= shieldAbsorbed;
+                        combatLogMessages.push(`  L ${attacker.title}'s physical shield absorbs ${shieldAbsorbed}. Shield: ${initialAttackerShield} -> ${attacker.shield}.`);
+                    }
+                    let damageAfterShield = counterDamage - shieldAbsorbed;
+                    if (damageAfterShield > 0) {
+                        combatLogMessages.push(`  L Melee counter-damage after shield: ${damageAfterShield}.`);
+                        let defenseBlocked = Math.min(attacker.defense, damageAfterShield);
+                        if (defenseBlocked > 0) {
+                            combatLogMessages.push(`  L ${attacker.title}'s defense blocks ${defenseBlocked}.`);
+                        }
+                        const hpDamage = Math.max(0, damageAfterShield - defenseBlocked);
+                        if (hpDamage > 0) {
+                            attacker.hp -= hpDamage;
+                            attackerTookDamageThisCounter = true;
+                            combatLogMessages.push(`  L ${attacker.title} takes ${hpDamage} HP damage from counter. HP: ${initialAttackerHp} -> ${Math.max(0, attacker.hp)}.`);
+                        } else {
+                            combatLogMessages.push(`  L ${attacker.title} takes no HP damage from melee counter after shield & defense.`);
+                        }
+                    } else if (shieldAbsorbed > 0) {
+                        combatLogMessages.push(`  L ${attacker.title} takes no further damage; counter fully absorbed by shield.`);
+                    } else {
+                        combatLogMessages.push(`  L ${defender.title} dealt no melee counter-damage.`);
+                    }
+                } else if (defender.magic > 0) { 
+                    let counterDamage = defender.magic;
+                    combatLogMessages.push(`> ${defender.title} counter-attacks with ${counterDamage} magic power.`);
+                    let magicShieldAbsorbed = Math.min(attacker.magicShield, counterDamage);
+                    if (magicShieldAbsorbed > 0) {
+                        attacker.magicShield -= magicShieldAbsorbed;
+                        combatLogMessages.push(`  L ${attacker.title}'s magic shield absorbs ${magicShieldAbsorbed}. Magic Shield: ${initialAttackerMagicShield} -> ${attacker.magicShield}.`);
+                    }
+                    const hpDamage = Math.max(0, counterDamage - magicShieldAbsorbed);
+                    if (hpDamage > 0) {
+                        attacker.hp -= hpDamage;
+                        attackerTookDamageThisCounter = true;
+                        combatLogMessages.push(`  L ${attacker.title} takes ${hpDamage} HP damage from magic counter. HP: ${initialAttackerHp} -> ${Math.max(0, attacker.hp)}.`);
+                    } else if (magicShieldAbsorbed > 0) {
+                        combatLogMessages.push(`  L ${attacker.title} takes no further damage; magic counter fully absorbed by magic shield.`);
+                    } else {
+                        combatLogMessages.push(`  L ${defender.title} dealt no magic counter-damage.`);
+                    }
+                } else {
+                    combatLogMessages.push(`> ${defender.title} has no power to counter-attack with.`);
+                }
+                if (!attackerTookDamageThisCounter && (defender.melee > 0 || defender.magic > 0)) {
+                    combatLogMessages.push(`  L ${attacker.title} ultimately received no HP damage from ${defender.title}'s counter-attack.`);
+                }
+
+            } else {
+                combatLogMessages.push(`${defender.title} was defeated before it could counter-attack.`);
+            }
         } else { 
-            targetPlayerOriginalHp = p1Data.hp;
-            p1Data.hp = Math.max(0, p1Data.hp - damage);
-            newLogMessages.push(`> ${p1Data.name} takes ${damage} direct ${attackType} damage. HP: ${targetPlayerOriginalHp} -> ${p1Data.hp}.`);
+            combatLogMessages.push(`${attacker.title} attacks ${defenderPlayer.name} directly!`);
+            const damage = attacker.melee > 0 ? attacker.melee : attacker.magic;
+            const attackType = attacker.melee > 0 ? "melee" : "magic";
+            
+            let targetPlayerOriginalHp: number;
+            if (currentPlayerIndex === 0) { 
+                targetPlayerOriginalHp = p2Data.hp;
+                p2Data.hp = Math.max(0, p2Data.hp - damage);
+                combatLogMessages.push(`> ${p2Data.name} takes ${damage} direct ${attackType} damage. HP: ${targetPlayerOriginalHp} -> ${p2Data.hp}.`);
+            } else { 
+                targetPlayerOriginalHp = p1Data.hp;
+                p1Data.hp = Math.max(0, p1Data.hp - damage);
+                combatLogMessages.push(`> ${p1Data.name} takes ${damage} direct ${attackType} damage. HP: ${targetPlayerOriginalHp} -> ${p1Data.hp}.`);
+            }
         }
-    }
 
-    let nextActiveMonsterP1 = currentPlayerIndex === 0 ? (attacker.hp > 0 ? attacker : undefined) : activeMonsterP1;
-    let nextActiveMonsterP2 = currentPlayerIndex === 1 ? (attacker.hp > 0 ? attacker : undefined) : activeMonsterP2;
+        let nextActiveMonsterP1 = currentPlayerIndex === 0 ? (attacker.hp > 0 ? attacker : undefined) : activeMonsterP1;
+        let nextActiveMonsterP2 = currentPlayerIndex === 1 ? (attacker.hp > 0 ? attacker : undefined) : activeMonsterP2;
 
-    if (defender && defender.hp <= 0) {
-        newLogMessages.push(`${defender.title} is defeated!`);
-        const defeatedMonsterCard = {...currentDefenderMonster!, hp:0, shield:0, magicShield:0};
-        if (currentPlayerIndex === 0) { 
-            p2Data.discardPile.push(defeatedMonsterCard);
-            nextActiveMonsterP2 = undefined;
-        } else { 
-            p1Data.discardPile.push(defeatedMonsterCard);
-            nextActiveMonsterP1 = undefined;
+        if (defender && defender.hp <= 0) {
+            combatLogMessages.push(`${defender.title} is defeated!`);
+            const defeatedMonsterCard = {...currentDefenderMonster!, hp:0, shield:0, magicShield:0};
+            if (currentPlayerIndex === 0) { 
+                p2Data.discardPile.push(defeatedMonsterCard);
+                nextActiveMonsterP2 = undefined;
+            } else { 
+                p1Data.discardPile.push(defeatedMonsterCard);
+                nextActiveMonsterP1 = undefined;
+            }
+        } else if (defender) { 
+            if (currentPlayerIndex === 0) nextActiveMonsterP2 = defender; else nextActiveMonsterP1 = defender;
         }
-    } else if (defender) { 
-         if (currentPlayerIndex === 0) nextActiveMonsterP2 = defender; else nextActiveMonsterP1 = defender;
-    }
 
-    if (attacker.hp <= 0) {
-        newLogMessages.push(`${attacker.title} is defeated!`);
-        const defeatedAttackerCard = {...currentAttackerMonster!, hp:0, shield:0, magicShield:0};
-         if (currentPlayerIndex === 0) {
-            p1Data.discardPile.push(defeatedAttackerCard);
-            nextActiveMonsterP1 = undefined;
-        } else {
-            p2Data.discardPile.push(defeatedAttackerCard);
-            nextActiveMonsterP2 = undefined;
+        if (attacker.hp <= 0) {
+            combatLogMessages.push(`${attacker.title} is defeated!`);
+            const defeatedAttackerCard = {...currentAttackerMonster!, hp:0, shield:0, magicShield:0};
+            if (currentPlayerIndex === 0) {
+                p1Data.discardPile.push(defeatedAttackerCard);
+                nextActiveMonsterP1 = undefined;
+            } else {
+                p2Data.discardPile.push(defeatedAttackerCard);
+                nextActiveMonsterP2 = undefined;
+            }
         }
-    }
 
-    const finalPlayers = [p1Data, p2Data] as [PlayerData, PlayerData];
+        const finalPlayers = [p1Data, p2Data] as [PlayerData, PlayerData];
 
-    logAndSetGameState(prev => ({
-        ...prev!,
-        players: finalPlayers,
-        activeMonsterP1: nextActiveMonsterP1,
-        activeMonsterP2: nextActiveMonsterP2,
-        gameLogMessages: newLogMessages,
-    }));
-
-    setTimeout(() => {
-        logAndSetGameState(g => ({...g!, gamePhase: 'turn_resolution_phase'}));
-        setTimeout(() => processTurnEnd(), 500);
-    }, 2000); 
+        logAndSetGameState(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                players: finalPlayers,
+                activeMonsterP1: nextActiveMonsterP1,
+                activeMonsterP2: nextActiveMonsterP2,
+                gameLogMessages: [...(prev.gameLogMessages || []), ...combatLogMessages], // Append combat logs
+                gamePhase: 'turn_resolution_phase', // Move to resolution after combat
+            };
+        });
+        setTimeout(() => processTurnEnd(), 500); // Shorter delay as turn_resolution_phase is set now
+    }, 100); // Short delay for phase change, was 2000
   };
 
   const handleRetreatMonster = () => {
@@ -903,3 +934,4 @@ export function GameBoard() {
   );
 }
 
+    
