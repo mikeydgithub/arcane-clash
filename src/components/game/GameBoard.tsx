@@ -38,28 +38,37 @@ export function GameBoard() {
 
   useEffect(() => {
     const prevState = previousGameStateRef.current;
-    const nextState = gameState;
+    const nextState = gameStateRef.current; // Use the ref for the most current state
 
     if (nextState && prevState) {
+      let changed = false;
       if (prevState.gamePhase !== nextState.gamePhase) {
         console.log(`[GAME PHASE CHANGED] From: ${prevState.gamePhase || 'null'} To: ${nextState.gamePhase}`);
+        changed = true;
       }
       if (prevState.isProcessingAction !== nextState.isProcessingAction) {
         console.log(`[PROCESSING ACTION CHANGED] To: ${nextState.isProcessingAction}`);
+        changed = true;
       }
-      if (prevState.gameLogMessages?.length !== nextState.gameLogMessages?.length ||
-          (prevState.gameLogMessages && nextState.gameLogMessages && prevState.gameLogMessages.some((msg, i) => msg !== nextState.gameLogMessages[i]))) {
-            const prevLast = prevState.gameLogMessages?.slice(-3) || [];
-            const nextLast = nextState.gameLogMessages?.slice(-3) || [];
+      const prevLogs = prevState.gameLogMessages || [];
+      const nextLogs = nextState.gameLogMessages || [];
+      if (prevLogs.length !== nextLogs.length || prevLogs.some((msg, i) => msg !== nextLogs[i])) {
+            const prevLast = prevLogs.slice(-3);
+            const nextLast = nextLogs.slice(-3);
             console.log('[GAME LOG CHANGED]', {
-                prevLength: prevState.gameLogMessages?.length,
-                nextLength: nextState.gameLogMessages?.length,
+                prevLength: prevLogs.length,
+                nextLength: nextLogs.length,
                 prevTail: prevLast,
                 nextTail: nextLast
             });
+            changed = true;
       }
+      // Add other state comparisons here if needed for logging
+      // if (changed) {
+      //   console.log('[GAME STATE CHANGED]', { prevState, nextState });
+      // }
+
     } else if (nextState && !prevState && nextState.gamePhase) {
-        // Log initial state setup if needed, e.g. first time gameState is set
         console.log(`[GAME STATE INITIALIZED] Phase: ${nextState.gamePhase}`);
         if(nextState.gameLogMessages?.length > 0) {
             console.log('[INITIAL GAME LOG]', {
@@ -68,7 +77,7 @@ export function GameBoard() {
             });
         }
     }
-    previousGameStateRef.current = nextState;
+    previousGameStateRef.current = nextState ? { ...nextState } : null; // Store a copy
   }, [gameState]);
 
 
@@ -137,7 +146,7 @@ export function GameBoard() {
       activeMonsterP1: undefined,
       activeMonsterP2: undefined,
       winner: undefined,
-      gameLogMessages: [`Game cards ready. ${firstPlayerIndex === 0 ? initialPlayer1.name : initialPlayer2.name} will be determined by coin flip. Flipping coin...`],
+      gameLogMessages: ["Game cards ready. First player will be determined by coin flip. Flipping coin..."],
       isProcessingAction: false,
     });
     
@@ -271,27 +280,27 @@ export function GameBoard() {
 
   useEffect(() => {
     console.log('[GameBoard] Effect: Checking game state for initialization.');
-    if (!gameState) {
+    if (!gameStateRef.current) { // Check ref
       console.log('[GameBoard] gameState is null, ensuring hasInitialized is false.');
       hasInitialized.current = false;
     }
 
-    if (!gameState && !hasInitialized.current) {
+    if (!gameStateRef.current && !hasInitialized.current) { // Check ref
       console.log('[GameBoard] Effect: gameState is null and not initialized. Calling initializeGame.');
       initializeGame();
-    } else if (gameState && hasInitialized.current) {
+    } else if (gameStateRef.current && hasInitialized.current) { // Check ref
       console.log('[GameBoard] Effect: Game state exists and is initialized.');
-    } else if (!gameState && hasInitialized.current) {
+    } else if (!gameStateRef.current && hasInitialized.current) { // Check ref
       console.log('[GameBoard] Effect: gameState is null, but hasInitialized is true. Game might have been reset. Preparing for re-initialization if triggered (e.g. by GameOverModal).');
-    } else if (gameState && !hasInitialized.current) {
+    } else if (gameStateRef.current && !hasInitialized.current) { // Check ref
       console.warn('[GameBoard] Effect: gameState exists, but hasInitialized is false. This state is unexpected. Attempting to re-initialize.');
       initializeGame();
     }
-  }, [gameState, initializeGame]);
+  }, [initializeGame]); // gameState (state variable) is not a dependency here
 
 
   useEffect(() => {
-    if (!gameState || isFetchingDescriptionRef.current || descriptionQueueRef.current.length === 0) return;
+    if (!gameStateRef.current || isFetchingDescriptionRef.current || descriptionQueueRef.current.length === 0) return;
 
     const processQueue = async () => {
         if (descriptionQueueRef.current.length > 0) {
@@ -344,7 +353,7 @@ export function GameBoard() {
         console.log(`[GameBoard] Starting to process description queue of length: ${descriptionQueueRef.current.length}`);
         processQueue();
     }
-  }, [gameState, fetchAndSetCardDescription]);
+  }, [fetchAndSetCardDescription]); // gameState (state variable) is not needed, processQueue uses gameStateRef.current
 
 
   const appendLog = (message: string) => {
@@ -796,17 +805,17 @@ export function GameBoard() {
   };
 
 
-  if (!gameState || gameState.gamePhase === 'loading_art' || gameState.gamePhase === 'initial') {
+  if (!gameStateRef.current || gameStateRef.current.gamePhase === 'loading_art' || gameStateRef.current.gamePhase === 'initial') {
     return (
       <div className="flex flex-col items-center justify-center h-screen w-screen p-4 bg-background text-foreground">
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
-        <p className="text-xl">{gameState?.gameLogMessages?.slice(-1)[0] || "Initializing Arcane Clash..."}</p>
-        {gameState && <p className="text-sm mt-2">Current Phase: {gameState.gamePhase}</p>}
+        <p className="text-xl">{gameStateRef.current?.gameLogMessages?.slice(-1)[0] || "Initializing Arcane Clash..."}</p>
+        {gameStateRef.current && <p className="text-sm mt-2">Current Phase: {gameStateRef.current.gamePhase}</p>}
       </div>
     );
   }
 
-  const { players, currentPlayerIndex, gamePhase, activeMonsterP1, activeMonsterP2, winner, gameLogMessages, isProcessingAction } = gameState;
+  const { players, currentPlayerIndex, gamePhase, activeMonsterP1, activeMonsterP2, winner, gameLogMessages, isProcessingAction } = gameStateRef.current;
   const player1 = players[0];
   const player2 = players[1];
   const currentPlayer = players[currentPlayerIndex];
@@ -856,7 +865,7 @@ export function GameBoard() {
           gameLogMessages={gameLogMessages || []}
           gamePhase={gamePhase}
           onCoinFlipAnimationComplete={handleCoinFlipAnimationComplete}
-          winningPlayerNameForCoinFlip={players[gameState.currentPlayerIndex]?.name}
+          winningPlayerNameForCoinFlip={players[gameStateRef.current.currentPlayerIndex]?.name}
         />
          
          {console.log("DEBUG RENDER GameBoard PlayerActions condition:", { gamePhase, isProcessingAction, currentPlayerName: currentPlayer.name })}
