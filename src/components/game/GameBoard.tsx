@@ -24,7 +24,7 @@ export function GameBoard() {
   const hasInitialized = useRef(false);
   const descriptionQueueRef = useRef<{ card: CardData, playerIndex: number }[]>([]);
   const isFetchingDescriptionRef = useRef(false);
-  const gameStateRef = useRef<GameState | null>(null); // Ref to hold the latest game state for async operations
+  const gameStateRef = useRef<GameState | null>(null);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -34,7 +34,7 @@ export function GameBoard() {
     setGameState(prevState => {
       const nextState = typeof updater === 'function' ? updater(prevState) : updater;
       if (prevState?.gamePhase !== nextState?.gamePhase) {
-        console.log(`[GAME PHASE CHANGED] From: ${prevState?.gamePhase} To: ${nextState?.gamePhase}`);
+        console.log(`[GAME PHASE CHANGED] From: ${prevState?.gamePhase || 'null'} To: ${nextState?.gamePhase}`);
       }
       if (prevState?.isProcessingAction !== nextState?.isProcessingAction) {
         console.log(`[PROCESSING ACTION CHANGED] To: ${nextState?.isProcessingAction}`);
@@ -45,8 +45,20 @@ export function GameBoard() {
 
 
   const initializeGame = useCallback(async () => {
+    if (hasInitialized.current && gameStateRef.current) {
+        console.log('[GameBoard] InitializeGame called, but game is already initialized and has state. Skipping.');
+        return;
+    }
+    if (hasInitialized.current && !gameStateRef.current) {
+        console.log('[GameBoard] InitializeGame called, hasInitialized is true but gameState is null. This might be a reset. Allowing re-init.');
+        // Potentially allow re-init if specifically resetting.
+        // For now, if it's true, we assume it's mid-process or an error.
+        // If a full restart is desired, hasInitialized.current should be set to false by the restart trigger.
+    }
+
+
     console.log('[GameBoard] Initializing game...');
-    hasInitialized.current = true;
+    hasInitialized.current = true; // Set this flag as early as possible
     logAndSetGameState(prev => ({...(prev || {} as GameState), gamePhase: 'loading_art', gameLogMessages: ["Initializing Arcane Clash... Preparing cards..."]}));
 
     const masterMonsterPool = shuffleDeck(generateMonsterCards());
@@ -61,6 +73,7 @@ export function GameBoard() {
             duration: 10000,
         });
         logAndSetGameState(prev => ({...(prev || {} as GameState), gamePhase: 'initial', gameLogMessages: ["Error: Card data missing. Pregenerate cards."]}));
+        hasInitialized.current = false; // Reset if init fails
         return;
     }
 
@@ -77,18 +90,17 @@ export function GameBoard() {
 
     const firstPlayerIndex = Math.random() < 0.5 ? 0 : 1;
 
-    // Cards from dealCards (from pregenerated data) should have description and isLoadingDescription: false set correctly.
     const initialPlayer1: PlayerData = {
       id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP,
-      hand: p1InitialHand, // Already has isLoadingDescription: false from dealCards
-      deck: p1DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: !!c.description ? false : undefined })), // For deck cards, let them be undefined until drawn
+      hand: p1InitialHand.map(c => ({ ...c, isLoadingDescription: !c.description ? undefined : false })),
+      deck: p1DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: !c.description ? undefined : false })),
       discardPile: [],
       avatarUrl: 'https://placehold.co/64x64.png?text=P1',
     };
     const initialPlayer2: PlayerData = {
       id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
-      hand: p2InitialHand, // Already has isLoadingDescription: false from dealCards
-      deck: p2DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: !!c.description ? false : undefined })),
+      hand: p2InitialHand.map(c => ({ ...c, isLoadingDescription: !c.description ? undefined : false })),
+      deck: p2DeckAfterDeal.map(c => ({ ...c, isLoadingDescription: !c.description ? undefined : false })),
       discardPile: [],
       avatarUrl: 'https://placehold.co/64x64.png?text=P2',
     };
@@ -103,11 +115,10 @@ export function GameBoard() {
       gameLogMessages: [`Game cards ready. ${firstPlayerIndex === 0 ? initialPlayer1.name : initialPlayer2.name} will be determined by coin flip. Flipping coin...`],
       isProcessingAction: false,
     });
-
-    // Queue initial hand cards for description fetching ONLY if description is missing AND not already explicitly false (which pregen should ensure)
-    // Pregenerated cards from a complete JSON should have descriptions, so this queue might be empty.
+    
+    descriptionQueueRef.current = []; // Clear queue on new game
     [...initialPlayer1.hand, ...initialPlayer2.hand].forEach((card, globalIndex) => {
-        if (!card.description && card.isLoadingDescription !== true) { // Only queue if no description and not already loading
+        if (!card.description && card.isLoadingDescription !== true && card.isLoadingDescription !== false) {
             const playerIndex = globalIndex < initialPlayer1.hand.length ? 0 : 1;
             console.log(`[GameBoard] Queuing ${card.title} for description fetch for player ${playerIndex + 1}. Has description: ${!!card.description}, isLoading: ${card.isLoadingDescription}`);
             descriptionQueueRef.current.push({ card, playerIndex });
@@ -137,7 +148,7 @@ export function GameBoard() {
   }, [logAndSetGameState]);
 
   const fetchAndSetCardDescription = useCallback(async (cardToFetch: CardData, playerIndex: number) => {
-    if (cardToFetch.description || cardToFetch.isLoadingDescription === false) { // Already has desc or explicitly not loading
+    if (cardToFetch.description || cardToFetch.isLoadingDescription === false) {
         console.log(`[fetchAndSetCardDescription] Skipping ${cardToFetch.title}, already has description or explicitly not loading.`);
         return;
     }
@@ -234,25 +245,25 @@ export function GameBoard() {
   }, [toast, logAndSetGameState]);
 
   useEffect(() => {
-    // Ensure hasInitialized is false if gameState is null (e.g. on first load or after restart)
-    if (!gameState) {
-        console.log('[GameBoard] gameState is null, ensuring hasInitialized is false.');
-        hasInitialized.current = false;
-    }
-    if (!gameState || hasInitialized.current) {
-        if (gameState && hasInitialized.current) {
-            console.log('[GameBoard] Skipping initialization: gameState exists and hasInitialized is true.');
-        } else if (!gameState) {
-            console.log('[GameBoard] Skipping initialization: gameState is null (will run after state set by restart).');
-        }
-        return;
-    }
-    const init = async () => {
-        console.log('[GameBoard] Running initializeGame from useEffect.');
+    if (!gameState && !hasInitialized.current) {
+      console.log('[GameBoard] Effect: gameState is null and not initialized. Calling initializeGame.');
+      const init = async () => {
         await initializeGame();
-    };
-    init();
+      };
+      init();
+    } else if (gameState && hasInitialized.current) {
+      console.log('[GameBoard] Effect: Game state exists and is initialized.');
+    } else if (!gameState && hasInitialized.current) {
+      console.log('[GameBoard] Effect: gameState is null, but hasInitialized is true. Game might have been reset. Ready for re-initialization if triggered.');
+    } else if (gameState && !hasInitialized.current) {
+      console.warn('[GameBoard] Effect: gameState exists, but hasInitialized is false. This state is unexpected. Re-initializing.');
+      const init = async () => {
+        await initializeGame();
+      };
+      init();
+    }
   }, [gameState, initializeGame]);
+
 
   useEffect(() => {
     if (!gameState || isFetchingDescriptionRef.current || descriptionQueueRef.current.length === 0) return;
@@ -264,19 +275,19 @@ export function GameBoard() {
 
             if (item) {
                 const { card, playerIndex } = item;
-                const latestGameState = gameStateRef.current; // Use ref for up-to-date state
+                const latestGameState = gameStateRef.current; 
 
                 let cardNeedsFetching = true;
                 if (latestGameState) {
                     const player = latestGameState.players[playerIndex];
                     const cardInHand = player.hand.find(c => c.id === card.id);
-                    const cardInDeck = player.deck.find(c => c.id === card.id); // Less likely needed for immediate display
+                    const cardInDeck = player.deck.find(c => c.id === card.id); 
                     const activeMonster = playerIndex === 0 ? latestGameState.activeMonsterP1 : latestGameState.activeMonsterP2;
                     const cardIsActive = activeMonster?.id === card.id;
 
                     if ((cardInHand && (cardInHand.description || cardInHand.isLoadingDescription === false)) ||
                         (cardIsActive && activeMonster && (activeMonster.description || activeMonster.isLoadingDescription === false)) ||
-                        (cardInDeck && (cardInDeck.description || cardInDeck.isLoadingDescription === false)) // If somehow it got a description
+                        (cardInDeck && (cardInDeck.description || cardInDeck.isLoadingDescription === false)) 
                         ) {
                         cardNeedsFetching = false;
                         console.log(`[ProcessQueue] Card ${card.title} already has description or is explicitly not loading in latest state. Skipping fetch.`);
@@ -292,7 +303,7 @@ export function GameBoard() {
             isFetchingDescriptionRef.current = false;
             if (descriptionQueueRef.current.length > 0) {
                  console.log(`[ProcessQueue] More items in queue (${descriptionQueueRef.current.length}). Processing next.`);
-                 setTimeout(processQueue, 500);
+                 setTimeout(processQueue, 500); // Small delay before next in queue
             } else {
                 console.log(`[ProcessQueue] Description queue is now empty.`);
             }
@@ -310,7 +321,6 @@ export function GameBoard() {
     logAndSetGameState(prev => {
       if (!prev) return null;
       const newLogMessages = [...(prev.gameLogMessages || []), message].slice(-100);
-      // console.log(`[GameLog] Appended: "${message}". Current tail: "${newLogMessages.slice(-1)[0]}"`);
       return { ...prev, gameLogMessages: newLogMessages };
     });
   };
@@ -330,20 +340,19 @@ export function GameBoard() {
 
       if (actingPlayerHand.length < CARDS_IN_HAND && actingPlayerDeck.length > 0) {
         const { dealtCards, remainingDeck } = dealCards(actingPlayerDeck, 1);
-        // dealtCards[0] from dealCards should have isLoadingDescription: false
         const drawnCard = { ...dealtCards[0] };
 
         actingPlayerHand.push(drawnCard);
         actingPlayerDeck = remainingDeck;
         newLogMessages.push(`${actingPlayer.name} draws ${drawnCard.title}.`);
 
-        if (!drawnCard.description && drawnCard.isLoadingDescription !== true) {
+        if (!drawnCard.description && drawnCard.isLoadingDescription !== true && drawnCard.isLoadingDescription !== false) {
             const alreadyQueued = descriptionQueueRef.current.some(item => item.card.id === drawnCard.id);
             if (!alreadyQueued) {
                 const latestGameState = gameStateRef.current;
                 let isAlreadyLoadingOrFetchedInState = false;
                 if (latestGameState) {
-                    const cardInCurrentHand = latestGameState.players[currentPlayerIndex].hand.find(c => c.id === drawnCard.id);
+                    const cardInCurrentHand = latestGameState.players[currentPlayerIndex]?.hand.find(c => c.id === drawnCard.id);
                     if (cardInCurrentHand && (cardInCurrentHand.description || cardInCurrentHand.isLoadingDescription)) {
                         isAlreadyLoadingOrFetchedInState = true;
                     }
@@ -351,6 +360,8 @@ export function GameBoard() {
                 if (!isAlreadyLoadingOrFetchedInState) {
                     console.log(`[processTurnEnd] Queuing drawn card ${drawnCard.title} for description fetch.`);
                     descriptionQueueRef.current.push({ card: drawnCard, playerIndex: currentPlayerIndex });
+                } else {
+                    console.log(`[processTurnEnd] Drawn card ${drawnCard.title} already has/is loading description.`);
                 }
             }
         }
@@ -387,7 +398,7 @@ export function GameBoard() {
   };
 
   const handlePlayMonsterFromHand = (card: MonsterCardData) => {
-    const currentGameState = gameStateRef.current; // Use ref for latest state
+    const currentGameState = gameStateRef.current; 
     if (!currentGameState || currentGameState.isProcessingAction) return;
     const { players, currentPlayerIndex } = currentGameState;
     const player = players[currentPlayerIndex];
@@ -400,9 +411,7 @@ export function GameBoard() {
     const newPlayers = [...players] as [PlayerData, PlayerData];
     newPlayers[currentPlayerIndex] = updatedPlayer;
 
-    // Card from hand should have description if pregenerated, or it would have been fetched.
-    // If it's still missing (e.g. pregen failed for it and it's first time played)
-    if (!card.description && card.isLoadingDescription !== true) {
+    if (!card.description && card.isLoadingDescription !== true && card.isLoadingDescription !== false) {
         const alreadyQueued = descriptionQueueRef.current.some(item => item.card.id === card.id);
         if (!alreadyQueued) {
             console.log(`[handlePlayMonsterFromHand] Queuing ${card.title} for description fetch as it's played.`);
@@ -414,13 +423,13 @@ export function GameBoard() {
       ...prev!,
       players: newPlayers,
       [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: card,
-      gamePhase: 'turn_resolution_phase',
+      gamePhase: 'turn_resolution_phase', // Should proceed to turn end after monster is played
     }));
-    setTimeout(() => processTurnEnd(), 500);
+    setTimeout(() => processTurnEnd(), 500); // Delay before automatically ending turn
   };
 
   const handlePlaySpellFromHand = (card: SpellCardData) => {
-    const currentGameState = gameStateRef.current; // Use ref for latest state
+    const currentGameState = gameStateRef.current; 
     if (!currentGameState || currentGameState.isProcessingAction) return;
     const { players, currentPlayerIndex } = currentGameState;
     const player = players[currentPlayerIndex];
@@ -433,7 +442,6 @@ export function GameBoard() {
             try {
                 appendLog(`Preparing ${spellToLog.title}...`);
                 console.log(`[handlePlaySpellFromHand] Fetching description for spell ${spellToLog.title}`);
-                // Temporarily mark as loading for this specific operation, even if not using the queue
                 logAndSetGameState(prevGS => {
                     if (!prevGS) return null;
                     const updateCardInHand = (hand: CardData[], id: string, isLoading: boolean) =>
@@ -460,7 +468,7 @@ export function GameBoard() {
                 console.error(`[handlePlaySpellFromHand] Error fetching spell description for ${spellToLog.title}:`, e);
                 spellToLog.description = "A mysterious enchantment unfolds.";
                 toast({ title: "AI Error", description: `Could not fetch spell effect for ${spellToLog.title}.`, variant: "destructive" });
-                 logAndSetGameState(prevGS => { // Ensure isLoadingDescription is set to false on error
+                 logAndSetGameState(prevGS => { 
                     if (!prevGS) return null;
                     const updateCardInHand = (hand: CardData[], id: string, desc: string) =>
                         hand.map(c => c.id === id ? {...c, description: desc, isLoadingDescription: false} : c);
@@ -472,23 +480,25 @@ export function GameBoard() {
             }
         }
 
-        appendLog(`${player.name} casts ${spellToLog.title}! Effect: ${spellToLog.description}`);
+        appendLog(`${player.name} casts ${spellToLog.title}! Effect: ${spellToLog.description || "Effect not yet loaded."}`);
 
         const newHand = player.hand.filter(c => c.id !== card.id);
         const newDiscardPile = [...player.discardPile, { ...card, description: spellToLog.description, isLoadingDescription: false }];
         const updatedPlayer = { ...player, hand: newHand, discardPile: newDiscardPile };
-        const newPlayers = [...players] as [PlayerData, PlayerData]; // Re-fetch players from latest game state if needed or use current scope
-        newPlayers[currentPlayerIndex] = updatedPlayer; // This uses the `player` from the outer scope, might be stale
-
-        logAndSetGameState(prev => ({ // This prev might be stale if async took long
-          ...prev!,
-          players: prev!.players.map((p, idx) => idx === currentPlayerIndex ? updatedPlayer : p) as [PlayerData, PlayerData], // Ensure updated player is merged into the latest prev.players
-          gamePhase: 'spell_effect_phase',
-        }));
+        
+        logAndSetGameState(prev => {
+          if(!prev) return null;
+          const newPlayers = prev.players.map((p, idx) => idx === currentPlayerIndex ? updatedPlayer : p) as [PlayerData, PlayerData];
+          return {
+             ...prev,
+             players: newPlayers,
+             gamePhase: 'spell_effect_phase',
+          }
+        });
         setTimeout(() => {
-            logAndSetGameState(g => ({...g!, gamePhase: 'turn_resolution_phase'}));
-            setTimeout(() => processTurnEnd(), 500);
-        }, 1000);
+            logAndSetGameState(g => ({...g!, gamePhase: 'turn_resolution_phase'})); // After spell effect, proceed to turn resolution
+            setTimeout(() => processTurnEnd(), 500); // Then end turn
+        }, 1000); // Duration for "spell effect"
     };
 
     fetchDescIfNeededAndProceed();
@@ -589,14 +599,14 @@ export function GameBoard() {
     if (defender && defender.hp <= 0) {
         newLogMessages.push(`${defender.title} is defeated!`);
         const defeatedMonsterCard = {...currentDefenderMonster!, hp:0, shield:0, magicShield:0};
-        if (currentPlayerIndex === 0) {
+        if (currentPlayerIndex === 0) { // P1 attacked, P2's monster defeated
             p2Data.discardPile.push(defeatedMonsterCard);
             nextActiveMonsterP2 = undefined;
-        } else {
+        } else { // P2 attacked, P1's monster defeated
             p1Data.discardPile.push(defeatedMonsterCard);
             nextActiveMonsterP1 = undefined;
         }
-    } else if (defender) {
+    } else if (defender) { // Defender survived
          if (currentPlayerIndex === 0) nextActiveMonsterP2 = defender; else nextActiveMonsterP1 = defender;
     }
 
@@ -625,7 +635,7 @@ export function GameBoard() {
     setTimeout(() => {
         logAndSetGameState(g => ({...g!, gamePhase: 'turn_resolution_phase'}));
         setTimeout(() => processTurnEnd(), 500);
-    }, 2000);
+    }, 2000); // Time for clash animation
   };
 
   const handleRetreatMonster = () => {
@@ -647,8 +657,7 @@ export function GameBoard() {
     logAndSetGameState(prev => ({...prev!, isProcessingAction: true}));
     appendLog(`${player.name} retreats ${monsterToRetreat.title} back to their hand.`);
 
-    // isLoadingDescription should be false for a card that was active.
-    const retreatedCard = { ...monsterToRetreat, isLoadingDescription: false };
+    const retreatedCard = { ...monsterToRetreat, isLoadingDescription: false }; // Card from arena is fully loaded
     const newHand = [...player.hand, retreatedCard];
     const updatedPlayer = { ...player, hand: newHand };
     const newPlayers = [...players] as [PlayerData, PlayerData];
@@ -726,8 +735,8 @@ export function GameBoard() {
           onCoinFlipAnimationComplete={handleCoinFlipAnimationComplete}
           winningPlayerNameForCoinFlip={players[gameState.currentPlayerIndex]?.name}
         />
-
-        {/* console.log(`DEBUG RENDER: gamePhase: ${gamePhase}, isProcessingAction: ${isProcessingAction}, currentPlayer: ${currentPlayer.name}`) */}
+         {/* Debug Log for PlayerActions visibility */}
+         {/* console.log(`DEBUG RENDER PlayerActions: gamePhase: ${gamePhase}, isProcessingAction: ${isProcessingAction}, currentPlayer: ${currentPlayer?.name}`) */}
 
          {gamePhase === 'player_action_phase' && !isProcessingAction && (
           <PlayerActions
@@ -793,12 +802,13 @@ export function GameBoard() {
         winnerName={winner?.name}
         onRestart={() => {
           console.log('[GameBoard] Restarting game...');
-          hasInitialized.current = false;
+          hasInitialized.current = false; // Allow re-initialization
           descriptionQueueRef.current = [];
           isFetchingDescriptionRef.current = false;
-          logAndSetGameState(null);
+          logAndSetGameState(null); // This will trigger the useEffect to re-initialize
         }}
       />
     </div>
   );
 }
+
