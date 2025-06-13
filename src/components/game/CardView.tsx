@@ -121,13 +121,13 @@ export function CardView({
   isPlayerTurnForThisCard = false,
   showDescriptionTooltip = false,
 }: CardViewProps) {
-  const baseCardSize = "w-40 h-56 md:w-48 md:h-64"; // Consider if height needs adjustment for 2-col stats
+  const baseCardSize = "w-40 h-56 md:w-48 md:h-64";
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-lg transition-transform duration-200 cursor-pointer" : "";
 
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
   const imageSizesProp = "(max-width: 767px) 160px, 192px";
-  const contentPadding = "p-1.5"; // Slightly more padding for content area with grid
+  const contentPadding = "p-1.5"; 
   const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
@@ -188,7 +188,7 @@ export function CardView({
           "flex-grow leading-none", 
           contentPadding, 
           contentTextSize, 
-          isMonster ? "grid grid-cols-2 gap-x-2 gap-y-0.5 items-start justify-start" : "flex flex-col items-center justify-center" // Grid for monster, flex for spell
+          isMonster ? "grid grid-cols-2 gap-x-2 gap-y-0.5 items-start justify-start" : "flex flex-col items-center justify-center" 
       )}>
         {isMonster && (
           <>
@@ -254,16 +254,23 @@ export function CardView({
         <CardFooter className="p-1.5 mt-auto flex items-center justify-center text-center leading-tight">
           {card.isLoadingDescription ? (
             <p className="text-xs text-muted-foreground italic">Generating info...</p>
-          ) : card.description ? (
-            <p className={cn("text-xs text-muted-foreground italic", !isMonster ? "" : "truncate")}>
-              {isMonster ? "Flavor: " : "Effect: "}
-              {card.description}
+          ) : card.cardType === 'Spell' ? (
+              card.description ? (
+                <p className="text-xs text-muted-foreground italic">
+                  Effect: {card.description}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground italic flex items-center">
+                  <HelpCircle className="w-3 h-3 mr-1"/> Effect: No info yet.
+                </p>
+              )
+          ) : card.cardType === 'Monster' && !card.description ? (
+            // Only show "No info" for monster if description is truly absent AND not loading.
+            // If monster has description, it's in the tooltip, so footer remains empty for this part.
+            <p className="text-xs text-muted-foreground italic flex items-center">
+                <HelpCircle className="w-3 h-3 mr-1"/> Flavor: No info yet.
             </p>
-          ) : (
-             <p className="text-xs text-muted-foreground italic flex items-center">
-              <HelpCircle className="w-3 h-3 mr-1"/> No info yet.
-            </p>
-          )}
+          ) : null}
         </CardFooter>
       )}
     </MotionCard>
@@ -295,4 +302,3 @@ export function CardView({
     </TooltipProvider>
   );
 }
-
