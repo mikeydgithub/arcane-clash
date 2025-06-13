@@ -17,7 +17,7 @@ const INITIAL_PLAYER_HP = 100;
 const CARDS_IN_HAND = 5;
 const MAX_MONSTERS_PER_DECK = 13;
 const MAX_SPELLS_PER_DECK = 12;
-const MAX_SPELLS_PER_TURN = 2;
+const SPELLS_PER_TURN_LIMIT = 1; // New limit for spells per turn
 
 export function GameBoard() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -135,6 +135,7 @@ export function GameBoard() {
         discardPile: [],
         avatarUrl: 'https://placehold.co/64x64.png?text=P1',
         spellsPlayedThisTurn: 0,
+        turnCount: 0,
       };
       const initialPlayer2: PlayerData = {
         id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
@@ -143,6 +144,7 @@ export function GameBoard() {
         discardPile: [],
         avatarUrl: 'https://placehold.co/64x64.png?text=P2',
         spellsPlayedThisTurn: 0,
+        turnCount: 0,
       };
 
       logAndSetGameState({
@@ -448,6 +450,7 @@ export function GameBoard() {
       const playerAfterAction = {
           ...actingPlayerInitial,
           spellsPlayedThisTurn: 0, 
+          turnCount: actingPlayerInitial.turnCount + 1, // Increment turn count for player whose turn just ended
       };
       let updatedPlayersArr = [...players] as [PlayerData, PlayerData];
       updatedPlayersArr[currentPlayerIndex] = playerAfterAction;
@@ -456,14 +459,14 @@ export function GameBoard() {
       
       const stateForStatusEffects: GameState = {
           players: updatedPlayersArr,
-          currentPlayerIndex: prev.currentPlayerIndex, // Still original player for this temporary state
-          gamePhase: prev.gamePhase, // Not changing phase yet
+          currentPlayerIndex: opponentPlayerIndex, // Status effects apply to player whose turn is STARTING
+          gamePhase: prev.gamePhase, 
           activeMonsterP1: activeMonsterP1 ? {...activeMonsterP1} : undefined,
           activeMonsterP2: activeMonsterP2 ? {...activeMonsterP2} : undefined,
           winner: prev.winner,
           gameLogMessages: newLogMessages,
-          isProcessingAction: prev.isProcessingAction, // Carry over
-          isInitialMonsterEngagement: prev.isInitialMonsterEngagement, // Carry over
+          isProcessingAction: prev.isProcessingAction, 
+          isInitialMonsterEngagement: prev.isInitialMonsterEngagement, 
       };
       
       const stateAfterStatusEffects = applyStatusEffectsAndCheckDefeats(opponentPlayerIndex, stateForStatusEffects);
@@ -473,6 +476,7 @@ export function GameBoard() {
       activeMonsterP2 = stateAfterStatusEffects.activeMonsterP2;
       newLogMessages = stateAfterStatusEffects.gameLogMessages;
 
+      // Card draw logic for the player who JUST FINISHED their turn
       let actingPlayerHand = [...updatedPlayersArr[currentPlayerIndex].hand];
       let actingPlayerDeck = [...updatedPlayersArr[currentPlayerIndex].deck];
 
@@ -508,9 +512,12 @@ export function GameBoard() {
       }
 
       updatedPlayersArr[currentPlayerIndex] = { ...updatedPlayersArr[currentPlayerIndex], hand: actingPlayerHand, deck: actingPlayerDeck };
-      updatedPlayersArr[opponentPlayerIndex] = { ...updatedPlayersArr[opponentPlayerIndex], spellsPlayedThisTurn: 0};
+      // SpellsPlayedThisTurn for the opponent (next player) will be reset if they were the actingPlayerInitial.
+      // It's implicitly reset because a fresh player object is taken from updatedPlayersArr when they become current.
+      // If we wanted to be super explicit:
+      // updatedPlayersArr[opponentPlayerIndex] = { ...updatedPlayersArr[opponentPlayerIndex], spellsPlayedThisTurn: 0};
 
-
+      // Check for game over conditions AFTER applying status effects and drawing cards
       if (updatedPlayersArr[0].hp <= 0 && updatedPlayersArr[1].hp <= 0) {
         newLogMessages.push("It's a draw! Both players are defeated.");
         return { 
@@ -521,7 +528,7 @@ export function GameBoard() {
             gamePhase: 'game_over_phase', 
             gameLogMessages: newLogMessages, 
             isProcessingAction: false,
-            currentPlayerIndex: prev.currentPlayerIndex, // Doesn't matter much here
+            currentPlayerIndex: opponentPlayerIndex,
             isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
          };
       } else if (updatedPlayersArr[0].hp <= 0) {
@@ -534,7 +541,7 @@ export function GameBoard() {
             gamePhase: 'game_over_phase', 
             gameLogMessages: newLogMessages, 
             isProcessingAction: false,
-            currentPlayerIndex: prev.currentPlayerIndex,
+            currentPlayerIndex: opponentPlayerIndex,
             isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
         };
       } else if (updatedPlayersArr[1].hp <= 0) {
@@ -547,26 +554,26 @@ export function GameBoard() {
             gamePhase: 'game_over_phase', 
             gameLogMessages: newLogMessages, 
             isProcessingAction: false,
-            currentPlayerIndex: prev.currentPlayerIndex,
+            currentPlayerIndex: opponentPlayerIndex,
             isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
         };
       }
 
-      newLogMessages.push(`Turn ends. It's now ${opponentPlayer.name}'s turn.`);
-      newLogMessages.push(`${opponentPlayer.name}, choose your action.`);
+      newLogMessages.push(`Turn ends. It's now ${players[opponentPlayerIndex].name}'s turn.`);
+      newLogMessages.push(`${players[opponentPlayerIndex].name}, choose your action.`);
       
-      const finalStateForTurnEnd = {
+      const finalStateForTurnEnd: GameState = {
         players: updatedPlayersArr,
         currentPlayerIndex: opponentPlayerIndex,
         gamePhase: 'player_action_phase' as GamePhase,
         activeMonsterP1,
         activeMonsterP2,
-        winner: prev.winner, // Carry over existing winner state (should be undefined if no game over)
+        winner: undefined, // No winner yet
         gameLogMessages: newLogMessages,
-        isProcessingAction: false,
-        isInitialMonsterEngagement: prev.isInitialMonsterEngagement, // Carry over this flag
+        isProcessingAction: false, // <<< CRITICAL: Ensure this is false for next player's turn
+        isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
       };
-      console.log('[GameBoard] processTurnEnd: Attempting to set final state:', {
+      console.log('[GameBoard] processTurnEnd: Setting final state for new turn:', {
           currentPlayerIndex: finalStateForTurnEnd.currentPlayerIndex,
           gamePhase: finalStateForTurnEnd.gamePhase,
           isProcessingAction: finalStateForTurnEnd.isProcessingAction,
@@ -636,15 +643,20 @@ export function GameBoard() {
     const { players, currentPlayerIndex } = currentBoardGameState;
     const player = players[currentPlayerIndex];
 
-    if (player.spellsPlayedThisTurn >= MAX_SPELLS_PER_TURN) {
-        toast({ title: "Spell Limit Reached", description: `You can only play ${MAX_SPELLS_PER_TURN} spells per turn.`, variant: "destructive" });
+    if (player.turnCount === 0) {
+        toast({ title: "First Turn Restriction", description: "You cannot play spell cards on your first turn.", variant: "destructive" });
         return;
     }
 
-    logAndSetGameState(prev => ({...prev!, isProcessingAction: true})); // Initially set to true
+    if (player.spellsPlayedThisTurn >= SPELLS_PER_TURN_LIMIT) {
+        toast({ title: "Spell Limit Reached", description: `You can only play ${SPELLS_PER_TURN_LIMIT} spell(s) per turn.`, variant: "destructive" });
+        return;
+    }
 
-    let determinedNextGamePhase: GamePhase = 'initial'; 
-    let determinedNextIsProcessingAction: boolean = true;
+    logAndSetGameState(prev => ({...prev!, isProcessingAction: true})); 
+
+    let determinedNextGamePhase: GamePhase = 'player_action_phase'; 
+    let determinedNextIsProcessingAction: boolean = false;
 
     const fetchDescIfNeededAndProceed = async () => {
         let spellToLog = { ...card };
@@ -1085,48 +1097,39 @@ export function GameBoard() {
                 const discardPileAfterSpell = [...newPlayers[currentPlayerIndex].discardPile, { ...spellToLog, isLoadingDescription: false }];
                 newPlayers[currentPlayerIndex] = { ...newPlayers[currentPlayerIndex], hand: handAfterSpell, discardPile: discardPileAfterSpell };
                 
-                // Determine next phase and processing state based on spells played
-                if (newPlayers[currentPlayerIndex].spellsPlayedThisTurn >= MAX_SPELLS_PER_TURN) {
-                    newLogMessages.push(`${actingPlayer.name} has played ${MAX_SPELLS_PER_TURN} spells. Turn ending.`);
-                    determinedNextGamePhase = 'turn_resolution_phase';
-                    determinedNextIsProcessingAction = true;
-                } else {
-                    const spellsRemaining = MAX_SPELLS_PER_TURN - newPlayers[currentPlayerIndex].spellsPlayedThisTurn;
-                    newLogMessages.push(`${actingPlayer.name} played ${spellToLog.title}. Can play ${spellsRemaining} more spell(s) or take another action.`);
-                    determinedNextGamePhase = 'player_action_phase';
-                    determinedNextIsProcessingAction = false; 
-                }
+                // After spell, return to player_action_phase and allow further actions
+                newLogMessages.push(`${actingPlayer.name} played ${spellToLog.title}. You can now attack or end your turn.`);
+                determinedNextGamePhase = 'player_action_phase';
+                determinedNextIsProcessingAction = false; 
             
-                return { // Return the fully updated state after spell effect
-                   ...prev, // Spread previous state first
-                   players: newPlayers, // Updated players array
-                   activeMonsterP1: newActiveMonsterP1, // Potentially updated monster
-                   activeMonsterP2: newActiveMonsterP2, // Potentially updated monster
-                   gameLogMessages: newLogMessages,    // Updated logs
-                   gamePhase: determinedNextGamePhase, // Determined next phase
-                   isProcessingAction: determinedNextIsProcessingAction, // Determined processing state
+                return { 
+                   ...prev, 
+                   players: newPlayers, 
+                   activeMonsterP1: newActiveMonsterP1, 
+                   activeMonsterP2: newActiveMonsterP2, 
+                   gameLogMessages: newLogMessages,    
+                   gamePhase: determinedNextGamePhase, 
+                   isProcessingAction: determinedNextIsProcessingAction, 
                 }
-            } catch (error) { // Catch errors from spell effect logic
+            } catch (error) { 
                 console.error("[GameBoard] CRITICAL ERROR within spell effect state updater:", error);
-                // Fallback state on critical error during spell effect application
-                determinedNextGamePhase = 'turn_resolution_phase'; 
+                determinedNextGamePhase = 'turn_resolution_phase'; // Force turn end on error
                 determinedNextIsProcessingAction = true;           
                 return {
-                    ...(prev || {} as GameState), // Ensure prev is not null
+                    ...(prev || {} as GameState), 
                     gameLogMessages: [...(prev?.gameLogMessages || []), "Critical error processing spell. Forcing turn end."],
                     gamePhase: determinedNextGamePhase,
                     isProcessingAction: determinedNextIsProcessingAction,
                 };
             }
-          }); // End of logAndSetGameState for spell application
-
-        // After the state update for spell effects has been dispatched:
+          }); 
+        
+        // No automatic turn end after spell. Player chooses next action or End Turn.
+        console.log(`[handlePlaySpellFromHand] Spell processed. New phase: ${determinedNextGamePhase}, Processing: ${determinedNextIsProcessingAction}`);
+        // If determinedNextGamePhase became 'turn_resolution_phase' due to an error, then schedule processTurnEnd.
         if (determinedNextGamePhase === 'turn_resolution_phase') {
-            console.log(`[handlePlaySpellFromHand] Spell resulted in turn_resolution_phase. Scheduling processTurnEnd.`);
+            console.log(`[handlePlaySpellFromHand] Spell resulted in turn_resolution_phase due to error. Scheduling processTurnEnd.`);
             setTimeout(() => processTurnEnd(), 1000);
-        } else {
-            console.log(`[handlePlaySpellFromHand] Spell did not end turn. New phase: ${determinedNextGamePhase}, Processing: ${determinedNextIsProcessingAction}`);
-            // If the turn didn't end, isProcessingAction should now be false from the state update above.
         }
     };
 
@@ -1352,7 +1355,7 @@ export function GameBoard() {
                 activeMonsterP1: nextActiveMonsterP1,
                 activeMonsterP2: nextActiveMonsterP2,
                 gameLogMessages: [...(prev.gameLogMessages || []), ...combatLogMessages],
-                gamePhase: 'turn_resolution_phase',
+                gamePhase: 'turn_resolution_phase', // Attack always leads to turn resolution
             };
         });
         setTimeout(() => processTurnEnd(), 1000); 
@@ -1421,7 +1424,7 @@ export function GameBoard() {
           ...prev,
           players: newPlayers,
           [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: cardToSwapIn,
-          gamePhase: 'turn_resolution_phase',
+          gamePhase: 'turn_resolution_phase', // Swapping is a turn-ending action
           gameLogMessages: newLogMessages,
           isProcessingAction: true, 
         };
@@ -1429,7 +1432,7 @@ export function GameBoard() {
 
     logAndSetGameState(stateUpdater);
     setTimeout(() => {
-        processTurnEnd();
+        processTurnEnd(); // Swap ends the turn
     }, 1000); 
   };
 
@@ -1481,10 +1484,12 @@ export function GameBoard() {
               if (card.cardType === 'Monster' && !latestGS.activeMonsterP1) {
                 handlePlayMonsterFromHand(card as MonsterCardData);
               } else if (card.cardType === 'Spell') {
-                 if (latestGS.players[0].spellsPlayedThisTurn < MAX_SPELLS_PER_TURN) {
+                 if (latestGS.players[0].turnCount === 0) {
+                    toast({title: "First Turn", description: "Cannot play spells on your first turn.", variant: "destructive"});
+                 } else if (latestGS.players[0].spellsPlayedThisTurn < SPELLS_PER_TURN_LIMIT) {
                     handlePlaySpellFromHand(card as SpellCardData);
                  } else {
-                    toast({title: "Spell Limit", description: `You have already played ${MAX_SPELLS_PER_TURN} spells this turn.`, variant: "destructive"});
+                    toast({title: "Spell Limit", description: `You have already played ${SPELLS_PER_TURN_LIMIT} spell(s) this turn.`, variant: "destructive"});
                  }
               }
             }
@@ -1494,6 +1499,7 @@ export function GameBoard() {
           isOpponent={false}
           currentPhase={gamePhase}
           spellsPlayedThisTurn={player1.spellsPlayedThisTurn}
+          currentPlayerTurnCount={player1.turnCount}
         />
       </div>
 
@@ -1517,20 +1523,19 @@ export function GameBoard() {
             activeMonster={currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2}
             onAttack={handleMonsterAttack}
             onInitiateSwap={handleInitiateSwap}
+            onEndTurn={() => { // Pass the explicit End Turn action
+                appendLog(`${currentPlayer.name} ends their turn.`);
+                logAndSetGameState(prev => ({...prev!, gamePhase: 'turn_resolution_phase', isProcessingAction: true}));
+                setTimeout(() => processTurnEnd(), 500); // Short delay before processing
+            }}
             canPlayMonsterFromHand={currentPlayer.hand.some(c => c.cardType === 'Monster') && !(currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2)}
             canPlaySpellFromHand={currentPlayer.hand.some(c => c.cardType === 'Spell')}
             playerHandFull={currentPlayer.hand.length >= CARDS_IN_HAND}
             spellsPlayedThisTurn={currentPlayer.spellsPlayedThisTurn}
-            maxSpellsPerTurn={MAX_SPELLS_PER_TURN}
+            maxSpellsPerTurn={SPELLS_PER_TURN_LIMIT}
+            isFirstTurn={currentPlayer.turnCount === 0}
           />
         )}
-         {gamePhase === 'turn_resolution_phase' && !isProcessingAction && (
-             <button
-                onClick={processTurnEnd}
-                className="my-2 px-4 py-2 bg-accent text-accent-foreground rounded hover:bg-accent/90 animate-pulse">
-                End Turn
-             </button>
-         )}
          {(isProcessingAction  && gamePhase !== 'selecting_swap_monster_phase') && (
             <div className="my-2 flex items-center space-x-2 text-sm text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -1566,10 +1571,12 @@ export function GameBoard() {
               if (card.cardType === 'Monster' && !latestGS.activeMonsterP2) {
                 handlePlayMonsterFromHand(card as MonsterCardData);
               } else if (card.cardType === 'Spell') {
-                 if (latestGS.players[1].spellsPlayedThisTurn < MAX_SPELLS_PER_TURN) {
+                 if (latestGS.players[1].turnCount === 0) {
+                    toast({title: "First Turn", description: "Cannot play spells on your first turn.", variant: "destructive"});
+                 } else if (latestGS.players[1].spellsPlayedThisTurn < SPELLS_PER_TURN_LIMIT) {
                     handlePlaySpellFromHand(card as SpellCardData);
                  } else {
-                    toast({title: "Spell Limit", description: `You have already played ${MAX_SPELLS_PER_TURN} spells this turn.`, variant: "destructive"});
+                    toast({title: "Spell Limit", description: `You have already played ${SPELLS_PER_TURN_LIMIT} spell(s) this turn.`, variant: "destructive"});
                  }
               }
             }
@@ -1579,6 +1586,7 @@ export function GameBoard() {
           isOpponent={true}
           currentPhase={gamePhase}
           spellsPlayedThisTurn={player2.spellsPlayedThisTurn}
+          currentPlayerTurnCount={player2.turnCount}
         />
       </div>
 

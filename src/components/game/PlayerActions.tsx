@@ -3,18 +3,20 @@
 
 import type { PlayerData, MonsterCardData } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Swords, RotateCcw, ShieldPlus, WandSparkles, Replace } from 'lucide-react';
+import { Swords, Replace, WandSparkles, LogOut, ShieldPlus } from 'lucide-react'; // Added LogOut
 
 interface PlayerActionsProps {
   currentPlayer: PlayerData;
   activeMonster?: MonsterCardData;
   onAttack: () => void;
   onInitiateSwap: () => void;
+  onEndTurn: () => void; // New prop for ending turn
   canPlayMonsterFromHand: boolean;
-  canPlaySpellFromHand: boolean; // This prop checks if there's a spell in hand
+  canPlaySpellFromHand: boolean; 
   playerHandFull: boolean;
   spellsPlayedThisTurn: number;
   maxSpellsPerTurn: number;
+  isFirstTurn: boolean; // New prop
 }
 
 export function PlayerActions({
@@ -22,11 +24,13 @@ export function PlayerActions({
   activeMonster,
   onAttack,
   onInitiateSwap,
+  onEndTurn, // New prop
   canPlayMonsterFromHand,
   canPlaySpellFromHand, 
   playerHandFull,
   spellsPlayedThisTurn,
   maxSpellsPerTurn,
+  isFirstTurn, // New prop
 }: PlayerActionsProps) {
 
   const canAttack = !!activeMonster;
@@ -55,11 +59,15 @@ export function PlayerActions({
                 <Replace className="mr-2 h-4 w-4" /> Swap (No Monster)
             </Button>
         )}
+        {/* End Turn Button */}
+        <Button onClick={onEndTurn} variant="outline" aria-label="End your turn">
+            <LogOut className="mr-2 h-4 w-4" /> End Turn
+        </Button>
       </div>
 
-      {(!activeMonster && !canPlayMonsterFromHand && (!canPlaySpellFromHand || !canStillPlaySpellThisTurn)) && (
+      {(!activeMonster && !canPlayMonsterFromHand && (isFirstTurn || !canPlaySpellFromHand || !canStillPlaySpellThisTurn)) && (
          <p className="text-xs text-muted-foreground italic mt-2 text-center">
-            No actions available. Waiting for cards or opponent.
+            No direct actions available. Consider ending turn.
         </p>
       )}
 
@@ -69,20 +77,25 @@ export function PlayerActions({
         </p>
       )}
       
-      {canPlaySpellFromHand && canStillPlaySpellThisTurn && (
+      {isFirstTurn && (
          <p className="text-xs text-muted-foreground italic mt-1 text-center">
-          Click a <WandSparkles className="inline h-3 w-3" /> Spell card to cast. ({maxSpellsPerTurn - spellsPlayedThisTurn} remaining)
+          Spells cannot be played on your first turn.
         </p>
       )}
-      {canPlaySpellFromHand && !canStillPlaySpellThisTurn && (
+      {!isFirstTurn && canPlaySpellFromHand && canStillPlaySpellThisTurn && (
+         <p className="text-xs text-muted-foreground italic mt-1 text-center">
+          Click a <WandSparkles className="inline h-3 w-3" /> Spell card to cast. ({maxSpellsPerTurn - spellsPlayedThisTurn} remaining this turn)
+        </p>
+      )}
+      {!isFirstTurn && canPlaySpellFromHand && !canStillPlaySpellThisTurn && (
          <p className="text-xs text-muted-foreground italic mt-1 text-center">
           No more spells can be played this turn. ({spellsPlayedThisTurn}/{maxSpellsPerTurn} played)
         </p>
       )}
 
-       {activeMonster && !canPlayMonsterFromHand && (!canPlaySpellFromHand || !canStillPlaySpellThisTurn) && !canAttack && !canSwap && (
+       {activeMonster && !canPlayMonsterFromHand && (isFirstTurn || !canPlaySpellFromHand || !canStillPlaySpellThisTurn) && !canAttack && !canSwap && (
          <p className="text-xs text-muted-foreground italic mt-2 text-center">
-            No further actions with current hand or active monster. Consider ending turn.
+            No further actions with current hand or active monster. End turn or summon if possible.
         </p>
       )}
       {canSwap && playerHandFull && (

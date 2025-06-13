@@ -44,7 +44,8 @@ export interface PlayerData {
   deck: CardData[];
   discardPile: CardData[];
   avatarUrl?: string;
-  spellsPlayedThisTurn: number; // New field
+  spellsPlayedThisTurn: number;
+  turnCount: number; // Added to track player's turn number
 }
 
 export type GamePhase =

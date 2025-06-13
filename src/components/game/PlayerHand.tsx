@@ -5,7 +5,7 @@ import type { CardData, MonsterCardData, GamePhase } from '@/types';
 import { CardView } from './CardView';
 import { cn } from '@/lib/utils';
 
-const MAX_SPELLS_PER_TURN = 2; // Consistent with GameBoard
+const SPELLS_PER_TURN_LIMIT = 1; // Consistent with GameBoard
 
 interface PlayerHandProps {
   cards: CardData[];
@@ -14,7 +14,8 @@ interface PlayerHandProps {
   isOpponent?: boolean;
   canPlayMonster?: boolean; 
   currentPhase: GamePhase; 
-  spellsPlayedThisTurn: number; // Added prop
+  spellsPlayedThisTurn: number;
+  currentPlayerTurnCount: number; // Added to check first turn rule
 }
 
 export function PlayerHand({ 
@@ -24,7 +25,8 @@ export function PlayerHand({
   isOpponent = false, 
   canPlayMonster = true,
   currentPhase,
-  spellsPlayedThisTurn 
+  spellsPlayedThisTurn,
+  currentPlayerTurnCount,
 }: PlayerHandProps) {
   if (!cards) return null;
 
@@ -50,8 +52,8 @@ export function PlayerHand({
             if (card.cardType === 'Monster' && canPlayMonster) {
               cardIsActuallyPlayable = true;
             } else if (card.cardType === 'Spell') {
-              // Check spellsPlayedThisTurn before allowing spell play
-              cardIsActuallyPlayable = (spellsPlayedThisTurn === undefined || spellsPlayedThisTurn < MAX_SPELLS_PER_TURN);
+              cardIsActuallyPlayable = currentPlayerTurnCount > 0 && // Cannot play spells on turn 0 (first turn)
+                                     (spellsPlayedThisTurn === undefined || spellsPlayedThisTurn < SPELLS_PER_TURN_LIMIT);
             }
           }
         }
