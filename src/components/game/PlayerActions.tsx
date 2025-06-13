@@ -3,32 +3,33 @@
 
 import type { PlayerData, MonsterCardData } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Swords, RotateCcw, ShieldPlus, WandSparkles, Replace } from 'lucide-react'; // Added Replace icon
+import { Swords, RotateCcw, ShieldPlus, WandSparkles, Replace } from 'lucide-react';
 
 interface PlayerActionsProps {
   currentPlayer: PlayerData;
-  activeMonster?: MonsterCardData; 
+  activeMonster?: MonsterCardData;
   onAttack: () => void;
-  onInitiateSwap: () => void; // Changed from onRetreat
+  onInitiateSwap: () => void;
   canPlayMonsterFromHand: boolean;
   canPlaySpellFromHand: boolean;
-  playerHandFull: boolean;
+  playerHandFull: boolean; // Retained for potential other uses, but not for canSwap directly
 }
 
 export function PlayerActions({
   currentPlayer,
   activeMonster,
   onAttack,
-  onInitiateSwap, // Changed from onRetreat
+  onInitiateSwap,
   canPlayMonsterFromHand,
   canPlaySpellFromHand,
-  playerHandFull,
+  playerHandFull, // playerHandFull is now used for conditional text, not direct swap disabling
 }: PlayerActionsProps) {
 
   const canAttack = !!activeMonster;
-  // Can swap if: active monster exists, hand is not full (to receive active monster), and has another monster in hand to swap to.
   const hasMonsterInHandToSwapTo = currentPlayer.hand.some(card => card.cardType === 'Monster' && card.id !== activeMonster?.id);
-  const canSwap = !!activeMonster && !playerHandFull && hasMonsterInHandToSwapTo;
+  // Swap is possible if there's an active monster and another monster in hand to swap with.
+  // The consequence of a full hand is handled by handleConfirmSwapMonster (active monster discarded).
+  const canSwap = !!activeMonster && hasMonsterInHandToSwapTo;
 
   return (
     <div className="flex flex-col items-center space-y-2 p-2 md:p-4 my-2 md:my-3 bg-card/50 rounded-lg shadow-md border border-border">
@@ -46,18 +47,14 @@ export function PlayerActions({
             <Replace className="mr-2 h-4 w-4" /> Swap Monster
           </Button>
         )}
-        {!!activeMonster && !playerHandFull && !hasMonsterInHandToSwapTo && (
+        {/* Disabled state if active monster exists but no other monster in hand to swap to */}
+        {!!activeMonster && !hasMonsterInHandToSwapTo && (
              <Button variant="outline" aria-label="Cannot swap, no other monster in hand" disabled>
                 <Replace className="mr-2 h-4 w-4" /> Swap (No Monster)
             </Button>
         )}
-         {!!activeMonster && playerHandFull && ( // Show disabled swap if hand is full, regardless of other monsters
-             <Button variant="outline" aria-label="Cannot swap, hand full" disabled>
-                <Replace className="mr-2 h-4 w-4" /> Swap (Hand Full)
-            </Button>
-        )}
       </div>
-      
+
       {!activeMonster && !canPlayMonsterFromHand && !canPlaySpellFromHand && (
          <p className="text-xs text-muted-foreground italic mt-2 text-center">
             No actions available. Waiting for cards or opponent.
@@ -77,6 +74,12 @@ export function PlayerActions({
        {activeMonster && !canPlayMonsterFromHand && !canPlaySpellFromHand && !canAttack && !canSwap && (
          <p className="text-xs text-muted-foreground italic mt-2 text-center">
             No further actions with current hand or active monster. Consider ending turn.
+        </p>
+      )}
+      {/* Informational text if hand is full and player *might* be considering a swap */}
+      {canSwap && playerHandFull && (
+        <p className="text-xs text-muted-foreground italic mt-1 text-center">
+          Note: Swapping with a full hand will discard the active monster.
         </p>
       )}
     </div>
