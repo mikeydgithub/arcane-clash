@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -70,17 +71,14 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    /* Themed background is not really visible if spiral itself fills container, but kept for consistency */
-    /* background-color: hsl(var(--card)); */ 
     border-radius: 1rem; /* Rounded corners for the container */
-    /* box-shadow: 0 10px 15px hsla(var(--foreground), 0.1); */ /* Shadow might be too much for a background element */
 }
 
 .spiral {
     position: relative;
     width: 100px; /* Initial size of the spiral segment */
     height: 100px;
-    border: 5px solid hsl(var(--accent)); /* Themed border for the spiral */
+    border: 5px solid hsl(260, 65%, 70%); /* More purple themed border for the spiral */
     border-top-color: transparent; /* Make top border transparent to create a gap */
     border-left-color: transparent; /* Make left border transparent */
     border-radius: 50%; /* Make it a circle */
@@ -93,7 +91,7 @@ body {
 .spiral::after {
     content: '';
     position: absolute;
-    border: 5px solid hsl(var(--accent)); /* Themed border for inner layers */
+    border: 5px solid hsl(260, 60%, 60%); /* Slightly different purple for inner layers */
     border-top-color: transparent;
     border-left-color: transparent;
     border-radius: 50%;
@@ -201,3 +199,5 @@ body {
   }
   /* body styles are now at the top of the file for clarity */
 }
+
+    
