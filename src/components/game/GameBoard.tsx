@@ -80,7 +80,7 @@ export function GameBoard() {
       return;
     }
     isInitializingRef.current = true;
-    hasInitialized.current = false; // Reset for new initialization attempt
+    hasInitialized.current = false; 
 
     console.log('[GameBoard] Initializing game sequence starting (lock acquired)...');
 
@@ -106,7 +106,7 @@ export function GameBoard() {
           });
           logAndSetGameState(prev => ({
             ...(prev || {} as GameState),
-            gamePhase: 'initial', // Revert to initial to show error
+            gamePhase: 'initial', 
             gameLogMessages: ["Error: Card data missing. Pregenerate cards."],
             isProcessingAction: false,
           }));
@@ -150,11 +150,11 @@ export function GameBoard() {
         activeMonsterP2: undefined,
         winner: undefined,
         gameLogMessages: ["Game cards ready. First player will be determined by coin flip. Flipping coin..."],
-        isProcessingAction: false, // Ready for coin flip interaction
+        isProcessingAction: false, 
         isInitialMonsterEngagement: true,
       });
 
-      hasInitialized.current = true; // Mark as successfully initialized
+      hasInitialized.current = true; 
 
       descriptionQueueRef.current = [];
       [...initialPlayer1.hand, ...initialPlayer2.hand].forEach((card, globalIndex) => {
@@ -176,11 +176,11 @@ export function GameBoard() {
       });
       logAndSetGameState(prev => ({
           ...(prev || {} as GameState),
-          gamePhase: 'initial', // Revert to initial to show error
+          gamePhase: 'initial', 
           gameLogMessages: [...(prev?.gameLogMessages?.slice(0, -1) || []), "Error: Critical problem during game setup. Refresh may be needed."],
           isProcessingAction: false,
       }));
-      hasInitialized.current = false; // Ensure it's false on error
+      hasInitialized.current = false; 
     } finally {
       isInitializingRef.current = false;
       console.log('[GameBoard] Initializing game sequence finished (lock released).');
@@ -377,7 +377,7 @@ export function GameBoard() {
   const appendLog = (message: string) => {
     logAndSetGameState(prev => {
       if (!prev) return null;
-      const newLogMessages = [...(prev.gameLogMessages || []), message].slice(-100); // Keep last 100 messages
+      const newLogMessages = [...(prev.gameLogMessages || []), message].slice(-100); 
       return { ...prev, gameLogMessages: newLogMessages };
     });
   };
@@ -486,24 +486,24 @@ export function GameBoard() {
         ...prev,
         players: newPlayers,
         [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: card,
-        isInitialMonsterEngagement: false, // Set to false after any monster is played
+        isInitialMonsterEngagement: false, 
       };
     });
 
-    // Check if it was the very first monster engagement of the game
+    
     if (wasGloballyFirstMonsterSummoned) {
       appendLog(`${card.title} cannot attack this turn as it's the first monster in play.`);
-      logAndSetGameState(prev => ({...prev!, gamePhase: 'turn_resolution_phase'})); // End turn
+      logAndSetGameState(prev => ({...prev!, gamePhase: 'turn_resolution_phase'})); 
       setTimeout(() => {
         processTurnEnd();
       }, 1000);
     } else {
-      // Not the first monster, allow actions (like attack)
+      
       appendLog(`${card.title} is ready for action! ${player.name}, choose your next move.`);
       logAndSetGameState(prev => ({
         ...prev!,
-        gamePhase: 'player_action_phase', // Stay in action phase
-        isProcessingAction: false, // Allow player actions
+        gamePhase: 'player_action_phase', 
+        isProcessingAction: false, 
       }));
     }
   };
@@ -562,19 +562,135 @@ export function GameBoard() {
 
         appendLog(`${player.name} casts ${spellToLog.title}! Effect: ${spellToLog.description || "Effect not yet loaded."}`);
 
-        const newHand = player.hand.filter(c => c.id !== card.id);
-        const newDiscardPile = [...player.discardPile, { ...card, description: spellToLog.description, isLoadingDescription: false }];
-        const updatedPlayer = { ...player, hand: newHand, discardPile: newDiscardPile };
-
         logAndSetGameState(prev => {
-          if(!prev) return null;
-          const newPlayers = prev.players.map((p, idx) => idx === currentPlayerIndex ? updatedPlayer : p) as [PlayerData, PlayerData];
-          return {
-             ...prev,
-             players: newPlayers,
-             gamePhase: 'spell_effect_phase',
-          }
-        });
+            if (!prev) return null;
+            let { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2, gameLogMessages } = prev;
+            const actingPlayer = players[currentPlayerIndex];
+            const opponentPlayerIndex = 1 - currentPlayerIndex;
+            const opponentPlayer = players[opponentPlayerIndex];
+        
+            let newPlayers = players.map(p => ({...p, hand: [...p.hand], discardPile: [...p.discardPile]})) as [PlayerData, PlayerData];
+            let newActiveMonsterP1 = activeMonsterP1 ? { ...activeMonsterP1 } : undefined;
+            let newActiveMonsterP2 = activeMonsterP2 ? { ...activeMonsterP2 } : undefined;
+            let newLogMessages = [...(gameLogMessages || [])];
+        
+            const currentPlayersMonsterRef = currentPlayerIndex === 0 ? newActiveMonsterP1 : newActiveMonsterP2;
+            const opponentPlayersMonsterRef = currentPlayerIndex === 0 ? newActiveMonsterP2 : newActiveMonsterP1;
+        
+            switch (spellToLog.title) {
+                case 'Stone Skin':
+                    if (currentPlayersMonsterRef) {
+                        const boost = 5;
+                        currentPlayersMonsterRef.defense = Math.max(0, currentPlayersMonsterRef.defense + boost);
+                        newLogMessages.push(`${actingPlayer.name}'s Stone Skin increases ${currentPlayersMonsterRef.title}'s defense by ${boost}! New Defense: ${currentPlayersMonsterRef.defense}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef;
+                        else newActiveMonsterP2 = currentPlayersMonsterRef;
+                    } else {
+                        newLogMessages.push(`${actingPlayer.name}'s Stone Skin fizzles! No active monster to target.`);
+                    }
+                    break;
+        
+                case 'Fireball':
+                    const fireDamage = 15;
+                    if (opponentPlayersMonsterRef) {
+                        const originalHp = opponentPlayersMonsterRef.hp;
+                        const originalMagicShield = opponentPlayersMonsterRef.magicShield;
+                        let damageToDeal = fireDamage;
+                        let message = `${actingPlayer.name}'s Fireball targets ${opponentPlayersMonsterRef.title}. `;
+        
+                        let magicShieldAbsorbed = Math.min(opponentPlayersMonsterRef.magicShield, damageToDeal);
+                        if (magicShieldAbsorbed > 0) {
+                            opponentPlayersMonsterRef.magicShield -= magicShieldAbsorbed;
+                            message += `Magic shield absorbs ${magicShieldAbsorbed}. Shield: ${originalMagicShield} -> ${opponentPlayersMonsterRef.magicShield}. `;
+                        }
+                        damageToDeal -= magicShieldAbsorbed;
+        
+                        if (damageToDeal > 0) {
+                            opponentPlayersMonsterRef.hp = Math.max(0, opponentPlayersMonsterRef.hp - damageToDeal);
+                            message += `Takes ${damageToDeal} fire damage to HP. HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}.`;
+                        } else {
+                            message += `No HP damage taken after shield absorption.`;
+                        }
+                        newLogMessages.push(message);
+        
+                        if (opponentPlayersMonsterRef.hp <= 0) {
+                            newLogMessages.push(`${opponentPlayersMonsterRef.title} is incinerated by the Fireball!`);
+                            const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, shield:0, magicShield:0};
+                            newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined;
+                            else newActiveMonsterP1 = undefined;
+                        } else {
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef;
+                            else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                        }
+                    } else { 
+                        const originalPlayerHp = newPlayers[opponentPlayerIndex].hp;
+                        newPlayers[opponentPlayerIndex].hp = Math.max(0, newPlayers[opponentPlayerIndex].hp - fireDamage);
+                        newLogMessages.push(`${actingPlayer.name}'s Fireball strikes ${opponentPlayer.name} directly for ${fireDamage} damage! HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp}.`);
+                    }
+                    break;
+        
+                case 'Healing Light':
+                    if (currentPlayersMonsterRef) {
+                        const healAmount = 20;
+                        const originalHp = currentPlayersMonsterRef.hp;
+                        currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + healAmount);
+                        newLogMessages.push(`${actingPlayer.name}'s Healing Light restores ${currentPlayersMonsterRef.hp - originalHp} HP to ${currentPlayersMonsterRef.title}! HP: ${originalHp} -> ${currentPlayersMonsterRef.hp}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef;
+                        else newActiveMonsterP2 = currentPlayersMonsterRef;
+                    } else {
+                        newLogMessages.push(`${actingPlayer.name}'s Healing Light fizzles! No active monster to heal.`);
+                    }
+                    break;
+                
+                case 'Arcane Shield':
+                    if (currentPlayersMonsterRef) {
+                        const shieldAmount = 10;
+                        const originalShield = currentPlayersMonsterRef.magicShield;
+                        currentPlayersMonsterRef.magicShield += shieldAmount;
+                        currentPlayersMonsterRef.maxMagicShield = Math.max(currentPlayersMonsterRef.maxMagicShield, currentPlayersMonsterRef.magicShield); 
+                        newLogMessages.push(`${actingPlayer.name}'s Arcane Shield grants ${shieldAmount} magic shield to ${currentPlayersMonsterRef.title}! Magic Shield: ${originalShield} -> ${currentPlayersMonsterRef.magicShield}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef;
+                        else newActiveMonsterP2 = currentPlayersMonsterRef;
+                    } else {
+                        newLogMessages.push(`${actingPlayer.name}'s Arcane Shield fizzles! No active monster to shield.`);
+                    }
+                    break;
+        
+                case 'Weakening Curse':
+                    if (opponentPlayersMonsterRef) {
+                        const reduction = 3;
+                        const originalMelee = opponentPlayersMonsterRef.melee;
+                        const originalMagic = opponentPlayersMonsterRef.magic;
+                        opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - reduction);
+                        opponentPlayersMonsterRef.magic = Math.max(0, opponentPlayersMonsterRef.magic - reduction);
+                        newLogMessages.push(`${actingPlayer.name}'s Weakening Curse reduces ${opponentPlayersMonsterRef.title}'s attack power! Melee: ${originalMelee} -> ${opponentPlayersMonsterRef.melee}, Magic: ${originalMagic} -> ${opponentPlayersMonsterRef.magic}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef;
+                        else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                    } else {
+                        newLogMessages.push(`${actingPlayer.name}'s Weakening Curse finds no target!`);
+                    }
+                    break;
+        
+                default:
+                    newLogMessages.push(`${spellToLog.title} is cast, but its specific effect is not yet implemented.`);
+                    break;
+            }
+        
+            const handAfterSpell = newPlayers[currentPlayerIndex].hand.filter(c => c.id !== spellToLog.id);
+            const discardPileAfterSpell = [...newPlayers[currentPlayerIndex].discardPile, { ...spellToLog, isLoadingDescription: false }];
+            newPlayers[currentPlayerIndex] = { ...newPlayers[currentPlayerIndex], hand: handAfterSpell, discardPile: discardPileAfterSpell };
+        
+            return {
+               ...prev,
+               players: newPlayers,
+               activeMonsterP1: newActiveMonsterP1,
+               activeMonsterP2: newActiveMonsterP2,
+               gameLogMessages: newLogMessages,
+               gamePhase: 'spell_effect_phase', 
+            }
+          });
+
         setTimeout(() => {
             logAndSetGameState(g => ({...g!, gamePhase: 'turn_resolution_phase'}));
             setTimeout(() => processTurnEnd(), 500);
@@ -820,24 +936,23 @@ export function GameBoard() {
 
       if (!monsterToSwapOut) {
         toast({ title: "No monster to swap", description: "You don't have an active monster.", variant: "destructive" });
-        return {...prev, isProcessingAction: false };
+        return {...prev };
       }
       const hasOtherMonsterInHand = player.hand.some(c => c.cardType === 'Monster' && c.id !== monsterToSwapOut.id);
       if (!hasOtherMonsterInHand) {
           toast({ title: "No Monster to Swap In", description: "You need another monster in your hand to swap.", variant: "destructive" });
-          return {...prev, isProcessingAction: false };
+          return {...prev };
       }
-
+      
       return {
         ...prev,
         gamePhase: 'selecting_swap_monster_phase',
         gameLogMessages: [...(prev.gameLogMessages || []), `${player.name} is choosing a monster to swap with ${monsterToSwapOut.title}.`],
-        isProcessingAction: false, // Player needs to select a card, so not processing yet
       };
     });
   };
 
-const handleConfirmSwapMonster = (cardToSwapIn: MonsterCardData) => {
+  const handleConfirmSwapMonster = (cardToSwapIn: MonsterCardData) => {
     const stateUpdater = (prev: GameState | null): GameState | null => {
         if (!prev || prev.gamePhase !== 'selecting_swap_monster_phase') return prev;
 
@@ -851,7 +966,7 @@ const handleConfirmSwapMonster = (cardToSwapIn: MonsterCardData) => {
             newLogMessages.push("Error: No active monster to swap out.");
             return {...prev, gamePhase: 'player_action_phase', gameLogMessages: newLogMessages, isProcessingAction: false};
         }
-
+        
         const handAfterPlayingSelected = player.hand.filter(c => c.id !== cardToSwapIn.id);
         let finalHand = handAfterPlayingSelected;
         let finalDiscardPile = [...player.discardPile];
@@ -874,23 +989,19 @@ const handleConfirmSwapMonster = (cardToSwapIn: MonsterCardData) => {
           [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: cardToSwapIn,
           gamePhase: 'turn_resolution_phase',
           gameLogMessages: newLogMessages,
-          isProcessingAction: true, // System will now process the turn end.
+          isProcessingAction: true, 
         };
     };
 
     logAndSetGameState(stateUpdater);
-
-    // Schedule processTurnEnd to occur *after* the current batch of state updates has been processed by React.
-    // Increased delay for UI update and visual pacing.
     setTimeout(() => {
         processTurnEnd();
-    }, 1000);
+    }, 1000); 
   };
 
 
   if (!gameState || gameState.gamePhase === 'loading_art' || gameState.gamePhase === 'initial') {
     const currentLog = gameState?.gameLogMessages?.slice(-1)[0];
-    // Display error from log if init failed, otherwise the generic loading message.
     const displayMessage = currentLog && currentLog.startsWith("Error:")
       ? currentLog
       : (gameState?.gameLogMessages?.join('\n') || "Initializing Arcane Clash...");
@@ -1032,9 +1143,9 @@ const handleConfirmSwapMonster = (cardToSwapIn: MonsterCardData) => {
           console.log('[GameBoard] Restarting game: resetting state and flags.');
           descriptionQueueRef.current = [];
           isFetchingDescriptionRef.current = false;
-          isInitializingRef.current = false; // Ensure this is reset for re-initialization
-          hasInitialized.current = false;  // Ensure this is reset
-          logAndSetGameState(null); // This will trigger the useEffect to call initializeGame
+          isInitializingRef.current = false; 
+          hasInitialized.current = false;  
+          logAndSetGameState(null); 
         }}
       />
     </div>
