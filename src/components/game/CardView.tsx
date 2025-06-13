@@ -127,7 +127,7 @@ export function CardView({
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
   const imageSizesProp = "(max-width: 767px) 160px, 192px";
-  const contentPadding = "p-2";
+  const contentPadding = "p-1"; // Reduced padding for CardContent
   const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
@@ -184,7 +184,7 @@ export function CardView({
         )}
       </div>
 
-      <CardContent className={cn("flex-grow flex flex-col items-center justify-center space-y-0.5", contentPadding, contentTextSize)}>
+      <CardContent className={cn("flex-grow flex flex-col items-center justify-start gap-0 leading-none", contentPadding, contentTextSize)}>
         {isMonster && (card as MonsterCardData).melee > 0 && (
             <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={(card as MonsterCardData).melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} tooltipText="Melee Attack: Physical damage dealt." />
         )}
@@ -240,7 +240,7 @@ export function CardView({
       </CardContent>
 
       {!inBattleArena && (
-        <CardFooter className="p-2 mt-auto min-h-[3.5rem] flex items-center justify-center text-center">
+        <CardFooter className="p-1 mt-auto flex items-center justify-center text-center">
           {card.isLoadingDescription ? (
             <p className="text-xs text-muted-foreground italic">Generating info...</p>
           ) : card.description ? (
@@ -284,3 +284,4 @@ export function CardView({
     </TooltipProvider>
   );
 }
+
