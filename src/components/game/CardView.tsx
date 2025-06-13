@@ -121,13 +121,13 @@ export function CardView({
   isPlayerTurnForThisCard = false,
   showDescriptionTooltip = false,
 }: CardViewProps) {
-  const baseCardSize = "w-40 h-56 md:w-48 md:h-64";
+  const baseCardSize = "w-40 h-56 md:w-48 md:h-64"; // Consider if height needs adjustment for 2-col stats
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-lg transition-transform duration-200 cursor-pointer" : "";
 
   const headerPadding = "pb-1 p-2";
   const titleSize = "text-sm";
   const imageSizesProp = "(max-width: 767px) 160px, 192px";
-  const contentPadding = "p-1"; // Reduced padding for CardContent
+  const contentPadding = "p-1.5"; // Slightly more padding for content area with grid
   const contentTextSize = "text-xs";
   const iconSize = "w-3 h-3 md:w-4 md:h-4";
 
@@ -184,67 +184,78 @@ export function CardView({
         )}
       </div>
 
-      <CardContent className={cn("flex-grow flex flex-col items-center justify-start gap-0 leading-none", contentPadding, contentTextSize)}>
-        {isMonster && (card as MonsterCardData).melee > 0 && (
-            <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={(card as MonsterCardData).melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} tooltipText="Melee Attack: Physical damage dealt." />
-        )}
-        {isMonster && (card as MonsterCardData).magic > 0 && (
-            <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={(card as MonsterCardData).magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} tooltipText="Magic Attack: Magical damage dealt." />
-        )}
+      <CardContent className={cn(
+          "flex-grow leading-none", 
+          contentPadding, 
+          contentTextSize, 
+          isMonster ? "grid grid-cols-2 gap-x-2 gap-y-0.5 items-start justify-start" : "flex flex-col items-center justify-center" // Grid for monster, flex for spell
+      )}>
         {isMonster && (
           <>
-            <StatDisplay
-              icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />}
-              currentValue={(card as MonsterCardData).defense}
-              label="Defense"
-              isSingleValue={true}
-              animateStats={inBattleArena}
-              tooltipText="Defense: Reduces incoming physical damage."
-            />
-            <StatDisplay
-                icon={<Heart className={cn(iconSize, "text-pink-400")} />}
-                currentValue={(card as MonsterCardData).hp}
-                maxValue={(card as MonsterCardData).maxHp}
-                label="HP"
+            {/* Column 1 */}
+            <div className="flex flex-col gap-y-0.5">
+              {(card as MonsterCardData).melee > 0 && (
+                  <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={(card as MonsterCardData).melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} tooltipText="Melee Attack: Physical damage dealt." />
+              )}
+              <StatDisplay
+                icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />}
+                currentValue={(card as MonsterCardData).defense}
+                label="Defense"
+                isSingleValue={true}
                 animateStats={inBattleArena}
-                tooltipText={`Hit Points: Current ${Math.round((card as MonsterCardData).hp)} / Max ${Math.round((card as MonsterCardData).maxHp)}`}
-            />
-            {(card as MonsterCardData).maxShield > 0 && (
-                <StatDisplay
-                    icon={<ShieldCheck className={cn(iconSize, "text-yellow-400")} />}
-                    currentValue={(card as MonsterCardData).shield}
-                    maxValue={(card as MonsterCardData).maxShield}
-                    label="Physical Shield"
-                    animateStats={inBattleArena}
-                    tooltipText={`Physical Shield: Absorbs physical damage. Current ${Math.round((card as MonsterCardData).shield)} / Max ${Math.round((card as MonsterCardData).maxShield)}`}
-                />
-            )}
-            {(card as MonsterCardData).maxMagicShield > 0 && (
-                <StatDisplay
-                    icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />}
-                    currentValue={(card as MonsterCardData).magicShield}
-                    maxValue={(card as MonsterCardData).maxMagicShield}
-                    label="Magic Shield"
-                    animateStats={inBattleArena}
-                    tooltipText={`Magic Shield: Absorbs magical damage. Current ${Math.round((card as MonsterCardData).magicShield)} / Max ${Math.round((card as MonsterCardData).maxMagicShield)}`}
-                />
-            )}
+                tooltipText="Defense: Reduces incoming physical damage."
+              />
+              {(card as MonsterCardData).maxShield > 0 && (
+                  <StatDisplay
+                      icon={<ShieldCheck className={cn(iconSize, "text-yellow-400")} />}
+                      currentValue={(card as MonsterCardData).shield}
+                      maxValue={(card as MonsterCardData).maxShield}
+                      label="Physical Shield"
+                      animateStats={inBattleArena}
+                      tooltipText={`Physical Shield: Absorbs physical damage. Current ${Math.round((card as MonsterCardData).shield)} / Max ${Math.round((card as MonsterCardData).maxShield)}`}
+                  />
+              )}
+            </div>
+            {/* Column 2 */}
+            <div className="flex flex-col gap-y-0.5">
+              {(card as MonsterCardData).magic > 0 && (
+                  <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={(card as MonsterCardData).magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} tooltipText="Magic Attack: Magical damage dealt." />
+              )}
+               <StatDisplay
+                  icon={<Heart className={cn(iconSize, "text-pink-400")} />}
+                  currentValue={(card as MonsterCardData).hp}
+                  maxValue={(card as MonsterCardData).maxHp}
+                  label="HP"
+                  animateStats={inBattleArena}
+                  tooltipText={`Hit Points: Current ${Math.round((card as MonsterCardData).hp)} / Max ${Math.round((card as MonsterCardData).maxHp)}`}
+              />
+              {(card as MonsterCardData).maxMagicShield > 0 && (
+                  <StatDisplay
+                      icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />}
+                      currentValue={(card as MonsterCardData).magicShield}
+                      maxValue={(card as MonsterCardData).maxMagicShield}
+                      label="Magic Shield"
+                      animateStats={inBattleArena}
+                      tooltipText={`Magic Shield: Absorbs magical damage. Current ${Math.round((card as MonsterCardData).magicShield)} / Max ${Math.round((card as MonsterCardData).maxMagicShield)}`}
+                  />
+              )}
+            </div>
           </>
         )}
         {!isMonster && (
-          <div className="flex flex-col items-center text-center p-2">
-            <Zap className={cn(iconSize, "text-yellow-400 mb-1")} />
+          <div className="flex flex-col items-center text-center p-1">
+            <Zap className={cn(iconSize, "text-yellow-400 mb-0.5")} />
             <p className="text-xs italic">Spell Effect</p>
           </div>
         )}
       </CardContent>
 
       {!inBattleArena && (
-        <CardFooter className="p-1 mt-auto flex items-center justify-center text-center">
+        <CardFooter className="p-1.5 mt-auto flex items-center justify-center text-center leading-tight">
           {card.isLoadingDescription ? (
             <p className="text-xs text-muted-foreground italic">Generating info...</p>
           ) : card.description ? (
-            <p className={cn("text-xs text-muted-foreground italic leading-tight", !isMonster ? "" : "truncate")}>
+            <p className={cn("text-xs text-muted-foreground italic", !isMonster ? "" : "truncate")}>
               {isMonster ? "Flavor: " : "Effect: "}
               {card.description}
             </p>
