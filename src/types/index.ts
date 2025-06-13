@@ -1,4 +1,12 @@
 
+export interface StatusEffect {
+  id: string; // Unique ID for this specific application of the effect
+  type: 'regenerate'; // Can be expanded to other types like 'poison', 'stunned', etc.
+  duration: number; // Number of turns remaining for the effect
+  value: number; // Potency of the effect (e.g., HP healed per turn for regenerate)
+  // Potentially add sourceCardId if needed for complex interactions later
+}
+
 export interface BaseCardData {
   id: string;
   title: string;
@@ -19,6 +27,7 @@ export interface MonsterCardData extends BaseCardData {
   maxShield: number;
   magicShield: number;
   maxMagicShield: number;
+  statusEffects?: StatusEffect[];
 }
 
 export interface SpellCardData extends BaseCardData {
@@ -59,4 +68,3 @@ export interface GameState {
   isProcessingAction?: boolean; // To disable inputs during animations/AI calls
   isInitialMonsterEngagement: boolean; // True if no monster has been played yet, false otherwise
 }
-

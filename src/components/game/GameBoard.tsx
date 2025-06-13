@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { CardData, GameState, PlayerData, GamePhase, MonsterCardData, SpellCardData } from '@/types';
+import type { CardData, GameState, PlayerData, GamePhase, MonsterCardData, SpellCardData, StatusEffect } from '@/types';
 import { generateMonsterCards, generateSpellCards, shuffleDeck, dealCards } from '@/lib/game-utils';
 import { PlayerHand } from './PlayerHand';
 import { PlayerStatusDisplay } from './PlayerStatusDisplay';
@@ -382,18 +382,84 @@ export function GameBoard() {
     });
   };
 
+
+  const applyStatusEffectsAndCheckDefeats = (playerIndexForTurnStart: 0 | 1, currentState: GameState): GameState => {
+    let newPlayers = [...currentState.players] as [PlayerData, PlayerData];
+    let newActiveMonsterP1 = currentState.activeMonsterP1 ? { ...currentState.activeMonsterP1 } : undefined;
+    let newActiveMonsterP2 = currentState.activeMonsterP2 ? { ...currentState.activeMonsterP2 } : undefined;
+    let newLogMessages = [...currentState.gameLogMessages];
+
+    const playerWhoseTurnIsStarting = newPlayers[playerIndexForTurnStart];
+    let activeMonsterForTurnPlayer = playerIndexForTurnStart === 0 ? newActiveMonsterP1 : newActiveMonsterP2;
+
+    if (activeMonsterForTurnPlayer && activeMonsterForTurnPlayer.statusEffects && activeMonsterForTurnPlayer.statusEffects.length > 0) {
+        const effectsToKeep: StatusEffect[] = [];
+        for (const effect of activeMonsterForTurnPlayer.statusEffects) {
+            if (effect.type === 'regenerate') {
+                const healAmount = effect.value;
+                const originalHp = activeMonsterForTurnPlayer.hp;
+                activeMonsterForTurnPlayer.hp = Math.min(activeMonsterForTurnPlayer.maxHp, activeMonsterForTurnPlayer.hp + healAmount);
+                if (activeMonsterForTurnPlayer.hp > originalHp) {
+                    newLogMessages.push(`${playerWhoseTurnIsStarting.name}'s ${activeMonsterForTurnPlayer.title} regenerates ${activeMonsterForTurnPlayer.hp - originalHp} HP. (HP: ${originalHp} -> ${activeMonsterForTurnPlayer.hp})`);
+                }
+                effect.duration -= 1;
+            }
+            // Add other status effect processing here
+
+            if (effect.duration > 0) {
+                effectsToKeep.push(effect);
+            } else {
+                newLogMessages.push(`${playerWhoseTurnIsStarting.name}'s ${activeMonsterForTurnPlayer.title}'s ${effect.type} effect wears off.`);
+            }
+        }
+        activeMonsterForTurnPlayer.statusEffects = effectsToKeep.length > 0 ? effectsToKeep : undefined;
+
+        if (playerIndexForTurnStart === 0) {
+            newActiveMonsterP1 = activeMonsterForTurnPlayer;
+        } else {
+            newActiveMonsterP2 = activeMonsterForTurnPlayer;
+        }
+    }
+    // Potentially check for defeats caused by DoT effects here in the future
+
+    return {
+        ...currentState,
+        players: newPlayers,
+        activeMonsterP1: newActiveMonsterP1,
+        activeMonsterP2: newActiveMonsterP2,
+        gameLogMessages: newLogMessages
+    };
+  };
+
+
   const processTurnEnd = () => {
     console.log("[GameBoard] Processing turn end...");
     logAndSetGameState(prev => {
       if (!prev) return null;
-      let { players, currentPlayerIndex, gameLogMessages } = prev;
+      let { players, currentPlayerIndex, gameLogMessages, activeMonsterP1, activeMonsterP2 } = prev;
       const actingPlayer = players[currentPlayerIndex];
-      const opponentPlayerIndex = 1 - currentPlayerIndex;
+      const opponentPlayerIndex = (1 - currentPlayerIndex) as 0 | 1;
       const opponentPlayer = players[opponentPlayerIndex];
 
       let newLogMessages = [...(gameLogMessages || [])];
       let actingPlayerHand = [...actingPlayer.hand];
       let actingPlayerDeck = [...actingPlayer.deck];
+
+      // Apply status effects for the player whose turn is about to start
+      const stateAfterStatusEffects = applyStatusEffectsAndCheckDefeats(opponentPlayerIndex, {
+          ...prev, 
+          players: [...players] as [PlayerData, PlayerData], // ensure copies
+          activeMonsterP1: activeMonsterP1 ? {...activeMonsterP1} : undefined,
+          activeMonsterP2: activeMonsterP2 ? {...activeMonsterP2} : undefined,
+          gameLogMessages: newLogMessages, // pass current logs to be appended
+      });
+      
+      // Update state variables from the result of status effect processing
+      players = stateAfterStatusEffects.players;
+      activeMonsterP1 = stateAfterStatusEffects.activeMonsterP1;
+      activeMonsterP2 = stateAfterStatusEffects.activeMonsterP2;
+      newLogMessages = stateAfterStatusEffects.gameLogMessages;
+
 
       if (actingPlayerHand.length < CARDS_IN_HAND && actingPlayerDeck.length > 0) {
         const { dealtCards, remainingDeck } = dealCards(actingPlayerDeck, 1);
@@ -431,13 +497,13 @@ export function GameBoard() {
 
       if (updatedPlayers[0].hp <= 0 && updatedPlayers[1].hp <= 0) {
         newLogMessages.push("It's a draw! Both players are defeated.");
-        return { ...prev, players: updatedPlayers, winner: undefined, gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
+        return { ...prev, players: updatedPlayers, activeMonsterP1, activeMonsterP2, winner: undefined, gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
       } else if (updatedPlayers[0].hp <= 0) {
         newLogMessages.push(`${updatedPlayers[1].name} wins! ${updatedPlayers[0].name} is defeated.`);
-        return { ...prev, players: updatedPlayers, winner: updatedPlayers[1], gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
+        return { ...prev, players: updatedPlayers, activeMonsterP1, activeMonsterP2, winner: updatedPlayers[1], gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
       } else if (updatedPlayers[1].hp <= 0) {
         newLogMessages.push(`${updatedPlayers[0].name} wins! ${updatedPlayers[1].name} is defeated.`);
-        return { ...prev, players: updatedPlayers, winner: updatedPlayers[0], gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
+        return { ...prev, players: updatedPlayers, activeMonsterP1, activeMonsterP2, winner: updatedPlayers[0], gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
       }
 
       newLogMessages.push(`Turn ends. It's now ${opponentPlayer.name}'s turn.`);
@@ -446,7 +512,9 @@ export function GameBoard() {
       return {
         ...prev,
         players: updatedPlayers,
-        currentPlayerIndex: opponentPlayerIndex as 0 | 1,
+        activeMonsterP1,
+        activeMonsterP2,
+        currentPlayerIndex: opponentPlayerIndex,
         gamePhase: 'player_action_phase',
         gameLogMessages: newLogMessages,
         isProcessingAction: false,
@@ -546,7 +614,7 @@ export function GameBoard() {
                 });
             } catch (e) {
                 console.error(`[handlePlaySpellFromHand] Error fetching spell description for ${spellToLog.title}:`, e);
-                spellToLog.description = "A mysterious enchantment unfolds.";
+                spellToLog.description = "A mysterious enchantment unfolds."; // Fallback from JSON should be used ideally
                 toast({ title: "AI Error", description: `Could not fetch spell effect for ${spellToLog.title}.`, variant: "destructive" });
                  logAndSetGameState(prevGS => {
                     if (!prevGS) return null;
@@ -559,8 +627,9 @@ export function GameBoard() {
                 });
             }
         }
-
-        appendLog(`${player.name} casts ${spellToLog.title}! Effect: ${spellToLog.description || "Effect not yet loaded."}`);
+        
+        const effectiveDescription = spellToLog.description || "Effect not yet loaded or defined.";
+        appendLog(`${player.name} casts ${spellToLog.title}! Effect: ${effectiveDescription}`);
 
         logAndSetGameState(prev => {
             if (!prev) return null;
@@ -576,22 +645,23 @@ export function GameBoard() {
         
             const currentPlayersMonsterRef = currentPlayerIndex === 0 ? newActiveMonsterP1 : newActiveMonsterP2;
             const opponentPlayersMonsterRef = currentPlayerIndex === 0 ? newActiveMonsterP2 : newActiveMonsterP1;
-        
+            
+            let spellEffectApplied = false; // To track if any meaningful effect happened for logging
+
             switch (spellToLog.title) {
                 case 'Stone Skin':
                     if (currentPlayersMonsterRef) {
                         const boost = 5;
                         currentPlayersMonsterRef.defense = Math.max(0, currentPlayersMonsterRef.defense + boost);
                         newLogMessages.push(`${actingPlayer.name}'s Stone Skin increases ${currentPlayersMonsterRef.title}'s defense by ${boost}! New Defense: ${currentPlayersMonsterRef.defense}.`);
-                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef;
-                        else newActiveMonsterP2 = currentPlayersMonsterRef;
-                    } else {
-                        newLogMessages.push(`${actingPlayer.name}'s Stone Skin fizzles! No active monster to target.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
                     }
                     break;
         
                 case 'Fireball':
                     const fireDamage = 15;
+                    const directPlayerDamage = 10;
                     if (opponentPlayersMonsterRef) {
                         const originalHp = opponentPlayersMonsterRef.hp;
                         const originalMagicShield = opponentPlayersMonsterRef.magicShield;
@@ -612,21 +682,21 @@ export function GameBoard() {
                             message += `No HP damage taken after shield absorption.`;
                         }
                         newLogMessages.push(message);
+                        spellEffectApplied = true;
         
                         if (opponentPlayersMonsterRef.hp <= 0) {
                             newLogMessages.push(`${opponentPlayersMonsterRef.title} is incinerated by the Fireball!`);
-                            const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, shield:0, magicShield:0};
+                            const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, shield:0, magicShield:0, statusEffects: []};
                             newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
-                            if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined;
-                            else newActiveMonsterP1 = undefined;
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
                         } else {
-                            if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef;
-                            else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
                         }
                     } else { 
                         const originalPlayerHp = newPlayers[opponentPlayerIndex].hp;
-                        newPlayers[opponentPlayerIndex].hp = Math.max(0, newPlayers[opponentPlayerIndex].hp - fireDamage);
-                        newLogMessages.push(`${actingPlayer.name}'s Fireball strikes ${opponentPlayer.name} directly for ${fireDamage} damage! HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp}.`);
+                        newPlayers[opponentPlayerIndex].hp = Math.max(0, newPlayers[opponentPlayerIndex].hp - directPlayerDamage);
+                        newLogMessages.push(`${actingPlayer.name}'s Fireball strikes ${opponentPlayer.name} directly for ${directPlayerDamage} damage! HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp}.`);
+                        spellEffectApplied = true;
                     }
                     break;
         
@@ -636,10 +706,8 @@ export function GameBoard() {
                         const originalHp = currentPlayersMonsterRef.hp;
                         currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + healAmount);
                         newLogMessages.push(`${actingPlayer.name}'s Healing Light restores ${currentPlayersMonsterRef.hp - originalHp} HP to ${currentPlayersMonsterRef.title}! HP: ${originalHp} -> ${currentPlayersMonsterRef.hp}.`);
-                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef;
-                        else newActiveMonsterP2 = currentPlayersMonsterRef;
-                    } else {
-                        newLogMessages.push(`${actingPlayer.name}'s Healing Light fizzles! No active monster to heal.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
                     }
                     break;
                 
@@ -650,10 +718,8 @@ export function GameBoard() {
                         currentPlayersMonsterRef.magicShield += shieldAmount;
                         currentPlayersMonsterRef.maxMagicShield = Math.max(currentPlayersMonsterRef.maxMagicShield, currentPlayersMonsterRef.magicShield); 
                         newLogMessages.push(`${actingPlayer.name}'s Arcane Shield grants ${shieldAmount} magic shield to ${currentPlayersMonsterRef.title}! Magic Shield: ${originalShield} -> ${currentPlayersMonsterRef.magicShield}.`);
-                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef;
-                        else newActiveMonsterP2 = currentPlayersMonsterRef;
-                    } else {
-                        newLogMessages.push(`${actingPlayer.name}'s Arcane Shield fizzles! No active monster to shield.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
                     }
                     break;
         
@@ -665,16 +731,285 @@ export function GameBoard() {
                         opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - reduction);
                         opponentPlayersMonsterRef.magic = Math.max(0, opponentPlayersMonsterRef.magic - reduction);
                         newLogMessages.push(`${actingPlayer.name}'s Weakening Curse reduces ${opponentPlayersMonsterRef.title}'s attack power! Melee: ${originalMelee} -> ${opponentPlayersMonsterRef.melee}, Magic: ${originalMagic} -> ${opponentPlayersMonsterRef.magic}.`);
-                        if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef;
-                        else newActiveMonsterP1 = opponentPlayersMonsterRef;
-                    } else {
-                        newLogMessages.push(`${actingPlayer.name}'s Weakening Curse finds no target!`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                        spellEffectApplied = true;
                     }
                     break;
-        
-                default:
-                    newLogMessages.push(`${spellToLog.title} is cast, but its specific effect is not yet implemented.`);
+
+                case 'Terrify':
+                    if (opponentPlayersMonsterRef) {
+                        newLogMessages.push(`${actingPlayer.name}'s Terrify targets ${opponentPlayersMonsterRef.title}!`);
+                        const returnedMonster = { ...opponentPlayersMonsterRef, statusEffects: [] }; // Clear status effects on return
+                        
+                        if (newPlayers[opponentPlayerIndex].hand.length < CARDS_IN_HAND) {
+                            newPlayers[opponentPlayerIndex].hand.push(returnedMonster);
+                            newLogMessages.push(`${opponentPlayersMonsterRef.title} is returned to ${opponentPlayer.name}'s hand!`);
+                        } else {
+                            newPlayers[opponentPlayerIndex].discardPile.push(returnedMonster);
+                            newLogMessages.push(`${opponentPlayersMonsterRef.title} couldn't return to a full hand and was discarded!`);
+                        }
+                        
+                        if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
+                        spellEffectApplied = true;
+                    }
                     break;
+
+                case 'Regenerate':
+                    if (currentPlayersMonsterRef) {
+                        const newEffect: StatusEffect = { id: `regen-${Date.now()}`, type: 'regenerate', duration: 3, value: 5 };
+                        currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
+                        newLogMessages.push(`${actingPlayer.name} applies Regenerate to ${currentPlayersMonsterRef.title}. It will heal 5 HP for 3 turns.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+                
+                case 'Swiftness Aura': // Increases Melee by 3
+                    if (currentPlayersMonsterRef) {
+                        currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 3);
+                        newLogMessages.push(`${currentPlayersMonsterRef.title} gains +3 Melee from Swiftness Aura. New Melee: ${currentPlayersMonsterRef.melee}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                case 'Chain Lightning': // Deals 10 magic dmg to monster. If defeated, 5 dmg to player.
+                    const chainLightningDmg = 10;
+                    const chainPlayerDmg = 5;
+                    if (opponentPlayersMonsterRef) {
+                        const originalHp = opponentPlayersMonsterRef.hp;
+                        const originalMagicShield = opponentPlayersMonsterRef.magicShield;
+                        let damageToDeal = chainLightningDmg;
+                        let message = `${actingPlayer.name}'s Chain Lightning strikes ${opponentPlayersMonsterRef.title}. `;
+                        let magicShieldAbsorbed = Math.min(opponentPlayersMonsterRef.magicShield, damageToDeal);
+                        if (magicShieldAbsorbed > 0) {
+                            opponentPlayersMonsterRef.magicShield -= magicShieldAbsorbed;
+                            message += `Magic shield absorbs ${magicShieldAbsorbed}. Shield: ${originalMagicShield} -> ${opponentPlayersMonsterRef.magicShield}. `;
+                        }
+                        damageToDeal -= magicShieldAbsorbed;
+                        if (damageToDeal > 0) {
+                            opponentPlayersMonsterRef.hp = Math.max(0, opponentPlayersMonsterRef.hp - damageToDeal);
+                            message += `Takes ${damageToDeal} magic damage. HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}.`;
+                        } else { message += `No HP damage after shield.`; }
+                        newLogMessages.push(message);
+                        spellEffectApplied = true;
+
+                        if (opponentPlayersMonsterRef.hp <= 0) {
+                            newLogMessages.push(`${opponentPlayersMonsterRef.title} is destroyed! The lightning arcs to ${opponentPlayer.name}!`);
+                            const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, shield:0, magicShield:0, statusEffects: []};
+                            newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
+                            
+                            const originalPlayerHp = newPlayers[opponentPlayerIndex].hp;
+                            newPlayers[opponentPlayerIndex].hp = Math.max(0, newPlayers[opponentPlayerIndex].hp - chainPlayerDmg);
+                            newLogMessages.push(`${opponentPlayer.name} takes ${chainPlayerDmg} lightning damage! HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp}.`);
+                        } else {
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                        }
+                    } else {
+                         newLogMessages.push(`${actingPlayer.name}'s Chain Lightning fizzles! No enemy monster to target.`);
+                    }
+                    break;
+
+                case 'Growth Spurt': // Increases Max HP by 10 and heals 10 HP.
+                    if (currentPlayersMonsterRef) {
+                        currentPlayersMonsterRef.maxHp += 10;
+                        const originalHp = currentPlayersMonsterRef.hp;
+                        currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + 10);
+                        newLogMessages.push(`${currentPlayersMonsterRef.title}'s Growth Spurt increases Max HP to ${currentPlayersMonsterRef.maxHp} and heals ${currentPlayersMonsterRef.hp - originalHp} HP. Current HP: ${currentPlayersMonsterRef.hp}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                case 'Drain Life': // Deals 8 magic damage, heals caster's monster by half.
+                    const drainDamage = 8;
+                    if (opponentPlayersMonsterRef) {
+                        const originalOpponentHp = opponentPlayersMonsterRef.hp;
+                        const originalOpponentMagicShield = opponentPlayersMonsterRef.magicShield;
+                        let damageToDeal = drainDamage;
+                        let message = `${actingPlayer.name}'s Drain Life targets ${opponentPlayersMonsterRef.title}. `;
+                        let magicShieldAbsorbed = Math.min(opponentPlayersMonsterRef.magicShield, damageToDeal);
+                        if (magicShieldAbsorbed > 0) {
+                            opponentPlayersMonsterRef.magicShield -= magicShieldAbsorbed;
+                            message += `Magic shield absorbs ${magicShieldAbsorbed}. Shield: ${originalOpponentMagicShield} -> ${opponentPlayersMonsterRef.magicShield}. `;
+                        }
+                        damageToDeal -= magicShieldAbsorbed;
+                        let actualHPDamage = 0;
+                        if (damageToDeal > 0) {
+                            actualHPDamage = Math.min(opponentPlayersMonsterRef.hp, damageToDeal);
+                            opponentPlayersMonsterRef.hp -= actualHPDamage;
+                            message += `Takes ${actualHPDamage} HP damage. HP: ${originalOpponentHp} -> ${opponentPlayersMonsterRef.hp}.`;
+                        } else { message += `No HP damage after shield.`; }
+                        newLogMessages.push(message);
+                        spellEffectApplied = true;
+                        
+                        if (currentPlayersMonsterRef && actualHPDamage > 0) {
+                            const healAmount = Math.floor(actualHPDamage / 2);
+                            const originalHealTargetHp = currentPlayersMonsterRef.hp;
+                            currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + healAmount);
+                            newLogMessages.push(`${currentPlayersMonsterRef.title} is healed by ${currentPlayersMonsterRef.hp - originalHealTargetHp} HP from Drain Life.`);
+                            if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        }
+
+                        if (opponentPlayersMonsterRef.hp <= 0) {
+                            newLogMessages.push(`${opponentPlayersMonsterRef.title} is drained and defeated!`);
+                            const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, shield:0, magicShield:0, statusEffects: []};
+                            newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
+                        } else {
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                        }
+                    } else {
+                        newLogMessages.push(`${actingPlayer.name}'s Drain Life finds no target.`);
+                    }
+                    break;
+
+                case 'Blinding Flash': // Reduces enemy monster's Melee and Magic by 2.
+                     if (opponentPlayersMonsterRef) {
+                        const reduction = 2;
+                        opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - reduction);
+                        opponentPlayersMonsterRef.magic = Math.max(0, opponentPlayersMonsterRef.magic - reduction);
+                        newLogMessages.push(`Blinding Flash reduces ${opponentPlayersMonsterRef.title}'s Melee to ${opponentPlayersMonsterRef.melee} and Magic to ${opponentPlayersMonsterRef.magic}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                case 'Might Infusion': // Increases friendly monster's Melee by 5.
+                     if (currentPlayersMonsterRef) {
+                        currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 5);
+                        newLogMessages.push(`Might Infusion boosts ${currentPlayersMonsterRef.title}'s Melee to ${currentPlayersMonsterRef.melee}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                case 'Frost Nova': // Deals 5 magic dmg, reduces enemy Melee by 2.
+                    const frostNovaDmg = 5;
+                    const frostNovaMeleeReduction = 2;
+                    if (opponentPlayersMonsterRef) {
+                        const originalHp = opponentPlayersMonsterRef.hp;
+                        const originalMagicShield = opponentPlayersMonsterRef.magicShield;
+                        let damageToDeal = frostNovaDmg;
+                        let message = `${actingPlayer.name}'s Frost Nova chills ${opponentPlayersMonsterRef.title}. `;
+                        let magicShieldAbsorbed = Math.min(opponentPlayersMonsterRef.magicShield, damageToDeal);
+                        if (magicShieldAbsorbed > 0) {
+                            opponentPlayersMonsterRef.magicShield -= magicShieldAbsorbed;
+                            message += `Magic shield absorbs ${magicShieldAbsorbed}. Shield: ${originalMagicShield} -> ${opponentPlayersMonsterRef.magicShield}. `;
+                        }
+                        damageToDeal -= magicShieldAbsorbed;
+                        if (damageToDeal > 0) {
+                            opponentPlayersMonsterRef.hp = Math.max(0, opponentPlayersMonsterRef.hp - damageToDeal);
+                            message += `Takes ${damageToDeal} magic damage. HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}.`;
+                        } else { message += `No HP damage after shield.`; }
+                        
+                        const originalMelee = opponentPlayersMonsterRef.melee;
+                        opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - frostNovaMeleeReduction);
+                        message += ` Its Melee is reduced from ${originalMelee} to ${opponentPlayersMonsterRef.melee}.`;
+                        newLogMessages.push(message);
+                        spellEffectApplied = true;
+
+                        if (opponentPlayersMonsterRef.hp <= 0) {
+                            newLogMessages.push(`${opponentPlayersMonsterRef.title} is shattered by Frost Nova!`);
+                             const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, shield:0, magicShield:0, statusEffects: []};
+                            newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
+                        } else {
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                        }
+                    }
+                    break;
+                
+                case 'Silence': // Reduces enemy monster's Magic by 5.
+                    if (opponentPlayersMonsterRef) {
+                        opponentPlayersMonsterRef.magic = Math.max(0, opponentPlayersMonsterRef.magic - 5);
+                        newLogMessages.push(`Silence reduces ${opponentPlayersMonsterRef.title}'s Magic to ${opponentPlayersMonsterRef.magic}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                case 'Teleport Strike': // Increases friendly monster's Melee by 4.
+                case 'Empower Weapon':  // Increases friendly monster's Melee by 4.
+                    if (currentPlayersMonsterRef) {
+                        currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 4);
+                        newLogMessages.push(`${spellToLog.title} enhances ${currentPlayersMonsterRef.title}'s Melee to ${currentPlayersMonsterRef.melee}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                case 'Quicksand Trap': // Reduces enemy Melee by 4, Defense by 2.
+                     if (opponentPlayersMonsterRef) {
+                        opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - 4);
+                        opponentPlayersMonsterRef.defense = Math.max(0, opponentPlayersMonsterRef.defense - 2);
+                        newLogMessages.push(`Quicksand Trap reduces ${opponentPlayersMonsterRef.title}'s Melee to ${opponentPlayersMonsterRef.melee} and Defense to ${opponentPlayersMonsterRef.defense}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                case 'Ethereal Form': // Increases Defense by 4, Magic Shield by 4.
+                     if (currentPlayersMonsterRef) {
+                        currentPlayersMonsterRef.defense += 4;
+                        currentPlayersMonsterRef.magicShield += 4;
+                        currentPlayersMonsterRef.maxMagicShield = Math.max(currentPlayersMonsterRef.maxMagicShield, currentPlayersMonsterRef.magicShield);
+                        newLogMessages.push(`Ethereal Form boosts ${currentPlayersMonsterRef.title}'s Defense to ${currentPlayersMonsterRef.defense} and Magic Shield to ${currentPlayersMonsterRef.magicShield}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+                
+                case 'Counterspell': // Gain +8 Magic Shield
+                case 'Mage Armor': // Gain +8 Magic Shield
+                     if (currentPlayersMonsterRef) {
+                        currentPlayersMonsterRef.magicShield += 8;
+                        currentPlayersMonsterRef.maxMagicShield = Math.max(currentPlayersMonsterRef.maxMagicShield, currentPlayersMonsterRef.magicShield);
+                        newLogMessages.push(`${spellToLog.title} grants ${currentPlayersMonsterRef.title} +8 Magic Shield. New Magic Shield: ${currentPlayersMonsterRef.magicShield}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+                
+                case 'Summon Minor Spirit': // Increases Max HP by 5, current HP by 5.
+                     if (currentPlayersMonsterRef) {
+                        currentPlayersMonsterRef.maxHp += 5;
+                        const originalHp = currentPlayersMonsterRef.hp;
+                        currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + 5);
+                        newLogMessages.push(`${currentPlayersMonsterRef.title} is empowered by a minor spirit! Max HP becomes ${currentPlayersMonsterRef.maxHp}, HP becomes ${currentPlayersMonsterRef.hp}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                case 'Dark Pact': // Monster +8 Melee, Player -10 HP.
+                    if (currentPlayersMonsterRef) {
+                        currentPlayersMonsterRef.melee += 8;
+                        const playerOriginalHp = newPlayers[currentPlayerIndex].hp;
+                        newPlayers[currentPlayerIndex].hp = Math.max(0, newPlayers[currentPlayerIndex].hp - 10);
+                        newLogMessages.push(`Dark Pact empowers ${currentPlayersMonsterRef.title} with +8 Melee (New: ${currentPlayersMonsterRef.melee}), but ${actingPlayer.name} pays 10 HP (HP: ${playerOriginalHp} -> ${newPlayers[currentPlayerIndex].hp}).`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                case 'Focused Mind': // Monster +4 Magic
+                    if (currentPlayersMonsterRef) {
+                        currentPlayersMonsterRef.magic += 4;
+                        newLogMessages.push(`Focused Mind increases ${currentPlayersMonsterRef.title}'s Magic to ${currentPlayersMonsterRef.magic}.`);
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        spellEffectApplied = true;
+                    }
+                    break;
+
+                default:
+                    newLogMessages.push(`${spellToLog.title} is cast, but its specific effect is not yet fully implemented or it fizzled.`);
+                    break;
+            }
+            
+            if (!spellEffectApplied && (currentPlayersMonsterRef || opponentPlayersMonsterRef || spellToLog.title === 'Fireball')) { // Fireball can target player directly
+                 newLogMessages.push(`${spellToLog.title} was cast but had no valid target or conditions to apply its effect.`);
             }
         
             const handAfterSpell = newPlayers[currentPlayerIndex].hand.filter(c => c.id !== spellToLog.id);
@@ -771,7 +1106,10 @@ export function GameBoard() {
                 } else if (shieldAbsorbed > 0) {
                     combatLogMessages.push(`  L ${defender.title} takes no further damage; melee attack fully absorbed by shield.`);
                 } else {
-                    combatLogMessages.push(`  L ${attacker.title} dealt no melee damage (perhaps 0 attack or already absorbed).`);
+                    // This case could mean 0 attack, or already absorbed, or no shield.
+                    // If no shield and 0 defense, it would have hit HP.
+                    // If damageDealt was 0, then this is fine.
+                    if(damageDealt > 0) combatLogMessages.push(`  L ${attacker.title}'s melee attack was fully mitigated or dealt no damage.`);
                 }
             } else if (attacker.magic > 0) {
                 let damageDealt = attacker.magic;
@@ -790,7 +1128,7 @@ export function GameBoard() {
                 } else if (magicShieldAbsorbed > 0) {
                     combatLogMessages.push(`  L ${defender.title} takes no further damage; magic attack fully absorbed by magic shield.`);
                 } else {
-                    combatLogMessages.push(`  L ${attacker.title} dealt no magic damage (perhaps 0 attack or already absorbed).`);
+                     if(damageDealt > 0) combatLogMessages.push(`  L ${attacker.title}'s magic attack was fully mitigated or dealt no damage.`);
                 }
             } else {
                 combatLogMessages.push(`> ${attacker.title} has no attack power this turn.`);
@@ -833,7 +1171,7 @@ export function GameBoard() {
                     } else if (shieldAbsorbed > 0) {
                         combatLogMessages.push(`  L ${attacker.title} takes no further damage; counter fully absorbed by shield.`);
                     } else {
-                        combatLogMessages.push(`  L ${defender.title} dealt no melee counter-damage.`);
+                        if(counterDamage > 0) combatLogMessages.push(`  L ${defender.title}'s melee counter-attack was fully mitigated or dealt no damage.`);
                     }
                 } else if (defender.magic > 0) {
                     let counterDamage = defender.magic;
@@ -851,7 +1189,7 @@ export function GameBoard() {
                     } else if (magicShieldAbsorbed > 0) {
                         combatLogMessages.push(`  L ${attacker.title} takes no further damage; magic counter fully absorbed by magic shield.`);
                     } else {
-                        combatLogMessages.push(`  L ${defender.title} dealt no magic counter-damage.`);
+                         if(counterDamage > 0) combatLogMessages.push(`  L ${defender.title}'s magic counter-attack was fully mitigated or dealt no damage.`);
                     }
                 } else {
                     combatLogMessages.push(`> ${defender.title} has no power to counter-attack with.`);
@@ -885,7 +1223,7 @@ export function GameBoard() {
 
         if (defender && defender.hp <= 0) {
             combatLogMessages.push(`${defender.title} is defeated!`);
-            const defeatedMonsterCard = {...currentDefenderMonster!, hp:0, shield:0, magicShield:0};
+            const defeatedMonsterCard = {...currentDefenderMonster!, hp:0, shield:0, magicShield:0, statusEffects: []}; // Clear status effects on defeat
             if (currentPlayerIndex === 0) {
                 p2Data.discardPile.push(defeatedMonsterCard);
                 nextActiveMonsterP2 = undefined;
@@ -899,7 +1237,7 @@ export function GameBoard() {
 
         if (attacker.hp <= 0) {
             combatLogMessages.push(`${attacker.title} is defeated!`);
-            const defeatedAttackerCard = {...currentAttackerMonster!, hp:0, shield:0, magicShield:0};
+            const defeatedAttackerCard = {...currentAttackerMonster!, hp:0, shield:0, magicShield:0, statusEffects: []}; // Clear status effects
             if (currentPlayerIndex === 0) {
                 p1Data.discardPile.push(defeatedAttackerCard);
                 nextActiveMonsterP1 = undefined;
@@ -970,12 +1308,13 @@ export function GameBoard() {
         const handAfterPlayingSelected = player.hand.filter(c => c.id !== cardToSwapIn.id);
         let finalHand = handAfterPlayingSelected;
         let finalDiscardPile = [...player.discardPile];
+        const monsterReturningToHand = { ...monsterToSwapOut, statusEffects: [] }; // Clear status effects on swap
 
-        if (handAfterPlayingSelected.length < CARDS_IN_HAND) {
-            finalHand = [...handAfterPlayingSelected, { ...monsterToSwapOut }];
+        if (handAfterPlayingSelected.length < CARDS_IN_HAND) { // Check if hand has space *after* selected card is removed
+            finalHand = [...handAfterPlayingSelected, monsterReturningToHand];
             newLogMessages.push(`${player.name} swaps out ${monsterToSwapOut.title} for ${cardToSwapIn.title}! ${monsterToSwapOut.title} returns to hand.`);
         } else {
-            finalDiscardPile.push({ ...monsterToSwapOut });
+            finalDiscardPile.push(monsterReturningToHand);
             newLogMessages.push(`${player.name} swaps out ${monsterToSwapOut.title} for ${cardToSwapIn.title}! Hand was full, so ${monsterToSwapOut.title} is discarded.`);
         }
 
