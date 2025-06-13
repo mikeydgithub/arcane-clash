@@ -439,39 +439,42 @@ export function GameBoard() {
     console.log("[GameBoard] Processing turn end...");
     logAndSetGameState(prev => {
       if (!prev) return null;
-      let { players, currentPlayerIndex, gameLogMessages, activeMonsterP1, activeMonsterP2 } = prev;
+      let { players, currentPlayerIndex, gameLogMessages, activeMonsterP1, activeMonsterP2, isInitialMonsterEngagement } = prev;
       
       const actingPlayerInitial = players[currentPlayerIndex];
       const opponentPlayerIndex = (1 - currentPlayerIndex) as 0 | 1;
       const opponentPlayer = players[opponentPlayerIndex];
 
-      // Reset spellsPlayedThisTurn for the player whose turn just ended.
       const playerAfterAction = {
           ...actingPlayerInitial,
-          spellsPlayedThisTurn: 0, // Reset for the player whose turn just ended
+          spellsPlayedThisTurn: 0, 
       };
       let updatedPlayersArr = [...players] as [PlayerData, PlayerData];
       updatedPlayersArr[currentPlayerIndex] = playerAfterAction;
       
-
       let newLogMessages = [...(gameLogMessages || [])];
-      let actingPlayerHand = [...playerAfterAction.hand];
-      let actingPlayerDeck = [...playerAfterAction.deck];
-
-      // Apply status effects for the player whose turn is about to start (the opponent)
-      const stateAfterStatusEffects = applyStatusEffectsAndCheckDefeats(opponentPlayerIndex, {
-          ...prev, 
-          players: updatedPlayersArr, 
+      
+      const stateForStatusEffects: GameState = {
+          players: updatedPlayersArr,
+          currentPlayerIndex: prev.currentPlayerIndex, // Still original player for this temporary state
+          gamePhase: prev.gamePhase, // Not changing phase yet
           activeMonsterP1: activeMonsterP1 ? {...activeMonsterP1} : undefined,
           activeMonsterP2: activeMonsterP2 ? {...activeMonsterP2} : undefined,
-          gameLogMessages: newLogMessages, 
-      });
+          winner: prev.winner,
+          gameLogMessages: newLogMessages,
+          isProcessingAction: prev.isProcessingAction, // Carry over
+          isInitialMonsterEngagement: prev.isInitialMonsterEngagement, // Carry over
+      };
+      
+      const stateAfterStatusEffects = applyStatusEffectsAndCheckDefeats(opponentPlayerIndex, stateForStatusEffects);
       
       updatedPlayersArr = stateAfterStatusEffects.players;
       activeMonsterP1 = stateAfterStatusEffects.activeMonsterP1;
       activeMonsterP2 = stateAfterStatusEffects.activeMonsterP2;
       newLogMessages = stateAfterStatusEffects.gameLogMessages;
 
+      let actingPlayerHand = [...updatedPlayersArr[currentPlayerIndex].hand];
+      let actingPlayerDeck = [...updatedPlayersArr[currentPlayerIndex].deck];
 
       if (actingPlayerHand.length < CARDS_IN_HAND && actingPlayerDeck.length > 0) {
         const { dealtCards, remainingDeck } = dealCards(actingPlayerDeck, 1);
@@ -479,7 +482,7 @@ export function GameBoard() {
 
         actingPlayerHand.push(drawnCard);
         actingPlayerDeck = remainingDeck;
-        newLogMessages.push(`${playerAfterAction.name} draws ${drawnCard.title}.`);
+        newLogMessages.push(`${updatedPlayersArr[currentPlayerIndex].name} draws ${drawnCard.title}.`);
 
         if (!drawnCard.description && drawnCard.isLoadingDescription !== true && drawnCard.isLoadingDescription !== false) {
             const alreadyQueued = descriptionQueueRef.current.some(item => item.card.id === drawnCard.id);
@@ -501,38 +504,75 @@ export function GameBoard() {
             }
         }
       } else if (actingPlayerHand.length < CARDS_IN_HAND) {
-        newLogMessages.push(`${playerAfterAction.name} has no cards left in their deck to draw.`);
+        newLogMessages.push(`${updatedPlayersArr[currentPlayerIndex].name} has no cards left in their deck to draw.`);
       }
 
       updatedPlayersArr[currentPlayerIndex] = { ...updatedPlayersArr[currentPlayerIndex], hand: actingPlayerHand, deck: actingPlayerDeck };
-      // Ensure the NEW current player (opponent) also has their spellsPlayedThisTurn as 0 (should be from their PlayerData object already)
       updatedPlayersArr[opponentPlayerIndex] = { ...updatedPlayersArr[opponentPlayerIndex], spellsPlayedThisTurn: 0};
 
 
       if (updatedPlayersArr[0].hp <= 0 && updatedPlayersArr[1].hp <= 0) {
         newLogMessages.push("It's a draw! Both players are defeated.");
-        return { ...prev, players: updatedPlayersArr, activeMonsterP1, activeMonsterP2, winner: undefined, gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
+        return { 
+            players: updatedPlayersArr, 
+            activeMonsterP1, 
+            activeMonsterP2, 
+            winner: undefined, 
+            gamePhase: 'game_over_phase', 
+            gameLogMessages: newLogMessages, 
+            isProcessingAction: false,
+            currentPlayerIndex: prev.currentPlayerIndex, // Doesn't matter much here
+            isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
+         };
       } else if (updatedPlayersArr[0].hp <= 0) {
         newLogMessages.push(`${updatedPlayersArr[1].name} wins! ${updatedPlayersArr[0].name} is defeated.`);
-        return { ...prev, players: updatedPlayersArr, activeMonsterP1, activeMonsterP2, winner: updatedPlayersArr[1], gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
+        return { 
+            players: updatedPlayersArr, 
+            activeMonsterP1, 
+            activeMonsterP2, 
+            winner: updatedPlayersArr[1], 
+            gamePhase: 'game_over_phase', 
+            gameLogMessages: newLogMessages, 
+            isProcessingAction: false,
+            currentPlayerIndex: prev.currentPlayerIndex,
+            isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
+        };
       } else if (updatedPlayersArr[1].hp <= 0) {
         newLogMessages.push(`${updatedPlayersArr[0].name} wins! ${updatedPlayersArr[1].name} is defeated.`);
-        return { ...prev, players: updatedPlayersArr, activeMonsterP1, activeMonsterP2, winner: updatedPlayersArr[0], gamePhase: 'game_over_phase', gameLogMessages: newLogMessages, isProcessingAction: false };
+        return { 
+            players: updatedPlayersArr, 
+            activeMonsterP1, 
+            activeMonsterP2, 
+            winner: updatedPlayersArr[0], 
+            gamePhase: 'game_over_phase', 
+            gameLogMessages: newLogMessages, 
+            isProcessingAction: false,
+            currentPlayerIndex: prev.currentPlayerIndex,
+            isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
+        };
       }
 
       newLogMessages.push(`Turn ends. It's now ${opponentPlayer.name}'s turn.`);
       newLogMessages.push(`${opponentPlayer.name}, choose your action.`);
-
-      return {
-        ...prev,
+      
+      const finalStateForTurnEnd = {
         players: updatedPlayersArr,
+        currentPlayerIndex: opponentPlayerIndex,
+        gamePhase: 'player_action_phase' as GamePhase,
         activeMonsterP1,
         activeMonsterP2,
-        currentPlayerIndex: opponentPlayerIndex,
-        gamePhase: 'player_action_phase',
+        winner: prev.winner, // Carry over existing winner state (should be undefined if no game over)
         gameLogMessages: newLogMessages,
         isProcessingAction: false,
+        isInitialMonsterEngagement: prev.isInitialMonsterEngagement, // Carry over this flag
       };
+      console.log('[GameBoard] processTurnEnd: Attempting to set final state:', {
+          currentPlayerIndex: finalStateForTurnEnd.currentPlayerIndex,
+          gamePhase: finalStateForTurnEnd.gamePhase,
+          isProcessingAction: finalStateForTurnEnd.isProcessingAction,
+          logLength: finalStateForTurnEnd.gameLogMessages.length
+      });
+      return finalStateForTurnEnd;
     });
   };
 
@@ -601,7 +641,10 @@ export function GameBoard() {
         return;
     }
 
-    logAndSetGameState(prev => ({...prev!, isProcessingAction: true}));
+    logAndSetGameState(prev => ({...prev!, isProcessingAction: true})); // Initially set to true
+
+    let determinedNextGamePhase: GamePhase = 'initial'; 
+    let determinedNextIsProcessingAction: boolean = true;
 
     const fetchDescIfNeededAndProceed = async () => {
         let spellToLog = { ...card };
@@ -650,8 +693,6 @@ export function GameBoard() {
         const effectiveDescription = spellToLog.description || "Effect not yet loaded or defined.";
         appendLog(`${player.name} casts ${spellToLog.title}! Effect: ${effectiveDescription}`);
 
-        let determinedNextGamePhase: GamePhase = 'initial'; 
-        let determinedNextIsProcessingAction: boolean = true;
 
         logAndSetGameState(prev => {
             try {
@@ -1044,48 +1085,48 @@ export function GameBoard() {
                 const discardPileAfterSpell = [...newPlayers[currentPlayerIndex].discardPile, { ...spellToLog, isLoadingDescription: false }];
                 newPlayers[currentPlayerIndex] = { ...newPlayers[currentPlayerIndex], hand: handAfterSpell, discardPile: discardPileAfterSpell };
                 
-                let localNextGamePhase: GamePhase = 'player_action_phase';
-                let localNextIsProcessingAction = false;
-
+                // Determine next phase and processing state based on spells played
                 if (newPlayers[currentPlayerIndex].spellsPlayedThisTurn >= MAX_SPELLS_PER_TURN) {
                     newLogMessages.push(`${actingPlayer.name} has played ${MAX_SPELLS_PER_TURN} spells. Turn ending.`);
-                    localNextGamePhase = 'turn_resolution_phase';
-                    localNextIsProcessingAction = true;
+                    determinedNextGamePhase = 'turn_resolution_phase';
+                    determinedNextIsProcessingAction = true;
                 } else {
                     const spellsRemaining = MAX_SPELLS_PER_TURN - newPlayers[currentPlayerIndex].spellsPlayedThisTurn;
                     newLogMessages.push(`${actingPlayer.name} played ${spellToLog.title}. Can play ${spellsRemaining} more spell(s) or take another action.`);
+                    determinedNextGamePhase = 'player_action_phase';
+                    determinedNextIsProcessingAction = false; 
                 }
             
-                determinedNextGamePhase = localNextGamePhase;
-                determinedNextIsProcessingAction = localNextIsProcessingAction;
-
-                return {
-                   ...prev,
-                   players: newPlayers,
-                   activeMonsterP1: newActiveMonsterP1,
-                   activeMonsterP2: newActiveMonsterP2,
-                   gameLogMessages: newLogMessages,
-                   gamePhase: determinedNextGamePhase,
-                   isProcessingAction: determinedNextIsProcessingAction,
+                return { // Return the fully updated state after spell effect
+                   ...prev, // Spread previous state first
+                   players: newPlayers, // Updated players array
+                   activeMonsterP1: newActiveMonsterP1, // Potentially updated monster
+                   activeMonsterP2: newActiveMonsterP2, // Potentially updated monster
+                   gameLogMessages: newLogMessages,    // Updated logs
+                   gamePhase: determinedNextGamePhase, // Determined next phase
+                   isProcessingAction: determinedNextIsProcessingAction, // Determined processing state
                 }
-            } catch (error) {
+            } catch (error) { // Catch errors from spell effect logic
                 console.error("[GameBoard] CRITICAL ERROR within spell effect state updater:", error);
-                determinedNextGamePhase = 'turn_resolution_phase'; // Fallback
-                determinedNextIsProcessingAction = true;           // Fallback
+                // Fallback state on critical error during spell effect application
+                determinedNextGamePhase = 'turn_resolution_phase'; 
+                determinedNextIsProcessingAction = true;           
                 return {
-                    ...(prev || {} as GameState),
+                    ...(prev || {} as GameState), // Ensure prev is not null
                     gameLogMessages: [...(prev?.gameLogMessages || []), "Critical error processing spell. Forcing turn end."],
                     gamePhase: determinedNextGamePhase,
                     isProcessingAction: determinedNextIsProcessingAction,
                 };
             }
-          });
+          }); // End of logAndSetGameState for spell application
 
+        // After the state update for spell effects has been dispatched:
         if (determinedNextGamePhase === 'turn_resolution_phase') {
             console.log(`[handlePlaySpellFromHand] Spell resulted in turn_resolution_phase. Scheduling processTurnEnd.`);
             setTimeout(() => processTurnEnd(), 1000);
         } else {
             console.log(`[handlePlaySpellFromHand] Spell did not end turn. New phase: ${determinedNextGamePhase}, Processing: ${determinedNextIsProcessingAction}`);
+            // If the turn didn't end, isProcessingAction should now be false from the state update above.
         }
     };
 
