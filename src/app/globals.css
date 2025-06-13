@@ -4,10 +4,27 @@
 
 body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  background-color: #000; /* Dark background as per user request */
+  /* background-color: #000; Replaced by animated gradient */
   color: hsl(var(--foreground));
-  /* Layout properties */
   @apply min-h-screen max-h-screen overflow-hidden;
+
+  /* New animated gradient background */
+  background: linear-gradient(45deg, hsl(260, 30%, 10%), hsl(240, 40%, 8%), hsl(270, 35%, 12%), hsl(220, 50%, 10%));
+  background-size: 400% 400%;
+  animation: gradientShift 20s ease infinite;
+}
+
+/* Keyframes for the new gradient animation */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .star {
