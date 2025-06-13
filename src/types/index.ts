@@ -44,6 +44,7 @@ export interface PlayerData {
   deck: CardData[];
   discardPile: CardData[];
   avatarUrl?: string;
+  spellsPlayedThisTurn: number; // New field
 }
 
 export type GamePhase =
@@ -52,7 +53,7 @@ export type GamePhase =
   | "loading_art"
   | "player_action_phase" // Player decides to play monster, spell, attack, or initiate swap
   | "selecting_swap_monster_phase" // Player is selecting a monster from hand to swap with active one
-  | "spell_effect_phase"  // Visualizing spell effect (mostly logging for now)
+  | "spell_effect_phase"  // Visualizing spell effect (mostly logging for now) - May be used less if turn doesn't always end
   | "combat_phase"        // Monster vs Monster or Monster vs Player
   | "turn_resolution_phase" // After action: check defeated monsters, draw card, check game over
   | "game_over_phase";
@@ -68,3 +69,4 @@ export interface GameState {
   isProcessingAction?: boolean; // To disable inputs during animations/AI calls
   isInitialMonsterEngagement: boolean; // True if no monster has been played yet, false otherwise
 }
+

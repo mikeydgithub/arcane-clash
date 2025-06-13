@@ -1,9 +1,11 @@
 
 'use client';
 
-import type { CardData, MonsterCardData, GamePhase } from '@/types'; // Added GamePhase
+import type { CardData, MonsterCardData, GamePhase } from '@/types'; 
 import { CardView } from './CardView';
 import { cn } from '@/lib/utils';
+
+const MAX_SPELLS_PER_TURN = 2; // Consistent with GameBoard
 
 interface PlayerHandProps {
   cards: CardData[];
@@ -11,7 +13,8 @@ interface PlayerHandProps {
   isPlayerTurn: boolean;
   isOpponent?: boolean;
   canPlayMonster?: boolean; 
-  currentPhase: GamePhase; // Added currentPhase
+  currentPhase: GamePhase; 
+  spellsPlayedThisTurn: number; // Added prop
 }
 
 export function PlayerHand({ 
@@ -20,7 +23,8 @@ export function PlayerHand({
   isPlayerTurn, 
   isOpponent = false, 
   canPlayMonster = true,
-  currentPhase 
+  currentPhase,
+  spellsPlayedThisTurn 
 }: PlayerHandProps) {
   if (!cards) return null;
 
@@ -37,16 +41,17 @@ export function PlayerHand({
       )}
       {cards.map((card) => {
         let cardIsActuallyPlayable = false;
-        if (isPlayerTurn) {
+        if (isPlayerTurn && (currentPhase === 'player_action_phase' || currentPhase === 'selecting_swap_monster_phase')) {
           if (currentPhase === 'selecting_swap_monster_phase') {
             if (card.cardType === 'Monster') {
               cardIsActuallyPlayable = true; // Only monsters are selectable for swap
             }
-          } else { // Standard play phase
+          } else { // Standard player_action_phase
             if (card.cardType === 'Monster' && canPlayMonster) {
               cardIsActuallyPlayable = true;
             } else if (card.cardType === 'Spell') {
-              cardIsActuallyPlayable = true;
+              // Check spellsPlayedThisTurn before allowing spell play
+              cardIsActuallyPlayable = (spellsPlayedThisTurn === undefined || spellsPlayedThisTurn < MAX_SPELLS_PER_TURN);
             }
           }
         }

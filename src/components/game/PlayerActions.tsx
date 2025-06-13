@@ -11,8 +11,10 @@ interface PlayerActionsProps {
   onAttack: () => void;
   onInitiateSwap: () => void;
   canPlayMonsterFromHand: boolean;
-  canPlaySpellFromHand: boolean;
-  playerHandFull: boolean; // Retained for potential other uses, but not for canSwap directly
+  canPlaySpellFromHand: boolean; // This prop checks if there's a spell in hand
+  playerHandFull: boolean;
+  spellsPlayedThisTurn: number;
+  maxSpellsPerTurn: number;
 }
 
 export function PlayerActions({
@@ -21,15 +23,16 @@ export function PlayerActions({
   onAttack,
   onInitiateSwap,
   canPlayMonsterFromHand,
-  canPlaySpellFromHand,
-  playerHandFull, // playerHandFull is now used for conditional text, not direct swap disabling
+  canPlaySpellFromHand, 
+  playerHandFull,
+  spellsPlayedThisTurn,
+  maxSpellsPerTurn,
 }: PlayerActionsProps) {
 
   const canAttack = !!activeMonster;
   const hasMonsterInHandToSwapTo = currentPlayer.hand.some(card => card.cardType === 'Monster' && card.id !== activeMonster?.id);
-  // Swap is possible if there's an active monster and another monster in hand to swap with.
-  // The consequence of a full hand is handled by handleConfirmSwapMonster (active monster discarded).
   const canSwap = !!activeMonster && hasMonsterInHandToSwapTo;
+  const canStillPlaySpellThisTurn = spellsPlayedThisTurn < maxSpellsPerTurn;
 
   return (
     <div className="flex flex-col items-center space-y-2 p-2 md:p-4 my-2 md:my-3 bg-card/50 rounded-lg shadow-md border border-border">
@@ -47,7 +50,6 @@ export function PlayerActions({
             <Replace className="mr-2 h-4 w-4" /> Swap Monster
           </Button>
         )}
-        {/* Disabled state if active monster exists but no other monster in hand to swap to */}
         {!!activeMonster && !hasMonsterInHandToSwapTo && (
              <Button variant="outline" aria-label="Cannot swap, no other monster in hand" disabled>
                 <Replace className="mr-2 h-4 w-4" /> Swap (No Monster)
@@ -55,7 +57,7 @@ export function PlayerActions({
         )}
       </div>
 
-      {!activeMonster && !canPlayMonsterFromHand && !canPlaySpellFromHand && (
+      {(!activeMonster && !canPlayMonsterFromHand && (!canPlaySpellFromHand || !canStillPlaySpellThisTurn)) && (
          <p className="text-xs text-muted-foreground italic mt-2 text-center">
             No actions available. Waiting for cards or opponent.
         </p>
@@ -66,17 +68,23 @@ export function PlayerActions({
           Click a <ShieldPlus className="inline h-3 w-3" /> Monster card from your hand to summon.
         </p>
       )}
-      {canPlaySpellFromHand && (
+      
+      {canPlaySpellFromHand && canStillPlaySpellThisTurn && (
          <p className="text-xs text-muted-foreground italic mt-1 text-center">
-          Click a <WandSparkles className="inline h-3 w-3" /> Spell card from your hand to cast.
+          Click a <WandSparkles className="inline h-3 w-3" /> Spell card to cast. ({maxSpellsPerTurn - spellsPlayedThisTurn} remaining)
         </p>
       )}
-       {activeMonster && !canPlayMonsterFromHand && !canPlaySpellFromHand && !canAttack && !canSwap && (
+      {canPlaySpellFromHand && !canStillPlaySpellThisTurn && (
+         <p className="text-xs text-muted-foreground italic mt-1 text-center">
+          No more spells can be played this turn. ({spellsPlayedThisTurn}/{maxSpellsPerTurn} played)
+        </p>
+      )}
+
+       {activeMonster && !canPlayMonsterFromHand && (!canPlaySpellFromHand || !canStillPlaySpellThisTurn) && !canAttack && !canSwap && (
          <p className="text-xs text-muted-foreground italic mt-2 text-center">
             No further actions with current hand or active monster. Consider ending turn.
         </p>
       )}
-      {/* Informational text if hand is full and player *might* be considering a swap */}
       {canSwap && playerHandFull && (
         <p className="text-xs text-muted-foreground italic mt-1 text-center">
           Note: Swapping with a full hand will discard the active monster.
