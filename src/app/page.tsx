@@ -9,11 +9,11 @@ export default function ArcaneClashPage() {
   ));
 
   const spiralConfigs = [
-    { id: 1, top: '15%', left: '10%', scale: '0.6', delay: '0s', opacity: 0.7 },
-    { id: 2, top: '60%', left: '85%', scale: '0.9', delay: '-1.3s', opacity: 0.9 },
-    { id: 3, top: '30%', left: '45%', scale: '0.4', delay: '-2.5s', opacity: 0.5 },
-    { id: 4, top: '80%', left: '25%', scale: '0.75', delay: '-0.8s', opacity: 0.8 },
-    { id: 5, top: '5%', left: '70%', scale: '0.5', delay: '-3.1s', opacity: 0.6 },
+    { id: 1, top: '15%', left: '10%', scale: '0.6', delay: '0s', opacity: 0.3 },
+    { id: 2, top: '60%', left: '85%', scale: '0.9', delay: '-1.3s', opacity: 0.3 },
+    { id: 3, top: '30%', left: '45%', scale: '0.4', delay: '-2.5s', opacity: 0.3 },
+    { id: 4, top: '80%', left: '25%', scale: '0.75', delay: '-0.8s', opacity: 0.3 },
+    { id: 5, top: '5%', left: '70%', scale: '0.5', delay: '-3.1s', opacity: 0.3 },
   ];
 
   const spirals = spiralConfigs.map(config => (
@@ -24,7 +24,7 @@ export default function ArcaneClashPage() {
         top: config.top, 
         left: config.left, 
         transform: `scale(${config.scale})`,
-        opacity: config.opacity,
+        opacity: config.opacity, // Applied here
         animationDelay: config.delay, 
       }}
     >
