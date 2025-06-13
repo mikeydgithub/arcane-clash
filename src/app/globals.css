@@ -64,15 +64,16 @@ body {
 
 /* Spiral Animation CSS */
 .spiral-container {
-    position: relative; /* Changed to relative to be placed in flow or absolutely by parent */
+    position: absolute; /* Changed to absolute for free placement */
     width: 200px; /* Adjust as needed */
     height: 200px; /* Adjust as needed */
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: hsl(var(--card)); /* Themed background */
+    /* Themed background is not really visible if spiral itself fills container, but kept for consistency */
+    /* background-color: hsl(var(--card)); */ 
     border-radius: 1rem; /* Rounded corners for the container */
-    box-shadow: 0 10px 15px hsla(var(--foreground), 0.1); /* Subtle shadow using foreground with alpha */
+    /* box-shadow: 0 10px 15px hsla(var(--foreground), 0.1); */ /* Shadow might be too much for a background element */
 }
 
 .spiral {
