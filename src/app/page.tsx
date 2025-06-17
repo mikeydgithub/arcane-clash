@@ -25,7 +25,7 @@ export default function ArcaneClashPage() {
         top: config.top,
         left: config.left,
         transform: `scale(${config.scale})`,
-        opacity: config.opacity,
+        opacity: config.opacity, // Opacity for the CSS spiral
       }}
     >
       <div
@@ -41,11 +41,46 @@ export default function ArcaneClashPage() {
     </div>
   ));
 
+  const lightningEffectConfigs = [
+    { id: 1, top: '10%', left: '20%', scale: '0.6', animationDelay: '0s', rotation: '-15deg' },
+    { id: 2, top: '50%', left: '80%', scale: '0.8', animationDelay: '-1.2s', rotation: '10deg' },
+    { id: 3, top: '65%', left: '10%', scale: '0.7', animationDelay: '-2.5s', rotation: '5deg' },
+    { id: 4, top: '25%', left: '60%', scale: '0.5', animationDelay: '-3.1s', rotation: '20deg' },
+  ];
+
+  const lightningEffects = lightningEffectConfigs.map((config, index) => (
+    <div
+      key={`lightning-${config.id}`}
+      className="absolute" // For positioning
+      style={{
+        top: config.top,
+        left: config.left,
+        transform: `scale(${config.scale}) rotate(${config.rotation || '0deg'})`,
+        zIndex: 1, // Above stars/spirals, below GameBoard
+      }}
+    >
+      <Image
+        src="/lightning-effect.png" // Ensure this image exists in /public
+        alt="Lightning effect"
+        width={200} // Original width of your image
+        height={300} // Original height of your image
+        className="animate-lightning-flash" // Apply the flash animation
+        style={{
+          objectFit: 'contain', // Maintain aspect ratio
+          animationDelay: config.animationDelay, // Offset flash timing
+        }}
+        data-ai-hint="lightning strike"
+        priority={index < 2} // Prioritize loading for first few images
+      />
+    </div>
+  ));
+
+
   return (
-    <main className="h-screen w-screen text-foreground relative" style={{zIndex: 0 }}>
+    <main className="h-screen w-screen text-foreground relative" style={{ position: 'relative', zIndex: 0 }}>
       {stars}
       {spirals}
-      {/* Lightning effects removed */}
+      {lightningEffects}
       <div style={{ position: 'relative', zIndex: 2, height: '100%', width: '100%' }}>
         <GameBoard />
       </div>
