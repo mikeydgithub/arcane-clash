@@ -81,7 +81,7 @@ export function GameBoard() {
       return;
     }
     isInitializingRef.current = true;
-    hasInitialized.current = false; 
+    hasInitialized.current = false;
 
     console.log('[GameBoard] Initializing game sequence starting (lock acquired)...');
 
@@ -107,7 +107,7 @@ export function GameBoard() {
           });
           logAndSetGameState(prev => ({
             ...(prev || {} as GameState),
-            gamePhase: 'initial', 
+            gamePhase: 'initial',
             gameLogMessages: ["Error: Card data missing. Pregenerate cards."],
             isProcessingAction: false,
           }));
@@ -155,11 +155,11 @@ export function GameBoard() {
         activeMonsterP2: undefined,
         winner: undefined,
         gameLogMessages: ["Game cards ready. First player will be determined by coin flip. Flipping coin..."],
-        isProcessingAction: false, 
+        isProcessingAction: false,
         isInitialMonsterEngagement: true,
       });
 
-      hasInitialized.current = true; 
+      hasInitialized.current = true;
 
       descriptionQueueRef.current = [];
       [...initialPlayer1.hand, ...initialPlayer2.hand].forEach((card, globalIndex) => {
@@ -181,11 +181,11 @@ export function GameBoard() {
       });
       logAndSetGameState(prev => ({
           ...(prev || {} as GameState),
-          gamePhase: 'initial', 
+          gamePhase: 'initial',
           gameLogMessages: [...(prev?.gameLogMessages?.slice(0, -1) || []), "Error: Critical problem during game setup. Refresh may be needed."],
           isProcessingAction: false,
       }));
-      hasInitialized.current = false; 
+      hasInitialized.current = false;
     } finally {
       isInitializingRef.current = false;
       console.log('[GameBoard] Initializing game sequence finished (lock released).');
@@ -382,7 +382,7 @@ export function GameBoard() {
   const appendLog = (message: string) => {
     logAndSetGameState(prev => {
       if (!prev) return null;
-      const newLogMessages = [...(prev.gameLogMessages || []), message].slice(-100); 
+      const newLogMessages = [...(prev.gameLogMessages || []), message].slice(-100);
       return { ...prev, gameLogMessages: newLogMessages };
     });
   };
@@ -442,35 +442,35 @@ export function GameBoard() {
     logAndSetGameState(prev => {
       if (!prev) return null;
       let { players, currentPlayerIndex, gameLogMessages, activeMonsterP1, activeMonsterP2, isInitialMonsterEngagement } = prev;
-      
+
       const actingPlayerInitial = players[currentPlayerIndex];
       const opponentPlayerIndex = (1 - currentPlayerIndex) as 0 | 1;
       const opponentPlayer = players[opponentPlayerIndex];
 
       const playerAfterAction = {
           ...actingPlayerInitial,
-          spellsPlayedThisTurn: 0, 
+          spellsPlayedThisTurn: 0,
           turnCount: actingPlayerInitial.turnCount + 1, // Increment turn count for player whose turn just ended
       };
       let updatedPlayersArr = [...players] as [PlayerData, PlayerData];
       updatedPlayersArr[currentPlayerIndex] = playerAfterAction;
-      
+
       let newLogMessages = [...(gameLogMessages || [])];
-      
+
       const stateForStatusEffects: GameState = {
           players: updatedPlayersArr,
           currentPlayerIndex: opponentPlayerIndex, // Status effects apply to player whose turn is STARTING
-          gamePhase: prev.gamePhase, 
+          gamePhase: prev.gamePhase,
           activeMonsterP1: activeMonsterP1 ? {...activeMonsterP1} : undefined,
           activeMonsterP2: activeMonsterP2 ? {...activeMonsterP2} : undefined,
           winner: prev.winner,
           gameLogMessages: newLogMessages,
-          isProcessingAction: prev.isProcessingAction, 
-          isInitialMonsterEngagement: prev.isInitialMonsterEngagement, 
+          isProcessingAction: prev.isProcessingAction,
+          isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
       };
-      
+
       const stateAfterStatusEffects = applyStatusEffectsAndCheckDefeats(opponentPlayerIndex, stateForStatusEffects);
-      
+
       updatedPlayersArr = stateAfterStatusEffects.players;
       activeMonsterP1 = stateAfterStatusEffects.activeMonsterP1;
       activeMonsterP2 = stateAfterStatusEffects.activeMonsterP2;
@@ -520,39 +520,39 @@ export function GameBoard() {
       // Check for game over conditions AFTER applying status effects and drawing cards
       if (updatedPlayersArr[0].hp <= 0 && updatedPlayersArr[1].hp <= 0) {
         newLogMessages.push("It's a draw! Both players are defeated.");
-        return { 
-            players: updatedPlayersArr, 
-            activeMonsterP1, 
-            activeMonsterP2, 
-            winner: undefined, 
-            gamePhase: 'game_over_phase', 
-            gameLogMessages: newLogMessages, 
+        return {
+            players: updatedPlayersArr,
+            activeMonsterP1,
+            activeMonsterP2,
+            winner: undefined,
+            gamePhase: 'game_over_phase',
+            gameLogMessages: newLogMessages,
             isProcessingAction: false,
             currentPlayerIndex: opponentPlayerIndex,
             isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
          };
       } else if (updatedPlayersArr[0].hp <= 0) {
         newLogMessages.push(`${updatedPlayersArr[1].name} wins! ${updatedPlayersArr[0].name} is defeated.`);
-        return { 
-            players: updatedPlayersArr, 
-            activeMonsterP1, 
-            activeMonsterP2, 
-            winner: updatedPlayersArr[1], 
-            gamePhase: 'game_over_phase', 
-            gameLogMessages: newLogMessages, 
+        return {
+            players: updatedPlayersArr,
+            activeMonsterP1,
+            activeMonsterP2,
+            winner: updatedPlayersArr[1],
+            gamePhase: 'game_over_phase',
+            gameLogMessages: newLogMessages,
             isProcessingAction: false,
             currentPlayerIndex: opponentPlayerIndex,
             isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
         };
       } else if (updatedPlayersArr[1].hp <= 0) {
         newLogMessages.push(`${updatedPlayersArr[0].name} wins! ${updatedPlayersArr[1].name} is defeated.`);
-        return { 
-            players: updatedPlayersArr, 
-            activeMonsterP1, 
-            activeMonsterP2, 
-            winner: updatedPlayersArr[0], 
-            gamePhase: 'game_over_phase', 
-            gameLogMessages: newLogMessages, 
+        return {
+            players: updatedPlayersArr,
+            activeMonsterP1,
+            activeMonsterP2,
+            winner: updatedPlayersArr[0],
+            gamePhase: 'game_over_phase',
+            gameLogMessages: newLogMessages,
             isProcessingAction: false,
             currentPlayerIndex: opponentPlayerIndex,
             isInitialMonsterEngagement: prev.isInitialMonsterEngagement,
@@ -561,7 +561,7 @@ export function GameBoard() {
 
       newLogMessages.push(`Turn ends. It's now ${players[opponentPlayerIndex].name}'s turn.`);
       newLogMessages.push(`${players[opponentPlayerIndex].name}, choose your action.`);
-      
+
       const finalStateForTurnEnd: GameState = {
         players: updatedPlayersArr,
         currentPlayerIndex: opponentPlayerIndex,
@@ -615,24 +615,24 @@ export function GameBoard() {
         ...prev,
         players: newPlayers,
         [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: card,
-        isInitialMonsterEngagement: false, 
+        isInitialMonsterEngagement: false,
       };
     });
 
-    
+
     if (wasGloballyFirstMonsterSummoned) {
       appendLog(`${card.title} cannot attack this turn as it's the first monster in play.`);
-      logAndSetGameState(prev => ({...prev!, gamePhase: 'turn_resolution_phase'})); 
+      logAndSetGameState(prev => ({...prev!, gamePhase: 'turn_resolution_phase'}));
       setTimeout(() => {
         processTurnEnd();
       }, 1000);
     } else {
-      
+
       appendLog(`${card.title} is ready for action! ${player.name}, choose your next move.`);
       logAndSetGameState(prev => ({
         ...prev!,
-        gamePhase: 'player_action_phase', 
-        isProcessingAction: false, 
+        gamePhase: 'player_action_phase',
+        isProcessingAction: false,
       }));
     }
   };
@@ -653,9 +653,9 @@ export function GameBoard() {
         return;
     }
 
-    logAndSetGameState(prev => ({...prev!, isProcessingAction: true})); 
+    logAndSetGameState(prev => ({...prev!, isProcessingAction: true}));
 
-    let determinedNextGamePhase: GamePhase = 'player_action_phase'; 
+    let determinedNextGamePhase: GamePhase = 'player_action_phase';
     let determinedNextIsProcessingAction: boolean = false;
 
     const fetchDescIfNeededAndProceed = async () => {
@@ -688,7 +688,7 @@ export function GameBoard() {
                 });
             } catch (e) {
                 console.error(`[handlePlaySpellFromHand] Error fetching spell description for ${spellToLog.title}:`, e);
-                spellToLog.description = "A mysterious enchantment unfolds."; 
+                spellToLog.description = "A mysterious enchantment unfolds.";
                 toast({ title: "AI Error", description: `Could not fetch spell effect for ${spellToLog.title}.`, variant: "destructive" });
                  logAndSetGameState(prevGS => {
                     if (!prevGS) return null;
@@ -701,7 +701,7 @@ export function GameBoard() {
                 });
             }
         }
-        
+
         const effectiveDescription = spellToLog.description || "Effect not yet loaded or defined.";
         appendLog(`${player.name} casts ${spellToLog.title}! Effect: ${effectiveDescription}`);
 
@@ -710,23 +710,23 @@ export function GameBoard() {
             try {
                 if (!prev) return null;
                 let { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2, gameLogMessages } = prev;
-                
+
                 let actingPlayer = {...players[currentPlayerIndex]};
                 actingPlayer.spellsPlayedThisTurn += 1;
 
                 const opponentPlayerIndex = 1 - currentPlayerIndex;
                 const opponentPlayer = players[opponentPlayerIndex];
-            
+
                 let newPlayers = [...players] as [PlayerData, PlayerData];
                 newPlayers[currentPlayerIndex] = actingPlayer;
 
                 let newActiveMonsterP1 = activeMonsterP1 ? { ...activeMonsterP1 } : undefined;
                 let newActiveMonsterP2 = activeMonsterP2 ? { ...activeMonsterP2 } : undefined;
                 let newLogMessages = [...(gameLogMessages || [])];
-            
+
                 const currentPlayersMonsterRef = currentPlayerIndex === 0 ? newActiveMonsterP1 : newActiveMonsterP2;
                 const opponentPlayersMonsterRef = currentPlayerIndex === 0 ? newActiveMonsterP2 : newActiveMonsterP1;
-                
+
                 let spellEffectApplied = false;
 
                 switch (spellToLog.title) {
@@ -739,7 +739,7 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-            
+
                     case 'Fireball':
                         const fireDamage = 15;
                         const directPlayerDamage = 10;
@@ -748,14 +748,14 @@ export function GameBoard() {
                             const originalMagicShield = opponentPlayersMonsterRef.magicShield;
                             let damageToDeal = fireDamage;
                             let message = `${actingPlayer.name}'s Fireball targets ${opponentPlayersMonsterRef.title}. `;
-            
+
                             let magicShieldAbsorbed = Math.min(opponentPlayersMonsterRef.magicShield, damageToDeal);
                             if (magicShieldAbsorbed > 0) {
                                 opponentPlayersMonsterRef.magicShield -= magicShieldAbsorbed;
                                 message += `Magic shield absorbs ${magicShieldAbsorbed}. Shield: ${originalMagicShield} -> ${opponentPlayersMonsterRef.magicShield}. `;
                             }
                             damageToDeal -= magicShieldAbsorbed;
-            
+
                             if (damageToDeal > 0) {
                                 opponentPlayersMonsterRef.hp = Math.max(0, opponentPlayersMonsterRef.hp - damageToDeal);
                                 message += `Takes ${damageToDeal} fire damage to HP. HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}.`;
@@ -764,7 +764,7 @@ export function GameBoard() {
                             }
                             newLogMessages.push(message);
                             spellEffectApplied = true;
-            
+
                             if (opponentPlayersMonsterRef.hp <= 0) {
                                 newLogMessages.push(`${opponentPlayersMonsterRef.title} is incinerated by the Fireball!`);
                                 const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, shield:0, magicShield:0, statusEffects: []};
@@ -773,14 +773,14 @@ export function GameBoard() {
                             } else {
                                 if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
                             }
-                        } else { 
+                        } else {
                             const originalPlayerHp = newPlayers[opponentPlayerIndex].hp;
                             newPlayers[opponentPlayerIndex].hp = Math.max(0, newPlayers[opponentPlayerIndex].hp - directPlayerDamage);
                             newLogMessages.push(`${actingPlayer.name}'s Fireball strikes ${opponentPlayer.name} directly for ${directPlayerDamage} damage! HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp}.`);
                             spellEffectApplied = true;
                         }
                         break;
-            
+
                     case 'Healing Light':
                         if (currentPlayersMonsterRef) {
                             const healAmount = 20;
@@ -791,19 +791,19 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-                    
+
                     case 'Arcane Shield':
                         if (currentPlayersMonsterRef) {
                             const shieldAmount = 10;
                             const originalShield = currentPlayersMonsterRef.magicShield;
                             currentPlayersMonsterRef.magicShield += shieldAmount;
-                            currentPlayersMonsterRef.maxMagicShield = Math.max(currentPlayersMonsterRef.maxMagicShield, currentPlayersMonsterRef.magicShield); 
+                            currentPlayersMonsterRef.maxMagicShield = Math.max(currentPlayersMonsterRef.maxMagicShield, currentPlayersMonsterRef.magicShield);
                             newLogMessages.push(`${actingPlayer.name}'s Arcane Shield grants ${shieldAmount} magic shield to ${currentPlayersMonsterRef.title}! Magic Shield: ${originalShield} -> ${currentPlayersMonsterRef.magicShield}.`);
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;
                         }
                         break;
-            
+
                     case 'Weakening Curse':
                         if (opponentPlayersMonsterRef) {
                             const reduction = 3;
@@ -820,8 +820,8 @@ export function GameBoard() {
                     case 'Terrify':
                         if (opponentPlayersMonsterRef) {
                             newLogMessages.push(`${actingPlayer.name}'s Terrify targets ${opponentPlayersMonsterRef.title}!`);
-                            const returnedMonster = { ...opponentPlayersMonsterRef, statusEffects: [] }; 
-                            
+                            const returnedMonster = { ...opponentPlayersMonsterRef, statusEffects: [] };
+
                             if (newPlayers[opponentPlayerIndex].hand.length < CARDS_IN_HAND) {
                                 newPlayers[opponentPlayerIndex].hand.push(returnedMonster);
                                 newLogMessages.push(`${opponentPlayersMonsterRef.title} is returned to ${opponentPlayer.name}'s hand!`);
@@ -829,7 +829,7 @@ export function GameBoard() {
                                 newPlayers[opponentPlayerIndex].discardPile.push(returnedMonster);
                                 newLogMessages.push(`${opponentPlayersMonsterRef.title} couldn't return to a full hand and was discarded!`);
                             }
-                            
+
                             if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
                             spellEffectApplied = true;
                         }
@@ -844,8 +844,8 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-                    
-                    case 'Swiftness Aura': 
+
+                    case 'Swiftness Aura':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 3);
                             newLogMessages.push(`${currentPlayersMonsterRef.title} gains +3 Melee from Swiftness Aura. New Melee: ${currentPlayersMonsterRef.melee}.`);
@@ -854,7 +854,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Chain Lightning': 
+                    case 'Chain Lightning':
                         const chainLightningDmg = 10;
                         const chainPlayerDmg = 5;
                         if (opponentPlayersMonsterRef) {
@@ -880,7 +880,7 @@ export function GameBoard() {
                                 const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, shield:0, magicShield:0, statusEffects: []};
                                 newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
                                 if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
-                                
+
                                 const originalPlayerHp = newPlayers[opponentPlayerIndex].hp;
                                 newPlayers[opponentPlayerIndex].hp = Math.max(0, newPlayers[opponentPlayerIndex].hp - chainPlayerDmg);
                                 newLogMessages.push(`${opponentPlayer.name} takes ${chainPlayerDmg} lightning damage! HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp}.`);
@@ -892,7 +892,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Growth Spurt': 
+                    case 'Growth Spurt':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.maxHp += 10;
                             const originalHp = currentPlayersMonsterRef.hp;
@@ -903,7 +903,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Drain Life': 
+                    case 'Drain Life':
                         const drainDamage = 8;
                         if (opponentPlayersMonsterRef) {
                             const originalOpponentHp = opponentPlayersMonsterRef.hp;
@@ -924,7 +924,7 @@ export function GameBoard() {
                             } else { message += `No HP damage after shield.`; }
                             newLogMessages.push(message);
                             spellEffectApplied = true;
-                            
+
                             if (currentPlayersMonsterRef && actualHPDamage > 0) {
                                 const healAmount = Math.floor(actualHPDamage / 2);
                                 const originalHealTargetHp = currentPlayersMonsterRef.hp;
@@ -946,7 +946,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Blinding Flash': 
+                    case 'Blinding Flash':
                          if (opponentPlayersMonsterRef) {
                             const reduction = 2;
                             opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - reduction);
@@ -957,7 +957,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Might Infusion': 
+                    case 'Might Infusion':
                          if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 5);
                             newLogMessages.push(`Might Infusion boosts ${currentPlayersMonsterRef.title}'s Melee to ${currentPlayersMonsterRef.melee}.`);
@@ -966,7 +966,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Frost Nova': 
+                    case 'Frost Nova':
                         const frostNovaDmg = 5;
                         const frostNovaMeleeReduction = 2;
                         if (opponentPlayersMonsterRef) {
@@ -984,7 +984,7 @@ export function GameBoard() {
                                 opponentPlayersMonsterRef.hp = Math.max(0, opponentPlayersMonsterRef.hp - damageToDeal);
                                 message += `Takes ${damageToDeal} magic damage. HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}.`;
                             } else { message += `No HP damage after shield.`; }
-                            
+
                             const originalMelee = opponentPlayersMonsterRef.melee;
                             opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - frostNovaMeleeReduction);
                             message += ` Its Melee is reduced from ${originalMelee} to ${opponentPlayersMonsterRef.melee}.`;
@@ -1001,8 +1001,8 @@ export function GameBoard() {
                             }
                         }
                         break;
-                    
-                    case 'Silence': 
+
+                    case 'Silence':
                         if (opponentPlayersMonsterRef) {
                             opponentPlayersMonsterRef.magic = Math.max(0, opponentPlayersMonsterRef.magic - 5);
                             newLogMessages.push(`Silence reduces ${opponentPlayersMonsterRef.title}'s Magic to ${opponentPlayersMonsterRef.magic}.`);
@@ -1011,8 +1011,8 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Teleport Strike': 
-                    case 'Empower Weapon':  
+                    case 'Teleport Strike':
+                    case 'Empower Weapon':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 4);
                             newLogMessages.push(`${spellToLog.title} enhances ${currentPlayersMonsterRef.title}'s Melee to ${currentPlayersMonsterRef.melee}.`);
@@ -1021,7 +1021,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Quicksand Trap': 
+                    case 'Quicksand Trap':
                          if (opponentPlayersMonsterRef) {
                             opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - 4);
                             opponentPlayersMonsterRef.defense = Math.max(0, opponentPlayersMonsterRef.defense - 2);
@@ -1031,7 +1031,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Ethereal Form': 
+                    case 'Ethereal Form':
                          if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.defense += 4;
                             currentPlayersMonsterRef.magicShield += 4;
@@ -1041,9 +1041,9 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-                    
-                    case 'Counterspell': 
-                    case 'Mage Armor': 
+
+                    case 'Counterspell':
+                    case 'Mage Armor':
                          if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.magicShield += 8;
                             currentPlayersMonsterRef.maxMagicShield = Math.max(currentPlayersMonsterRef.maxMagicShield, currentPlayersMonsterRef.magicShield);
@@ -1052,8 +1052,8 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-                    
-                    case 'Summon Minor Spirit': 
+
+                    case 'Summon Minor Spirit':
                          if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.maxHp += 5;
                             const originalHp = currentPlayersMonsterRef.hp;
@@ -1064,7 +1064,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Dark Pact': 
+                    case 'Dark Pact':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.melee += 8;
                             const playerOriginalHp = newPlayers[currentPlayerIndex].hp;
@@ -1075,7 +1075,7 @@ export function GameBoard() {
                         }
                         break;
 
-                    case 'Focused Mind': 
+                    case 'Focused Mind':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.magic += 4;
                             newLogMessages.push(`Focused Mind increases ${currentPlayersMonsterRef.title}'s Magic to ${currentPlayersMonsterRef.magic}.`);
@@ -1088,42 +1088,42 @@ export function GameBoard() {
                         newLogMessages.push(`${spellToLog.title} is cast, but its specific effect is not yet fully implemented or it fizzled.`);
                         break;
                 }
-                
-                if (!spellEffectApplied && (currentPlayersMonsterRef || opponentPlayersMonsterRef || spellToLog.title === 'Fireball')) { 
+
+                if (!spellEffectApplied && (currentPlayersMonsterRef || opponentPlayersMonsterRef || spellToLog.title === 'Fireball')) {
                      newLogMessages.push(`${spellToLog.title} was cast but had no valid target or conditions to apply its effect.`);
                 }
-            
+
                 const handAfterSpell = newPlayers[currentPlayerIndex].hand.filter(c => c.id !== spellToLog.id);
                 const discardPileAfterSpell = [...newPlayers[currentPlayerIndex].discardPile, { ...spellToLog, isLoadingDescription: false }];
                 newPlayers[currentPlayerIndex] = { ...newPlayers[currentPlayerIndex], hand: handAfterSpell, discardPile: discardPileAfterSpell };
-                
+
                 // After spell, return to player_action_phase and allow further actions
                 newLogMessages.push(`${actingPlayer.name} played ${spellToLog.title}. You can now attack or end your turn.`);
                 determinedNextGamePhase = 'player_action_phase';
-                determinedNextIsProcessingAction = false; 
-            
-                return { 
-                   ...prev, 
-                   players: newPlayers, 
-                   activeMonsterP1: newActiveMonsterP1, 
-                   activeMonsterP2: newActiveMonsterP2, 
-                   gameLogMessages: newLogMessages,    
-                   gamePhase: determinedNextGamePhase, 
-                   isProcessingAction: determinedNextIsProcessingAction, 
+                determinedNextIsProcessingAction = false;
+
+                return {
+                   ...prev,
+                   players: newPlayers,
+                   activeMonsterP1: newActiveMonsterP1,
+                   activeMonsterP2: newActiveMonsterP2,
+                   gameLogMessages: newLogMessages,
+                   gamePhase: determinedNextGamePhase,
+                   isProcessingAction: determinedNextIsProcessingAction,
                 }
-            } catch (error) { 
+            } catch (error) {
                 console.error("[GameBoard] CRITICAL ERROR within spell effect state updater:", error);
                 determinedNextGamePhase = 'turn_resolution_phase'; // Force turn end on error
-                determinedNextIsProcessingAction = true;           
+                determinedNextIsProcessingAction = true;
                 return {
-                    ...(prev || {} as GameState), 
+                    ...(prev || {} as GameState),
                     gameLogMessages: [...(prev?.gameLogMessages || []), "Critical error processing spell. Forcing turn end."],
                     gamePhase: determinedNextGamePhase,
                     isProcessingAction: determinedNextIsProcessingAction,
                 };
             }
-          }); 
-        
+          });
+
         // No automatic turn end after spell. Player chooses next action or End Turn.
         console.log(`[handlePlaySpellFromHand] Spell processed. New phase: ${determinedNextGamePhase}, Processing: ${determinedNextIsProcessingAction}`);
         // If determinedNextGamePhase became 'turn_resolution_phase' due to an error, then schedule processTurnEnd.
@@ -1321,7 +1321,7 @@ export function GameBoard() {
 
         if (defender && defender.hp <= 0) {
             combatLogMessages.push(`${defender.title} is defeated!`);
-            const defeatedMonsterCard = {...currentDefenderMonster!, hp:0, shield:0, magicShield:0, statusEffects: []}; 
+            const defeatedMonsterCard = {...currentDefenderMonster!, hp:0, shield:0, magicShield:0, statusEffects: []};
             if (currentPlayerIndex === 0) {
                 p2Data.discardPile.push(defeatedMonsterCard);
                 nextActiveMonsterP2 = undefined;
@@ -1335,7 +1335,7 @@ export function GameBoard() {
 
         if (attacker.hp <= 0) {
             combatLogMessages.push(`${attacker.title} is defeated!`);
-            const defeatedAttackerCard = {...currentAttackerMonster!, hp:0, shield:0, magicShield:0, statusEffects: []}; 
+            const defeatedAttackerCard = {...currentAttackerMonster!, hp:0, shield:0, magicShield:0, statusEffects: []};
             if (currentPlayerIndex === 0) {
                 p1Data.discardPile.push(defeatedAttackerCard);
                 nextActiveMonsterP1 = undefined;
@@ -1358,7 +1358,7 @@ export function GameBoard() {
                 gamePhase: 'turn_resolution_phase', // Attack always leads to turn resolution
             };
         });
-        setTimeout(() => processTurnEnd(), 1000); 
+        setTimeout(() => processTurnEnd(), 1000);
     }, 1000);
   };
 
@@ -1379,7 +1379,7 @@ export function GameBoard() {
           toast({ title: "No Monster to Swap In", description: "You need another monster in your hand to swap.", variant: "destructive" });
           return {...prev };
       }
-      
+
       return {
         ...prev,
         gamePhase: 'selecting_swap_monster_phase',
@@ -1402,13 +1402,13 @@ export function GameBoard() {
             newLogMessages.push("Error: No active monster to swap out.");
             return {...prev, gamePhase: 'player_action_phase', gameLogMessages: newLogMessages, isProcessingAction: false};
         }
-        
+
         const handAfterPlayingSelected = player.hand.filter(c => c.id !== cardToSwapIn.id);
         let finalHand = handAfterPlayingSelected;
         let finalDiscardPile = [...player.discardPile];
-        const monsterReturningToHand = { ...monsterToSwapOut, statusEffects: [] }; 
+        const monsterReturningToHand = { ...monsterToSwapOut, statusEffects: [] };
 
-        if (handAfterPlayingSelected.length < CARDS_IN_HAND) { 
+        if (handAfterPlayingSelected.length < CARDS_IN_HAND) {
             finalHand = [...handAfterPlayingSelected, monsterReturningToHand];
             newLogMessages.push(`${player.name} swaps out ${monsterToSwapOut.title} for ${cardToSwapIn.title}! ${monsterToSwapOut.title} returns to hand.`);
         } else {
@@ -1426,14 +1426,14 @@ export function GameBoard() {
           [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: cardToSwapIn,
           gamePhase: 'turn_resolution_phase', // Swapping is a turn-ending action
           gameLogMessages: newLogMessages,
-          isProcessingAction: true, 
+          isProcessingAction: true,
         };
     };
 
     logAndSetGameState(stateUpdater);
     setTimeout(() => {
         processTurnEnd(); // Swap ends the turn
-    }, 1000); 
+    }, 1000);
   };
 
 
@@ -1597,9 +1597,9 @@ export function GameBoard() {
           console.log('[GameBoard] Restarting game: resetting state and flags.');
           descriptionQueueRef.current = [];
           isFetchingDescriptionRef.current = false;
-          isInitializingRef.current = false; 
-          hasInitialized.current = false;  
-          logAndSetGameState(null); 
+          isInitializingRef.current = false;
+          hasInitialized.current = false;
+          logAndSetGameState(null);
         }}
       />
     </div>

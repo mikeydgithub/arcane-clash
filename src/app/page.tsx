@@ -3,8 +3,8 @@ import Image from 'next/image';
 import { GameBoard } from '@/components/game/GameBoard';
 
 export default function ArcaneClashPage() {
-  // Number of stars to render. Ensure this matches the number of .star:nth-child() selectors in globals.css if using that method.
-  const numStars = 10; 
+  // Number of stars to render.
+  const numStars = 10;
   const stars = Array.from({ length: numStars }).map((_, i) => (
     <div key={`star-${i}`} className="star"></div>
   ));
@@ -18,30 +18,26 @@ export default function ArcaneClashPage() {
   ];
 
   const spirals = spiralConfigs.map(config => (
-    <div 
-      key={`spiral-container-${config.id}`} 
-      className="spiral-container" 
-      style={{ 
-        top: config.top, 
-        left: config.left, 
+    <div
+      key={`spiral-container-${config.id}`}
+      className="spiral-container"
+      style={{
+        top: config.top,
+        left: config.left,
         transform: `scale(${config.scale})`,
         opacity: config.opacity,
-        // animationDelay for the container is not needed if the image itself has its animation delay
       }}
     >
-      <Image
-        src="/water_swirl.png" // Ensure water_swirl.png is in /public
-        alt="Water swirl effect"
-        width={100} // Base width of the image, scale transform will adjust final size
-        height={100} // Base height of the image
-        data-ai-hint="water swirl"
+      <div
+        className="spiral"
         style={{
-          animation: `rotateSpiral 4s linear infinite`,
-          animationDelay: config.delay, // Apply individual delay to image rotation
-          objectFit: 'contain', 
+          animationName: 'rotateSpiral',
+          animationDuration: '4s',
+          animationIterationCount: 'infinite',
+          animationTimingFunction: 'linear',
+          animationDelay: config.delay,
         }}
-        priority={false} // Background decorative element
-      />
+      ></div>
     </div>
   ));
 
@@ -62,29 +58,26 @@ export default function ArcaneClashPage() {
         top: config.top,
         left: config.left,
         transform: `scale(${config.scale}) rotate(${config.rotate})`,
-        animationDelay: config.animationDelay, 
-        zIndex: 0, 
+        animationDelay: config.animationDelay,
+        zIndex: 0,
       }}
     >
       <Image
-        src="/lightning-effect.png" 
+        src="/lightning-effect.png"
         alt="Lightning energy effect"
-        width={200} 
-        height={300} 
+        width={200}
+        height={300}
         data-ai-hint="lightning energy"
         style={{ objectFit: 'contain' }}
-        priority={false} 
+        priority={false}
       />
     </div>
   ));
 
   return (
     <main className="h-screen w-screen overflow-hidden text-foreground relative">
-      {/* Render the stars. They are position:absolute and will adhere to .star CSS rules. */}
       {stars}
-      {/* Render the spirals (now image-based) */}
       {spirals}
-      {/* Render the lightning effects */}
       {lightningEffects}
       <GameBoard />
     </main>

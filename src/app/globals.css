@@ -63,19 +63,52 @@ body {
   100% { box-shadow: 0 0 5px white, 0 0 8px white; }
 }
 
-/* Spiral Animation CSS */
+/* Spiral Animation CSS for CSS-drawn spirals */
 .spiral-container {
-    position: absolute; /* Changed to absolute for free placement */
-    /* width and height removed to be determined by content (image) and scale transform */
+    position: absolute;
+    width: 100px;
+    height: 100px;
     display: flex;
     justify-content: center;
     align-items: center;
-    /* border-radius removed as it might clip the image undesirably */
+    border-radius: 50%;
 }
 
-/* .spiral, .spiral::before, .spiral::after CSS rules are removed as image is used now */
+.spiral {
+    width: 80px;
+    height: 80px;
+    border: 4px solid transparent;
+    border-top-color: hsla(var(--accent), 0.5); /* Use accent color */
+    border-radius: 50%;
+    position: relative; /* For pseudo-elements */
+    /* animation is applied via inline style in page.tsx for individual delay */
+}
 
-/* Keyframes for the rotation animation (still used for the image) */
+.spiral::before, .spiral::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 4px solid transparent;
+}
+
+.spiral::before {
+    width: 60px;
+    height: 60px;
+    border-top-color: hsla(var(--primary), 0.4); /* Use primary color */
+    top: 10px; /* (80-60)/2 */
+    left: 10px;
+    animation: rotateSpiral 3s linear infinite reverse;
+}
+
+.spiral::after {
+    width: 40px;
+    height: 40px;
+    border-top-color: hsla(var(--secondary), 0.3); /* Use secondary color */
+    top: 20px; /* (80-40)/2 */
+    left: 20px;
+    animation: rotateSpiral 2s linear infinite;
+}
+
 @keyframes rotateSpiral {
     from {
         transform: rotate(0deg);
@@ -98,24 +131,24 @@ body {
 @layer base {
   :root {
     --background: 260 15% 10%;
-    --foreground: 260 10% 88%; 
-    --card: 260 15% 15%; 
+    --foreground: 260 10% 88%;
+    --card: 260 15% 15%;
     --card-foreground: 260 10% 88%;
     --popover: 260 15% 10%;
     --popover-foreground: 260 10% 88%;
-    --primary: 262 52.4% 47.3%; 
-    --primary-foreground: 0 0% 100%; 
-    --secondary: 232 47.3% 40%; 
+    --primary: 262 52.4% 47.3%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 232 47.3% 40%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 260 10% 20%; 
-    --muted-foreground: 260 10% 55%; 
-    --accent: 232 47.3% 47.8%; 
-    --accent-foreground: 0 0% 100%; 
-    --destructive: 0 72.2% 50.6%; 
+    --muted: 260 10% 20%;
+    --muted-foreground: 260 10% 55%;
+    --accent: 232 47.3% 47.8%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72.2% 50.6%;
     --destructive-foreground: 0 0% 100%;
-    --border: 260 10% 25%; 
+    --border: 260 10% 25%;
     --input: 260 10% 25%;
-    --ring: 262 52.4% 47.3%; 
+    --ring: 262 52.4% 47.3%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
