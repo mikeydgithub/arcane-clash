@@ -25,7 +25,7 @@ export default function ArcaneClashPage() {
         top: config.top,
         left: config.left,
         transform: `scale(${config.scale})`,
-        opacity: config.opacity, // Opacity for the CSS spiral
+        opacity: config.opacity,
       }}
     >
       <div
@@ -68,16 +68,17 @@ export default function ArcaneClashPage() {
         style={{
           objectFit: 'contain', // Maintain aspect ratio
           animationDelay: config.animationDelay, // Offset flash timing
+          height: 'auto', // To address the Next.js Image warning
         }}
         data-ai-hint="lightning strike"
-        priority={index < 2} // Prioritize loading for first few images
+        priority={index < 2} // Add priority to the first two images for LCP
       />
     </div>
   ));
 
 
   return (
-    <main className="h-screen w-screen text-foreground relative" style={{ position: 'relative', zIndex: 0 }}>
+    <main className="h-screen w-screen text-foreground relative" style={{ zIndex: 0 }}>
       {stars}
       {spirals}
       {lightningEffects}
