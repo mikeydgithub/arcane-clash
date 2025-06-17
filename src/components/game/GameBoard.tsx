@@ -1457,7 +1457,7 @@ export function GameBoard() {
   const currentPlayer = players[currentPlayerIndex];
 
   return (
-    <div className="flex flex-row h-screen w-screen overflow-hidden bg-background text-foreground p-1 md:p-2">
+    <div className="flex flex-row h-full w-full overflow-hidden bg-background text-foreground p-1 md:p-2">
 
       <div className="w-1/4 flex flex-col items-center p-1 md:p-2 space-y-1 md:space-y-2 flex-shrink-0">
          <div className="w-full flex flex-col items-center space-y-1 text-xs text-muted-foreground mb-1">
