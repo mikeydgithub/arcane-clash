@@ -124,6 +124,15 @@ body {
     }
 }
 
+@keyframes lightningFlash {
+  0%, 20%, 25%, 30%, 35%, 100% { opacity: 0; }
+  21%, 31% { opacity: 1; }
+}
+
+.animate-lightning-flash {
+  animation: lightningFlash 4s infinite linear;
+}
+
 
 @layer base {
   :root {
@@ -199,5 +208,3 @@ body {
   }
   /* body styles are now at the top of the file for clarity */
 }
-
-    
