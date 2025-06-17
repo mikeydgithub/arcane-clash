@@ -19,17 +19,29 @@ export default function ArcaneClashPage() {
 
   const spirals = spiralConfigs.map(config => (
     <div 
-      key={`spiral-${config.id}`} 
+      key={`spiral-container-${config.id}`} 
       className="spiral-container" 
       style={{ 
         top: config.top, 
         left: config.left, 
         transform: `scale(${config.scale})`,
         opacity: config.opacity,
-        animationDelay: config.delay, 
+        // animationDelay for the container is not needed if the image itself has its animation delay
       }}
     >
-      <div className="spiral" style={{ animationDelay: config.delay }}></div>
+      <Image
+        src="/water_swirl.png" // Ensure water_swirl.png is in /public
+        alt="Water swirl effect"
+        width={100} // Base width of the image, scale transform will adjust final size
+        height={100} // Base height of the image
+        data-ai-hint="water swirl"
+        style={{
+          animation: `rotateSpiral 4s linear infinite`,
+          animationDelay: config.delay, // Apply individual delay to image rotation
+          objectFit: 'contain', 
+        }}
+        priority={false} // Background decorative element
+      />
     </div>
   ));
 
@@ -70,7 +82,7 @@ export default function ArcaneClashPage() {
     <main className="h-screen w-screen overflow-hidden text-foreground relative">
       {/* Render the stars. They are position:absolute and will adhere to .star CSS rules. */}
       {stars}
-      {/* Render the spirals */}
+      {/* Render the spirals (now image-based) */}
       {spirals}
       {/* Render the lightning effects */}
       {lightningEffects}

@@ -66,55 +66,16 @@ body {
 /* Spiral Animation CSS */
 .spiral-container {
     position: absolute; /* Changed to absolute for free placement */
-    width: 200px; /* Adjust as needed */
-    height: 200px; /* Adjust as needed */
+    /* width and height removed to be determined by content (image) and scale transform */
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 1rem; /* Rounded corners for the container */
+    /* border-radius removed as it might clip the image undesirably */
 }
 
-.spiral {
-    position: relative;
-    width: 100px; /* Initial size of the spiral segment */
-    height: 100px;
-    border: 5px solid hsl(260, 65%, 70%); /* More purple themed border for the spiral */
-    border-top-color: transparent; /* Make top border transparent to create a gap */
-    border-left-color: transparent; /* Make left border transparent */
-    border-radius: 50%; /* Make it a circle */
-    animation: rotateSpiral 4s linear infinite; /* Animation for a dynamic effect */
-    transform-origin: center center; /* Ensure rotation is around its center */
-}
+/* .spiral, .spiral::before, .spiral::after CSS rules are removed as image is used now */
 
-/* Pseudo-elements to create the multi-layered spiral effect */
-.spiral::before,
-.spiral::after {
-    content: '';
-    position: absolute;
-    border: 5px solid hsl(260, 60%, 60%); /* Slightly different purple for inner layers */
-    border-top-color: transparent;
-    border-left-color: transparent;
-    border-radius: 50%;
-    transform-origin: center center;
-}
-
-.spiral::before {
-    width: 80px; /* Smaller inner spiral */
-    height: 80px;
-    top: 5px;
-    left: 5px;
-    transform: rotate(90deg); /* Rotate to continue the spiral */
-}
-
-.spiral::after {
-    width: 60px; /* Even smaller inner spiral */
-    height: 60px;
-    top: 15px;
-    left: 15px;
-    transform: rotate(180deg); /* Rotate further */
-}
-
-/* Keyframes for the rotation animation */
+/* Keyframes for the rotation animation (still used for the image) */
 @keyframes rotateSpiral {
     from {
         transform: rotate(0deg);
