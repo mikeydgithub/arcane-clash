@@ -1,4 +1,5 @@
 
+import Image from 'next/image';
 import { GameBoard } from '@/components/game/GameBoard';
 
 export default function ArcaneClashPage() {
@@ -24,11 +25,44 @@ export default function ArcaneClashPage() {
         top: config.top, 
         left: config.left, 
         transform: `scale(${config.scale})`,
-        opacity: config.opacity, // Applied here
+        opacity: config.opacity,
         animationDelay: config.delay, 
       }}
     >
       <div className="spiral" style={{ animationDelay: config.delay }}></div>
+    </div>
+  ));
+
+  const lightningEffectConfigs = [
+    { id: 1, top: '10%', left: '20%', scale: 0.7, opacity: 0.4, rotate: '-15deg', animationDelay: '0s' },
+    { id: 2, top: '70%', left: '15%', scale: 0.9, opacity: 0.35, rotate: '20deg', animationDelay: '-0.5s' },
+    { id: 3, top: '40%', left: '80%', scale: 0.6, opacity: 0.45, rotate: '5deg', animationDelay: '-1s' },
+    { id: 4, top: '85%', left: '60%', scale: 0.8, opacity: 0.3, rotate: '-30deg', animationDelay: '-1.5s' },
+    { id: 5, top: '25%', left: '50%', scale: 0.5, opacity: 0.5, rotate: '10deg', animationDelay: '-2s' },
+  ];
+
+  const lightningEffects = lightningEffectConfigs.map(config => (
+    <div
+      key={`lightning-${config.id}`}
+      style={{
+        position: 'absolute',
+        top: config.top,
+        left: config.left,
+        transform: `scale(${config.scale}) rotate(${config.rotate})`,
+        opacity: config.opacity,
+        animationDelay: config.animationDelay, // For potential future CSS animations
+        zIndex: 0, // Ensure it's behind game elements but above the base background
+      }}
+    >
+      <Image
+        src="/lightning-effect.png" // Assumes image is in /public/lightning-effect.png
+        alt="Lightning energy effect"
+        width={200} // Original/base width, scale will adjust
+        height={300} // Original/base height, scale will adjust
+        data-ai-hint="lightning energy"
+        style={{ objectFit: 'contain' }}
+        priority={false} // Not critical for LCP
+      />
     </div>
   ));
 
@@ -38,9 +72,10 @@ export default function ArcaneClashPage() {
       {stars}
       {/* Render the spirals */}
       {spirals}
+      {/* Render the lightning effects */}
+      {lightningEffects}
       <GameBoard />
     </main>
   );
 }
-
     
