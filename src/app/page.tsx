@@ -59,7 +59,7 @@ export default function ArcaneClashPage() {
         left: config.left,
         transform: `scale(${config.scale}) rotate(${config.rotate})`,
         animationDelay: config.animationDelay,
-        zIndex: 0,
+        zIndex: 1,
       }}
     >
       <Image
@@ -68,18 +68,20 @@ export default function ArcaneClashPage() {
         width={200}
         height={300}
         data-ai-hint="lightning energy"
-        style={{ objectFit: 'contain' }}
+        style={{ objectFit: 'contain', height: 'auto' }} // Added height: 'auto'
         priority={false}
       />
     </div>
   ));
 
   return (
-    <main className="h-screen w-screen overflow-hidden text-foreground relative">
+    <main className="h-screen w-screen text-foreground relative" style={{zIndex: 0 }}>
       {stars}
       {spirals}
       {lightningEffects}
-      <GameBoard />
+      <div style={{ position: 'relative', zIndex: 2, height: '100%', width: '100%' }}>
+        <GameBoard />
+      </div>
     </main>
   );
 }
