@@ -118,15 +118,7 @@ body {
     }
 }
 
-@keyframes lightningFlash {
-  0%, 20%, 25%, 30%, 35%, 100% { opacity: 0; }
-  21%, 31% { opacity: 1; }
-}
-
-.animate-lightning-flash {
-  animation: lightningFlash 4s infinite linear;
-}
-
+/* Lightning CSS removed */
 
 @layer base {
   :root {

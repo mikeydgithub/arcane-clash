@@ -41,44 +41,11 @@ export default function ArcaneClashPage() {
     </div>
   ));
 
-  const lightningEffectConfigs = [
-    { id: 1, top: '10%', left: '20%', scale: 0.7, rotate: '-15deg', animationDelay: '0s' },
-    { id: 2, top: '70%', left: '15%', scale: 0.9, rotate: '20deg', animationDelay: '-0.5s' },
-    { id: 3, top: '40%', left: '80%', scale: 0.6, rotate: '5deg', animationDelay: '-1s' },
-    { id: 4, top: '85%', left: '60%', scale: 0.8, rotate: '-30deg', animationDelay: '-1.5s' },
-    { id: 5, top: '25%', left: '50%', scale: 0.5, rotate: '10deg', animationDelay: '-2s' },
-  ];
-
-  const lightningEffects = lightningEffectConfigs.map(config => (
-    <div
-      key={`lightning-${config.id}`}
-      className="animate-lightning-flash"
-      style={{
-        position: 'absolute',
-        top: config.top,
-        left: config.left,
-        transform: `scale(${config.scale}) rotate(${config.rotate})`,
-        animationDelay: config.animationDelay,
-        zIndex: 1,
-      }}
-    >
-      <Image
-        src="/lightning-effect.png"
-        alt="Lightning energy effect"
-        width={200}
-        height={300}
-        data-ai-hint="lightning energy"
-        style={{ objectFit: 'contain', height: 'auto' }} // Added height: 'auto'
-        priority={false}
-      />
-    </div>
-  ));
-
   return (
     <main className="h-screen w-screen text-foreground relative" style={{zIndex: 0 }}>
       {stars}
       {spirals}
-      {lightningEffects}
+      {/* Lightning effects removed */}
       <div style={{ position: 'relative', zIndex: 2, height: '100%', width: '100%' }}>
         <GameBoard />
       </div>
