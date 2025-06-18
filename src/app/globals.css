@@ -6,7 +6,7 @@
 body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   color: hsl(var(--foreground));
-  @apply min-h-screen max-h-screen overflow-hidden;
+  @apply min-h-screen; /* MODIFIED: Removed max-h-screen overflow-hidden */
 
   background: linear-gradient(45deg, hsl(260, 30%, 10%), hsl(240, 40%, 8%), hsl(270, 35%, 12%), hsl(220, 50%, 10%));
   background-size: 400% 400%;
@@ -59,7 +59,6 @@ body {
   100% { box-shadow: 0 0 5px white, 0 0 8px white; }
 }
 
-/* Spiral Animation CSS for CSS-drawn spirals - Commented out */
 /*
 .spiral-container {
     position: absolute;
@@ -117,10 +116,10 @@ body {
 
 @keyframes slowFadeInOut {
   0%, 100% {
-    opacity: 0.1; /* Start and end with very low opacity */
+    opacity: 0.1; 
   }
   50% {
-    opacity: 0.35; /* Peak at a subtle opacity */
+    opacity: 0.35; 
   }
 }
 

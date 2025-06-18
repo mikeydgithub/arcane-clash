@@ -68,7 +68,7 @@ export default function ArcaneClashPage() {
         style={{
           objectFit: 'contain', 
           animationDelay: config.animationDelay, 
-          height: 'auto',
+          height: 'auto', 
         }}
         data-ai-hint="lightning strike"
         priority={index < 2} 
@@ -78,14 +78,21 @@ export default function ArcaneClashPage() {
 
 
   return (
-    <main className="h-screen w-screen text-foreground relative" style={{ zIndex: 0 }}>
+    <main className="h-screen w-screen text-foreground relative overflow-hidden" style={{ zIndex: 0 }}>
       <Image
         src="/black_swirl.png"
         alt="Giant black swirl background"
-        fill
+        // fill prop removed to avoid conflict with style.position
+        width={0} // Required by Next/Image when not using fill, but effectively overridden by CSS
+        height={0} // Required by Next/Image when not using fill, but effectively overridden by CSS
+        sizes="100vw" // Hint for Next/Image optimization
         style={{
+          position: 'fixed',
+          inset: '0',
+          width: '100vw',
+          height: '100vh',
           objectFit: 'cover',
-          zIndex: -10, // Behind everything else in this stacking context
+          zIndex: -10,
           animation: 'rotateSpiral 60s linear infinite, slowFadeInOut 20s ease-in-out infinite alternate',
         }}
         data-ai-hint="abstract background"
