@@ -5,17 +5,14 @@
 
 body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  /* background-color: #000; Replaced by animated gradient */
   color: hsl(var(--foreground));
   @apply min-h-screen max-h-screen overflow-hidden;
 
-  /* New animated gradient background */
   background: linear-gradient(45deg, hsl(260, 30%, 10%), hsl(240, 40%, 8%), hsl(270, 35%, 12%), hsl(220, 50%, 10%));
   background-size: 400% 400%;
   animation: gradientShift 20s ease infinite;
 }
 
-/* Keyframes for the new gradient animation */
 @keyframes gradientShift {
   0% {
     background-position: 0% 50%;
@@ -30,15 +27,14 @@ body {
 
 .star {
   position: absolute;
-  width: 2px; /* Star size */
+  width: 2px; 
   height: 2px;
   background: white;
-  border-radius: 50%; /* Make it a circle */
-  box-shadow: 0 0 5px white; /* Glowing effect */
-  animation: pulse 2s infinite, twinkle 5s infinite; /* Pulse and twinkle animations */
+  border-radius: 50%; 
+  box-shadow: 0 0 5px white; 
+  animation: pulse 2s infinite, twinkle 5s infinite; 
 }
 
-/* Create multiple stars with random positions */
 .star:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
 .star:nth-child(2) { top: 20%; left: 30%; animation-delay: -0.5s; }
 .star:nth-child(3) { top: 40%; left: 70%; animation-delay: -1s; }
@@ -63,7 +59,8 @@ body {
   100% { box-shadow: 0 0 5px white, 0 0 8px white; }
 }
 
-/* Spiral Animation CSS for CSS-drawn spirals */
+/* Spiral Animation CSS for CSS-drawn spirals - Commented out */
+/*
 .spiral-container {
     position: absolute;
     width: 100px;
@@ -78,10 +75,9 @@ body {
     width: 80px;
     height: 80px;
     border: 4px solid transparent;
-    border-top-color: hsla(var(--accent), 0.5); /* Use accent color */
+    border-top-color: hsla(var(--accent), 0.5);
     border-radius: 50%;
-    position: relative; /* For pseudo-elements */
-    /* animation is applied via inline style in page.tsx for individual delay */
+    position: relative;
 }
 
 .spiral::before, .spiral::after {
@@ -94,8 +90,8 @@ body {
 .spiral::before {
     width: 60px;
     height: 60px;
-    border-top-color: hsla(var(--primary), 0.4); /* Use primary color */
-    top: 10px; /* (80-60)/2 */
+    border-top-color: hsla(var(--primary), 0.4); 
+    top: 10px; 
     left: 10px;
     animation: rotateSpiral 3s linear infinite reverse;
 }
@@ -103,11 +99,12 @@ body {
 .spiral::after {
     width: 40px;
     height: 40px;
-    border-top-color: hsla(var(--secondary), 0.3); /* Use secondary color */
-    top: 20px; /* (80-40)/2 */
+    border-top-color: hsla(var(--secondary), 0.3); 
+    top: 20px; 
     left: 20px;
     animation: rotateSpiral 2s linear infinite;
 }
+*/
 
 @keyframes rotateSpiral {
     from {
@@ -118,13 +115,21 @@ body {
     }
 }
 
-/* Lightning CSS */
+@keyframes slowFadeInOut {
+  0%, 100% {
+    opacity: 0.1; /* Start and end with very low opacity */
+  }
+  50% {
+    opacity: 0.35; /* Peak at a subtle opacity */
+  }
+}
+
 @keyframes lightningFlash {
   0%, 20%, 25%, 30%, 35%, 100% {
     opacity: 0;
   }
   21%, 31% {
-    opacity: 1; /* Flash full opacity */
+    opacity: 1; 
   }
 }
 
@@ -205,5 +210,4 @@ body {
   * {
     @apply border-border;
   }
-  /* body styles are now at the top of the file for clarity */
 }
