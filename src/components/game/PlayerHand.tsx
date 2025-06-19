@@ -32,7 +32,7 @@ export function PlayerHand({
 
   return (
     <div className={cn(
-      "flex flex-col items-center space-y-1 md:space-y-2 p-1 md:p-2 transition-all duration-500 ease-in-out w-full overflow-y-auto max-h-[calc(100vh-200px)] flex-shrink-0",
+      "flex flex-col items-center space-y-1 md:space-y-2 p-1 md:p-2 transition-all duration-500 ease-in-out w-full", // Removed: overflow-y-auto max-h-[calc(100vh-200px)]
       "min-h-[200px] md:min-h-[300px]", 
       isPlayerTurn ? "bg-primary/5" : "" 
     )}>
