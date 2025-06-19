@@ -11,6 +11,9 @@ import { GameOverModal } from './GameOverModal';
 import { PlayerActions } from './PlayerActions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Layers3, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Added import
+import { Button } from '@/components/ui/button';
+
 
 const INITIAL_PLAYER_HP = 100;
 const CARDS_IN_HAND = 5;
