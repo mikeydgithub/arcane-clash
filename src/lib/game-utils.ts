@@ -1,57 +1,28 @@
 
 import type { CardData, MonsterCardData, SpellCardData } from '@/types';
-import pregeneratedCardData from './pregenerated-card-data.json';
+import { fetchAllMonsterCards, fetchAllSpellCards } from '@/services/card-service';
 
-// Helper to generate random number in a range (still needed for some dynamic aspects if any)
-const getRandomInt = (min: number, max: number): number => {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-};
-
-const allPregeneratedCards: CardData[] = pregeneratedCardData as CardData[];
-
-// Generates a pool of monster cards from pregenerated data
-export const generateMonsterCards = (titlesToFetch?: string[]): MonsterCardData[] => {
-  const availableMonsters = allPregeneratedCards.filter(
-    (card): card is MonsterCardData => card.cardType === 'Monster'
-  );
-
-  if (titlesToFetch) {
-    // If specific titles are requested, try to find them
-    // This path might not be used if we always pick randomly for decks
-    return titlesToFetch.map(title => {
-      const found = availableMonsters.find(m => m.title === title);
-      if (found) return { ...found, isLoadingArt: false, isLoadingDescription: false };
-      // Fallback if a specific pregenerated title isn't found (shouldn't happen if titles match card-definitions)
-      console.warn(`Pregenerated monster with title "${title}" not found. This may indicate an issue.`);
-      // Create a minimal fallback or throw error
-      return { 
-        id: `monster-fallback-${title.replace(/\s+/g, '-')}-${Date.now()}`, title, cardType: 'Monster', melee: 5, magic: 5, defense: 5, hp: 10, maxHp: 10, shield: 0, maxShield: 0, magicShield: 0, maxMagicShield: 0, description: "Data missing.", artUrl: undefined, isLoadingArt: false, isLoadingDescription: false 
-      } as MonsterCardData;
-    });
+// Generates a pool of monster cards from the backend
+export const generateMonsterCards = async (): Promise<MonsterCardData[]> => {
+  try {
+    const monsters = await fetchAllMonsterCards();
+    return monsters.map(card => ({ ...card, isLoadingArt: false, isLoadingDescription: false }));
+  } catch (error) {
+    console.error("Failed to fetch monster cards from Firestore:", error);
+    return []; // Return empty array on error
   }
-  // If no specific titles, return all available pregenerated monsters
-  return availableMonsters.map(card => ({ ...card, isLoadingArt: false, isLoadingDescription: false }));
 };
 
-// Generates a pool of spell cards from pregenerated data
-export const generateSpellCards = (titlesToFetch?: string[]): SpellCardData[] => {
-  const availableSpells = allPregeneratedCards.filter(
-    (card): card is SpellCardData => card.cardType === 'Spell'
-  );
-  
-  if (titlesToFetch) {
-    return titlesToFetch.map(title => {
-      const found = availableSpells.find(s => s.title === title);
-      if (found) return { ...found, isLoadingArt: false, isLoadingDescription: false };
-      console.warn(`Pregenerated spell with title "${title}" not found. This may indicate an issue.`);
-      return { 
-        id: `spell-fallback-${title.replace(/\s+/g, '-')}-${Date.now()}`, title, cardType: 'Spell', description: "Data missing.", artUrl: undefined, isLoadingArt: false, isLoadingDescription: false 
-      } as SpellCardData;
-    });
+// Generates a pool of spell cards from the backend
+export const generateSpellCards = async (): Promise<SpellCardData[]> => {
+  try {
+    const spells = await fetchAllSpellCards();
+    return spells.map(card => ({ ...card, isLoadingArt: false, isLoadingDescription: false }));
+  } catch (error) {
+    console.error("Failed to fetch spell cards from Firestore:", error);
+    return []; // Return empty array on error
   }
-  return availableSpells.map(card => ({ ...card, isLoadingArt: false, isLoadingDescription: false }));
 };
-
 
 export const shuffleDeck = (deck: CardData[]): CardData[] => {
   const shuffled = [...deck];
@@ -67,7 +38,7 @@ export const dealCards = (deck: CardData[], count: number): { dealtCards: CardDa
   const cardsToDeal = Math.min(count, deck.length);
   const dealtCards = deck.slice(0, cardsToDeal);
   const remainingDeck = deck.slice(cardsToDeal);
-  // No need to mark for loading, as data is pregenerated
+  
   const updatedDealtCards = dealtCards.map(card => ({
     ...card,
     isLoadingArt: false, 

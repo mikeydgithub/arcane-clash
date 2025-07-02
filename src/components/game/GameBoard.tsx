@@ -87,40 +87,41 @@ export function GameBoard() {
     try {
       logAndSetGameState(prev => ({
         ...(prev || {} as GameState),
-        gamePhase: 'loading_art', // Keep loading art phase for now, will address later
-        gameLogMessages: ["Initializing Arcane Clash... Preparing cards..."],
+        gamePhase: 'loading_art',
+        gameLogMessages: ["Connecting to the arcane archives..."],
         isProcessingAction: true,
         isInitialMonsterEngagement: true,
       }));
-
-      // Assume generateMonsterCards and generateSpellCards now include descriptions
-      const masterMonsterPool = shuffleDeck(generateMonsterCards());
-      const masterSpellPool = shuffleDeck(generateSpellCards());
+      
+      const [masterMonsterPool, masterSpellPool] = await Promise.all([
+        generateMonsterCards(),
+        generateSpellCards()
+      ]);
 
       if (masterMonsterPool.length < MAX_MONSTERS_PER_DECK * 2 || masterSpellPool.length < MAX_SPELLS_PER_DECK * 2) {
-          console.error("Not enough pregenerated cards to build decks. Run 'npm run pregenerate:cards'.");
+          console.error("Not enough cards fetched from backend to build decks.");
           toast({
               title: "Card Data Missing",
-              description: "Pregenerated card data is incomplete. Please run the generation script or check console.",
+              description: "Not enough cards in the database to build two full decks. Please check the 'cards' collection in Firestore.",
               variant: "destructive",
               duration: 10000,
           });
           logAndSetGameState(prev => ({
             ...(prev || {} as GameState),
             gamePhase: 'initial',
-            gameLogMessages: ["Error: Card data missing. Pregenerate cards."],
+            gameLogMessages: ["Error: Not enough card data in the backend database."],
             isProcessingAction: false,
           }));
           hasInitialized.current = false;
           return;
       }
 
-      const p1Monsters = masterMonsterPool.slice(0, MAX_MONSTERS_PER_DECK);
-      const p1Spells = masterSpellPool.slice(0, MAX_SPELLS_PER_DECK);
+      const p1Monsters = shuffleDeck(masterMonsterPool).slice(0, MAX_MONSTERS_PER_DECK);
+      const p1Spells = shuffleDeck(masterSpellPool).slice(0, MAX_SPELLS_PER_DECK);
       const player1DeckFull = shuffleDeck([...p1Monsters, ...p1Spells]);
 
-      const p2Monsters = masterMonsterPool.slice(MAX_MONSTERS_PER_DECK, MAX_MONSTERS_PER_DECK * 2);
-      const p2Spells = masterSpellPool.slice(MAX_SPELLS_PER_DECK, MAX_SPELLS_PER_DECK * 2);
+      const p2Monsters = shuffleDeck(masterMonsterPool).slice(MAX_MONSTERS_PER_DECK, MAX_MONSTERS_PER_DECK * 2);
+      const p2Spells = shuffleDeck(masterSpellPool).slice(MAX_SPELLS_PER_DECK, MAX_SPELLS_PER_DECK * 2);
       const player2DeckFull = shuffleDeck([...p2Monsters, ...p2Spells]);
 
       const { dealtCards: p1InitialHand, remainingDeck: p1DeckAfterDeal } = dealCards(player1DeckFull, CARDS_IN_HAND);
@@ -130,8 +131,8 @@ export function GameBoard() {
 
       const initialPlayer1: PlayerData = {
         id: 'p1', name: 'Player 1', hp: INITIAL_PLAYER_HP,
-        hand: p1InitialHand, // Assuming descriptions are already present
-        deck: p1DeckAfterDeal, // Assuming descriptions are already present
+        hand: p1InitialHand,
+        deck: p1DeckAfterDeal,
         discardPile: [],
         avatarUrl: 'https://placehold.co/64x64.png?text=P1',
         spellsPlayedThisTurn: 0,
@@ -139,8 +140,8 @@ export function GameBoard() {
       };
       const initialPlayer2: PlayerData = {
         id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
-        hand: p2InitialHand, // Assuming descriptions are already present
-        deck: p2DeckAfterDeal, // Assuming descriptions are already present
+        hand: p2InitialHand,
+        deck: p2DeckAfterDeal,
         discardPile: [],
         avatarUrl: 'https://placehold.co/64x64.png?text=P2',
         spellsPlayedThisTurn: 0,
@@ -200,10 +201,12 @@ export function GameBoard() {
 
  useEffect(() => {
     console.log('[GameBoard] Effect: Checking game state for initialization.');
-    // Only initialize if gameState is null or in an initial/loading state, AND it hasn't been initialized successfully before
     if (!hasInitialized.current && (!gameState || gameState.gamePhase === 'initial' || gameState.gamePhase === 'loading_art')) {
       console.log('[GameBoard] Effect: Conditions met to call initializeGame(). Current state:', gameState ? gameState.gamePhase : 'null', 'HasInitialized:', hasInitialized.current);
-      initializeGame();
+      const init = async () => {
+          await initializeGame();
+      };
+      init();
     } else if (gameState && hasInitialized.current) {
       console.log(`[GameBoard] Effect: Game state exists (${gameState.gamePhase}) and is marked as initialized. No new initialization needed.`);
     } else if (gameState && !hasInitialized.current && gameState.gamePhase !== 'initial' && gameState.gamePhase !== 'loading_art') {
@@ -1033,7 +1036,7 @@ export function GameBoard() {
       <div className="flex flex-col items-center justify-center h-full w-full text-foreground p-4">
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
         <p className="text-xl font-semibold">Loading Arcane Clash...</p>
-        <p className="text-muted-foreground mt-2">Preparing the battlefield...</p>
+        <p className="text-muted-foreground mt-2">Connecting to the arcane archives...</p>
       </div>
     );
   }
