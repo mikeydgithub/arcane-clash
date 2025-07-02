@@ -116,12 +116,15 @@ export function GameBoard() {
           return;
       }
 
-      const p1Monsters = shuffleDeck(masterMonsterPool).slice(0, MAX_MONSTERS_PER_DECK);
-      const p1Spells = shuffleDeck(masterSpellPool).slice(0, MAX_SPELLS_PER_DECK);
-      const player1DeckFull = shuffleDeck([...p1Monsters, ...p1Spells]);
+      const shuffledMonsters = shuffleDeck(masterMonsterPool);
+      const p1Monsters = shuffledMonsters.slice(0, MAX_MONSTERS_PER_DECK);
+      const p2Monsters = shuffledMonsters.slice(MAX_MONSTERS_PER_DECK, MAX_MONSTERS_PER_DECK * 2);
 
-      const p2Monsters = shuffleDeck(masterMonsterPool).slice(MAX_MONSTERS_PER_DECK, MAX_MONSTERS_PER_DECK * 2);
-      const p2Spells = shuffleDeck(masterSpellPool).slice(MAX_SPELLS_PER_DECK, MAX_SPELLS_PER_DECK * 2);
+      const shuffledSpells = shuffleDeck(masterSpellPool);
+      const p1Spells = shuffledSpells.slice(0, MAX_SPELLS_PER_DECK);
+      const p2Spells = shuffledSpells.slice(MAX_SPELLS_PER_DECK, MAX_SPELLS_PER_DECK * 2);
+      
+      const player1DeckFull = shuffleDeck([...p1Monsters, ...p1Spells]);
       const player2DeckFull = shuffleDeck([...p2Monsters, ...p2Spells]);
 
       const { dealtCards: p1InitialHand, remainingDeck: p1DeckAfterDeal } = dealCards(player1DeckFull, CARDS_IN_HAND);
