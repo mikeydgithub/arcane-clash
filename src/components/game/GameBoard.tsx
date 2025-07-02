@@ -1034,12 +1034,14 @@ export function GameBoard() {
   };
 
 
-  if (!gameState) {
+  if (!gameState || !gameState.players) {
     return (
       <div className="flex flex-col items-center justify-center h-full w-full text-foreground p-4">
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
         <p className="text-xl font-semibold">Loading Arcane Clash...</p>
-        <p className="text-muted-foreground mt-2">Connecting to the arcane archives...</p>
+        <p className="text-muted-foreground mt-2">
+          {gameState?.gameLogMessages?.slice(-1)[0] || 'Connecting to the arcane archives...'}
+        </p>
       </div>
     );
   }
