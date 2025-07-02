@@ -11,7 +11,7 @@ import { GameOverModal } from './GameOverModal';
 import { PlayerActions } from './PlayerActions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Layers3, Trash2 } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Added import
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 
@@ -1193,39 +1193,3 @@ export function GameBoard() {
     </div>
   );
 }
-
-declare global {
-  interface Array<T> {
-    findLastIndex(
-      predicate: (value: T, index: number, obj: T[]) => unknown,
-      thisArg?: any
-    ): number;
-  }
-}
-if (!Array.prototype.findLastIndex) {
-  Object.defineProperty(Array.prototype, 'findLastIndex', {
-    value: function<T>(predicate: (value: T, index: number, obj: T[]) => unknown, thisArg?: any): number {
-      if (this == null) {
-        throw new TypeError('"this" is null or not defined');
-      }
-      if (typeof predicate !== 'function') {
-        throw new TypeError('predicate must be a function');
-      }
-      const o = Object(this);
-      const len = o.length >>> 0;
-      let k = len - 1;
-      while (k >= 0) {
-        const kValue = o[k];
-        if (predicate.call(thisArg, kValue, k, o)) {
-          return k;
-        }
-        k--;
-      }
-      return -1;
-    },
-    configurable: true,
-    writable: true,
-  });
-}
-
-    
