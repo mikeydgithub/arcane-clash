@@ -143,22 +143,29 @@ async function seedDatabase() {
     process.exit(1);
   }
 
-  console.log('Starting to seed database...');
+  console.log('Starting to seed database with corrected art URLs...');
   const batch = writeBatch(db);
 
   const allCards = [...monsterCards, ...spellCards];
 
   allCards.forEach(card => {
-    // Use card.title as the document ID
+    // Use card.title as the document ID, as per our decision
     const docRef = doc(cardsCollectionRef, card.title);
+    
+    // Ensure the artUrl is correctly formatted
+    const correctedCard = {
+        ...card,
+        artUrl: `/card-art/${card.title.toLowerCase().replace(/ /g, '-')}.png`
+    };
+
     // The 'id' field is redundant if the document ID is the title, so we can omit it.
-    const { id, ...cardData } = card; 
+    const { id, ...cardData } = correctedCard; 
     batch.set(docRef, cardData);
   });
 
   try {
     await batch.commit();
-    console.log(`Successfully seeded ${allCards.length} cards.`);
+    console.log(`Successfully seeded ${allCards.length} cards with corrected paths.`);
     console.log('Database seeding complete.');
   } catch (error) {
     console.error('Error writing batch to Firestore:', error);
@@ -167,3 +174,5 @@ async function seedDatabase() {
 }
 
 seedDatabase();
+
+    
