@@ -439,6 +439,8 @@ export function GameBoard() {
     });
 
 
+    // CONSISTENT RULE: If it's the very first monster engagement of the game, the turn ends.
+    // Otherwise, the turn continues, allowing the player to attack with their newly summoned monster (if not on their first turn).
     if (wasGloballyFirstMonsterSummoned) {
       appendLog(`${card.title} cannot attack this turn as it's the first monster in play.`);
       logAndSetGameState(prev => ({...prev!, gamePhase: 'turn_resolution_phase'}));
