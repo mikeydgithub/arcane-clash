@@ -763,8 +763,8 @@ export function GameBoard() {
       toast({ title: "No Attacker", description: "You need an active monster to attack.", variant: "destructive" });
       return;
     }
-    if (attackerPlayer.turnCount === 0 && currentBoardGameState.isInitialMonsterEngagement) {
-        toast({ title: "First Monster Rule", description: "The first monster summoned to the game cannot attack on the turn it's played.", variant: "destructive"});
+    if (attackerPlayer.turnCount === 0) {
+        toast({ title: "First Turn Rule", description: "You cannot attack on your first turn.", variant: "destructive"});
         return;
     }
      if (attackerMonster.hp <=0) { // This check is mostly for safety, defeated monsters should be removed.
@@ -970,8 +970,8 @@ export function GameBoard() {
   const handleInitiateSwap = () => {
     logAndSetGameState(prev => {
       if (!prev || prev.isProcessingAction) return prev;
-      if (prev.players[prev.currentPlayerIndex].turnCount === 0 && prev.isInitialMonsterEngagement) {
-        toast({ title: "First Monster Rule", description: "You cannot swap your first monster on the turn it's played if it's the first monster in the game.", variant: "destructive"});
+      if (prev.players[prev.currentPlayerIndex].turnCount === 0) {
+        toast({ title: "First Turn Rule", description: "You cannot swap monsters on your first turn.", variant: "destructive"});
         return prev;
       }
       appendLog(`${prev.players[prev.currentPlayerIndex].name} is considering a monster swap. Select a monster from your hand.`);
@@ -1253,3 +1253,5 @@ export function GameBoard() {
     </div>
   );
 }
+
+    
