@@ -81,12 +81,24 @@ export function PlayerActions({
       </h3>
       <div className="flex flex-wrap justify-center gap-2">
         {canAttack && (
-          <Button onClick={onAttack} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground" aria-label="Attack with active monster">
+          <Button
+            onClick={onAttack}
+            disabled={isFirstTurn}
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            aria-label="Attack with active monster"
+            title={isFirstTurn ? "You cannot attack on your first turn." : "Attack with active monster"}
+          >
             <Swords className="mr-2 h-4 w-4" /> Attack
           </Button>
         )}
         {canSwap && (
-          <Button onClick={onInitiateSwap} variant="outline" aria-label="Swap active monster">
+          <Button
+            onClick={onInitiateSwap}
+            disabled={isFirstTurn}
+            variant="outline"
+            aria-label="Swap active monster"
+            title={isFirstTurn ? "You cannot swap on your first turn." : "Swap active monster"}
+          >
             <Replace className="mr-2 h-4 w-4" /> Swap Monster
           </Button>
         )}
@@ -119,7 +131,7 @@ export function PlayerActions({
       
       {isFirstTurn && (
          <p className="text-xs text-muted-foreground italic mt-1 text-center">
-          Spells cannot be played on your first turn.
+          Spells, attacks, and swaps are disabled on your first turn.
         </p>
       )}
       {!isFirstTurn && canPlaySpellFromHand && canStillPlaySpellThisTurn && (
@@ -146,3 +158,5 @@ export function PlayerActions({
     </div>
   );
 }
+
+    

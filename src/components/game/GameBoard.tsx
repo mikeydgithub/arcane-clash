@@ -804,7 +804,7 @@ export function GameBoard() {
         const shieldIndex = monster.statusEffects.findIndex(e => e.type === 'shield');
 
         if (shieldIndex > -1) {
-            const shield = monster.statusEffects[shieldIndex];
+            let shield = {...monster.statusEffects[shieldIndex]};
             const damageToShield = Math.min(remainingDamage, shield.value);
             
             remainingDamage -= damageToShield;
@@ -815,8 +815,9 @@ export function GameBoard() {
                 logs.push(`The shield on ${monster.title} breaks!`);
                 monster.statusEffects.splice(shieldIndex, 1);
             } else {
-                // Shield is damaged but not broken. Update its value.
-                monster.statusEffects[shieldIndex] = { ...shield, value: shield.value - damageToShield };
+                shield.value -= damageToShield;
+                monster.statusEffects[shieldIndex] = shield;
+                logs.push(`The shield has ${shield.value} health remaining.`);
             }
         }
 
@@ -1253,5 +1254,7 @@ export function GameBoard() {
     </div>
   );
 }
+
+    
 
     
