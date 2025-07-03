@@ -23,10 +23,6 @@ export interface MonsterCardData extends BaseCardData {
   defense: number;
   hp: number;
   maxHp: number;
-  shield: number;
-  maxShield: number;
-  magicShield: number;
-  maxMagicShield: number;
   statusEffects?: StatusEffect[];
 }
 
@@ -46,12 +42,14 @@ export interface PlayerData {
   avatarUrl?: string;
   spellsPlayedThisTurn: number;
   turnCount: number; // Added to track player's turn number
+  hasMulliganed: boolean;
 }
 
 export type GamePhase =
   | "initial"
   | "coin_flip_animation"
   | "loading_art"
+  | "mulligan_phase"
   | "player_action_phase" // Player decides to play monster, spell, attack, or initiate swap
   | "selecting_swap_monster_phase" // Player is selecting a monster from hand to swap with active one
   | "spell_effect_phase"  // Visualizing spell effect (mostly logging for now) - May be used less if turn doesn't always end
@@ -70,4 +68,3 @@ export interface GameState {
   isProcessingAction?: boolean; // To disable inputs during animations/AI calls
   isInitialMonsterEngagement: boolean; // True if no monster has been played yet, false otherwise
 }
-

@@ -1,22 +1,29 @@
 
 'use client';
 
-import type { PlayerData, MonsterCardData } from '@/types';
+import type { PlayerData, MonsterCardData, GamePhase } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Swords, Replace, WandSparkles, LogOut, ShieldPlus } from 'lucide-react'; // Added LogOut
+import { Swords, Replace, WandSparkles, LogOut, ShieldPlus, RefreshCw, X, Check } from 'lucide-react'; 
+
+const MULLIGAN_CARD_COUNT = 3;
 
 interface PlayerActionsProps {
   currentPlayer: PlayerData;
   activeMonster?: MonsterCardData;
   onAttack: () => void;
   onInitiateSwap: () => void;
-  onEndTurn: () => void; // New prop for ending turn
+  onEndTurn: () => void;
   canPlayMonsterFromHand: boolean;
   canPlaySpellFromHand: boolean; 
   playerHandFull: boolean;
   spellsPlayedThisTurn: number;
   maxSpellsPerTurn: number;
-  isFirstTurn: boolean; // New prop
+  isFirstTurn: boolean;
+  gamePhase: GamePhase;
+  onInitiateMulligan: () => void;
+  onConfirmMulligan: () => void;
+  onCancelMulligan: () => void;
+  mulliganCardCount: number;
 }
 
 export function PlayerActions({
@@ -24,19 +31,48 @@ export function PlayerActions({
   activeMonster,
   onAttack,
   onInitiateSwap,
-  onEndTurn, // New prop
+  onEndTurn,
   canPlayMonsterFromHand,
   canPlaySpellFromHand, 
   playerHandFull,
   spellsPlayedThisTurn,
   maxSpellsPerTurn,
-  isFirstTurn, // New prop
+  isFirstTurn,
+  gamePhase,
+  onInitiateMulligan,
+  onConfirmMulligan,
+  onCancelMulligan,
+  mulliganCardCount
 }: PlayerActionsProps) {
 
   const canAttack = !!activeMonster;
   const hasMonsterInHandToSwapTo = currentPlayer.hand.some(card => card.cardType === 'Monster' && card.id !== activeMonster?.id);
   const canSwap = !!activeMonster && hasMonsterInHandToSwapTo;
   const canStillPlaySpellThisTurn = spellsPlayedThisTurn < maxSpellsPerTurn;
+
+  const canMulligan = isFirstTurn && !currentPlayer.hasMulliganed;
+
+  if (gamePhase === 'mulligan_phase') {
+    return (
+      <div className="flex flex-col items-center space-y-2 p-2 md:p-4 my-2 md:my-3 bg-card/50 rounded-lg shadow-md border border-border">
+        <h3 className="text-sm md:text-base font-semibold text-center mb-2 text-foreground">
+          Mulligan Phase
+        </h3>
+        <p className="text-xs text-muted-foreground italic text-center">
+            Select {MULLIGAN_CARD_COUNT} cards from your hand to shuffle back into your deck.
+        </p>
+        <div className="flex flex-wrap justify-center gap-2 mt-2">
+            <Button onClick={onConfirmMulligan} className="bg-primary hover:bg-primary/90" disabled={mulliganCardCount !== MULLIGAN_CARD_COUNT}>
+                <Check className="mr-2 h-4 w-4" /> Confirm ({mulliganCardCount}/{MULLIGAN_CARD_COUNT})
+            </Button>
+            <Button onClick={onCancelMulligan} variant="outline">
+                <X className="mr-2 h-4 w-4" /> Cancel
+            </Button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex flex-col items-center space-y-2 p-2 md:p-4 my-2 md:my-3 bg-card/50 rounded-lg shadow-md border border-border">
@@ -59,7 +95,11 @@ export function PlayerActions({
                 <Replace className="mr-2 h-4 w-4" /> Swap (No Monster)
             </Button>
         )}
-        {/* End Turn Button */}
+        {canMulligan && (
+            <Button onClick={onInitiateMulligan} variant="secondary" aria-label="Mulligan your hand">
+                <RefreshCw className="mr-2 h-4 w-4" /> Mulligan Hand
+            </Button>
+        )}
         <Button onClick={onEndTurn} variant="outline" aria-label="End your turn">
             <LogOut className="mr-2 h-4 w-4" /> End Turn
         </Button>

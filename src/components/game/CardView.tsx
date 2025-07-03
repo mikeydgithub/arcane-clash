@@ -6,7 +6,7 @@ import type { CardData, MonsterCardData, SpellCardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, ShieldCheck, ShieldAlert, Zap, HelpCircle } from 'lucide-react';
+import { Swords, Sparkles, ShieldHalf, Heart, Zap, HelpCircle } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -205,16 +205,6 @@ export function CardView({
                 animateStats={inBattleArena}
                 tooltipText="Defense: Reduces incoming physical damage."
               />
-              {(card as MonsterCardData).maxShield > 0 && (
-                  <StatDisplay
-                      icon={<ShieldCheck className={cn(iconSize, "text-yellow-400")} />}
-                      currentValue={(card as MonsterCardData).shield}
-                      maxValue={(card as MonsterCardData).maxShield}
-                      label="Physical Shield"
-                      animateStats={inBattleArena}
-                      tooltipText={`Physical Shield: Absorbs physical damage. Current ${Math.round((card as MonsterCardData).shield)} / Max ${Math.round((card as MonsterCardData).maxShield)}`}
-                  />
-              )}
             </div>
             {/* Column 2 */}
             <div className="flex flex-col gap-y-0.5">
@@ -229,16 +219,6 @@ export function CardView({
                   animateStats={inBattleArena}
                   tooltipText={`Hit Points: Current ${Math.round((card as MonsterCardData).hp)} / Max ${Math.round((card as MonsterCardData).maxHp)}`}
               />
-              {(card as MonsterCardData).maxMagicShield > 0 && (
-                  <StatDisplay
-                      icon={<ShieldAlert className={cn(iconSize, "text-purple-400")} />}
-                      currentValue={(card as MonsterCardData).magicShield}
-                      maxValue={(card as MonsterCardData).maxMagicShield}
-                      label="Magic Shield"
-                      animateStats={inBattleArena}
-                      tooltipText={`Magic Shield: Absorbs magical damage. Current ${Math.round((card as MonsterCardData).magicShield)} / Max ${Math.round((card as MonsterCardData).maxMagicShield)}`}
-                  />
-              )}
             </div>
           </>
         )}
