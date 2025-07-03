@@ -79,31 +79,38 @@ export default function ArcaneClashPage() {
 
   return (
     <main className="h-screen w-screen text-foreground relative overflow-hidden" style={{ zIndex: 0 }}>
+      {/* Flexbox centering container */}
       <div
         style={{
           position: 'fixed',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
-          margin: 'auto',
-          width: '150vmax',
-          height: '150vmax',
+          inset: 0, // Shorthand for top, right, bottom, left = 0
           zIndex: -10,
-          animation: 'rotateSpiral 60s linear infinite, slowFadeInOut 20s ease-in-out infinite alternate',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
         }}
       >
-        <Image
-          src="/black_swirl.png"
-          alt="Giant black swirl background"
-          fill
+        {/* The swirl element */}
+        <div
           style={{
-            borderRadius: '50%',
-            objectFit: 'cover',
+            position: 'relative',
+            width: '150vmax',
+            height: '150vmax',
+            animation: 'rotateSpiral 60s linear infinite, slowFadeInOut 20s ease-in-out infinite alternate',
           }}
-          data-ai-hint="abstract background"
-          priority
-        />
+        >
+          <Image
+            src="/black_swirl.png"
+            alt="Giant black swirl background"
+            fill
+            style={{
+              borderRadius: '50%',
+              objectFit: 'cover',
+            }}
+            data-ai-hint="abstract background"
+            priority
+          />
+        </div>
       </div>
       {stars}
       {/* {spirals} */} {/* CSS spirals commented out */}
