@@ -10,6 +10,7 @@ const MULLIGAN_CARD_COUNT = 3;
 interface PlayerActionsProps {
   currentPlayer: PlayerData;
   activeMonster?: MonsterCardData;
+  opponentActiveMonster?: MonsterCardData;
   onAttack: () => void;
   onInitiateSwap: () => void;
   onEndTurn: () => void;
@@ -29,6 +30,7 @@ interface PlayerActionsProps {
 export function PlayerActions({
   currentPlayer,
   activeMonster,
+  opponentActiveMonster,
   onAttack,
   onInitiateSwap,
   onEndTurn,
@@ -51,6 +53,11 @@ export function PlayerActions({
   const canStillPlaySpellThisTurn = spellsPlayedThisTurn < maxSpellsPerTurn;
 
   const canMulligan = isFirstTurn && !currentPlayer.hasMulliganed;
+  
+  // The first turn rule only applies if it's turn 0 AND the opponent has no active monster.
+  // This correctly blocks the first player but allows the second player to act.
+  const isEffectivelyFirstTurnOfTheGame = isFirstTurn && !opponentActiveMonster;
+
 
   if (gamePhase === 'mulligan_phase') {
     return (
@@ -83,10 +90,10 @@ export function PlayerActions({
         {canAttack && (
           <Button
             onClick={onAttack}
-            disabled={isFirstTurn}
+            disabled={isEffectivelyFirstTurnOfTheGame}
             className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             aria-label="Attack with active monster"
-            title={isFirstTurn ? "You cannot attack on your first turn." : "Attack with active monster"}
+            title={isEffectivelyFirstTurnOfTheGame ? "The first player cannot attack on their first turn." : "Attack with active monster"}
           >
             <Swords className="mr-2 h-4 w-4" /> Attack
           </Button>
@@ -94,10 +101,10 @@ export function PlayerActions({
         {canSwap && (
           <Button
             onClick={onInitiateSwap}
-            disabled={isFirstTurn}
+            disabled={isEffectivelyFirstTurnOfTheGame}
             variant="outline"
             aria-label="Swap active monster"
-            title={isFirstTurn ? "You cannot swap on your first turn." : "Swap active monster"}
+            title={isEffectivelyFirstTurnOfTheGame ? "The first player cannot swap on their first turn." : "Swap active monster"}
           >
             <Replace className="mr-2 h-4 w-4" /> Swap Monster
           </Button>
@@ -129,17 +136,17 @@ export function PlayerActions({
         </p>
       )}
       
-      {isFirstTurn && (
+      {isEffectivelyFirstTurnOfTheGame && (
          <p className="text-xs text-muted-foreground italic mt-1 text-center">
-          Spells, attacks, and swaps are disabled on your first turn.
+          Spells, attacks, and swaps are disabled on the first turn of the game.
         </p>
       )}
-      {!isFirstTurn && canPlaySpellFromHand && canStillPlaySpellThisTurn && (
+      {!isEffectivelyFirstTurnOfTheGame && canPlaySpellFromHand && canStillPlaySpellThisTurn && (
          <p className="text-xs text-muted-foreground italic mt-1 text-center">
           Click a <WandSparkles className="inline h-3 w-3" /> Spell card to cast. ({maxSpellsPerTurn - spellsPlayedThisTurn} remaining this turn)
         </p>
       )}
-      {!isFirstTurn && canPlaySpellFromHand && !canStillPlaySpellThisTurn && (
+      {!isEffectivelyFirstTurnOfTheGame && canPlaySpellFromHand && !canStillPlaySpellThisTurn && (
          <p className="text-xs text-muted-foreground italic mt-1 text-center">
           No more spells can be played this turn. ({spellsPlayedThisTurn}/{maxSpellsPerTurn} played)
         </p>
@@ -158,5 +165,3 @@ export function PlayerActions({
     </div>
   );
 }
-
-    

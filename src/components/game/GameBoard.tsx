@@ -440,9 +440,9 @@ export function GameBoard() {
 
 
     // CONSISTENT RULE: If it's the very first monster engagement of the game, the turn ends.
-    // Otherwise, the turn continues, allowing the player to attack with their newly summoned monster (if not on their first turn).
+    // Otherwise, the turn continues, allowing the player to act again.
     if (wasGloballyFirstMonsterSummoned) {
-      appendLog(`${card.title} cannot attack this turn as it's the first monster in play.`);
+      appendLog(`${card.title} cannot act this turn as it's the first monster in play.`);
       logAndSetGameState(prev => ({...prev!, gamePhase: 'turn_resolution_phase'}));
       setTimeout(() => {
         processTurnEnd();
@@ -765,10 +765,13 @@ export function GameBoard() {
       toast({ title: "No Attacker", description: "You need an active monster to attack.", variant: "destructive" });
       return;
     }
-    if (attackerPlayer.turnCount === 0) {
-        toast({ title: "First Turn Rule", description: "You cannot attack on your first turn.", variant: "destructive"});
+    
+    // The player who goes first (turnCount 0 and no opponent monster) cannot attack.
+    if (attackerPlayer.turnCount === 0 && !defenderMonster) {
+        toast({ title: "First Turn Rule", description: "The first player cannot attack on their first turn.", variant: "destructive"});
         return;
     }
+
      if (attackerMonster.hp <=0) { // This check is mostly for safety, defeated monsters should be removed.
         toast({ title: "Cannot Attack", description: `${attackerMonster.title} is defeated and cannot attack.`, variant: "destructive"});
         return;
@@ -973,8 +976,11 @@ export function GameBoard() {
   const handleInitiateSwap = () => {
     logAndSetGameState(prev => {
       if (!prev || prev.isProcessingAction) return prev;
-      if (prev.players[prev.currentPlayerIndex].turnCount === 0) {
-        toast({ title: "First Turn Rule", description: "You cannot swap monsters on your first turn.", variant: "destructive"});
+      const { players, currentPlayerIndex, activeMonsterP2, activeMonsterP1 } = prev;
+      const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
+
+      if (players[currentPlayerIndex].turnCount === 0 && !opponentActiveMonster) {
+        toast({ title: "First Turn Rule", description: "You cannot swap monsters on the first turn of the game.", variant: "destructive"});
         return prev;
       }
       appendLog(`${prev.players[prev.currentPlayerIndex].name} is considering a monster swap. Select a monster from your hand.`);
@@ -1082,6 +1088,7 @@ export function GameBoard() {
   const currentPlayer = players[currentPlayerIndex];
   const opponentPlayer = players[1 - currentPlayerIndex];
   const currentPlayersActiveMonster = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
+  const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
 
 
   const handleCardSelect = (card: CardData) => {
@@ -1192,6 +1199,7 @@ export function GameBoard() {
           <PlayerActions
             currentPlayer={currentPlayer}
             activeMonster={currentPlayersActiveMonster}
+            opponentActiveMonster={opponentActiveMonster}
             onAttack={handleAttack}
             onInitiateSwap={handleInitiateSwap}
             onEndTurn={handleEndTurn}
@@ -1256,7 +1264,3 @@ export function GameBoard() {
     </div>
   );
 }
-
-    
-
-    
