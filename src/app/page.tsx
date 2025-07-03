@@ -82,15 +82,17 @@ export default function ArcaneClashPage() {
       <Image
         src="/black_swirl.png"
         alt="Giant black swirl background"
-        // fill prop removed to avoid conflict with style.position
-        width={0} // Required by Next/Image when not using fill, but effectively overridden by CSS
-        height={0} // Required by Next/Image when not using fill, but effectively overridden by CSS
-        sizes="100vw" // Hint for Next/Image optimization
+        width={0}
+        height={0}
+        sizes="150vmax"
         style={{
           position: 'fixed',
-          inset: '0',
-          width: '100vw',
-          height: '100vh',
+          top: '50%',
+          left: '50%',
+          width: '150vmax',
+          height: '150vmax',
+          transform: 'translate(-50%, -50%)',
+          borderRadius: '50%',
           objectFit: 'cover',
           zIndex: -10,
           animation: 'rotateSpiral 60s linear infinite, slowFadeInOut 20s ease-in-out infinite alternate',
