@@ -79,12 +79,7 @@ export default function ArcaneClashPage() {
 
   return (
     <main className="h-screen w-screen text-foreground relative overflow-hidden" style={{ zIndex: 0 }}>
-      <Image
-        src="/black_swirl.png"
-        alt="Giant black swirl background"
-        width={0}
-        height={0}
-        sizes="150vmax"
+      <div
         style={{
           position: 'fixed',
           top: '50%',
@@ -92,14 +87,22 @@ export default function ArcaneClashPage() {
           width: '150vmax',
           height: '150vmax',
           transform: 'translate(-50%, -50%)',
-          borderRadius: '50%',
-          objectFit: 'cover',
           zIndex: -10,
           animation: 'rotateSpiral 60s linear infinite, slowFadeInOut 20s ease-in-out infinite alternate',
         }}
-        data-ai-hint="abstract background"
-        priority
-      />
+      >
+        <Image
+          src="/black_swirl.png"
+          alt="Giant black swirl background"
+          fill
+          style={{
+            borderRadius: '50%',
+            objectFit: 'cover',
+          }}
+          data-ai-hint="abstract background"
+          priority
+        />
+      </div>
       {stars}
       {/* {spirals} */} {/* CSS spirals commented out */}
       {lightningEffects}
