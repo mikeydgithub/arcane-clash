@@ -1,9 +1,9 @@
 
 export interface StatusEffect {
   id: string; // Unique ID for this specific application of the effect
-  type: 'regenerate'; // Can be expanded to other types like 'poison', 'stunned', etc.
+  type: 'regenerate' | 'shield'; // Can be expanded to other types like 'poison', 'stunned', etc.
   duration: number; // Number of turns remaining for the effect
-  value: number; // Potency of the effect (e.g., HP healed per turn for regenerate)
+  value: number; // Potency of the effect (e.g., HP healed per turn for regenerate, shield health for shield)
   // Potentially add sourceCardId if needed for complex interactions later
 }
 
@@ -20,7 +20,6 @@ export interface MonsterCardData extends BaseCardData {
   cardType: 'Monster';
   melee: number;
   magic: number;
-  defense: number;
   hp: number;
   maxHp: number;
   statusEffects?: StatusEffect[];

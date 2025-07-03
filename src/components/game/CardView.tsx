@@ -6,7 +6,7 @@ import type { CardData, MonsterCardData, SpellCardData } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, ShieldHalf, Heart, Zap, HelpCircle } from 'lucide-react';
+import { Swords, Sparkles, Heart, Zap, HelpCircle } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -197,14 +197,6 @@ export function CardView({
               {(card as MonsterCardData).melee > 0 && (
                   <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={(card as MonsterCardData).melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} tooltipText="Melee Attack: Physical damage dealt." />
               )}
-              <StatDisplay
-                icon={<ShieldHalf className={cn(iconSize, "text-green-400")} />}
-                currentValue={(card as MonsterCardData).defense}
-                label="Defense"
-                isSingleValue={true}
-                animateStats={inBattleArena}
-                tooltipText="Defense: Reduces incoming physical damage."
-              />
             </div>
             {/* Column 2 */}
             <div className="flex flex-col gap-y-0.5">

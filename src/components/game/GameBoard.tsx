@@ -243,6 +243,7 @@ export function GameBoard() {
     if (activeMonsterForTurnPlayer && activeMonsterForTurnPlayer.statusEffects && activeMonsterForTurnPlayer.statusEffects.length > 0) {
         const effectsToKeep: StatusEffect[] = [];
         for (const effect of activeMonsterForTurnPlayer.statusEffects) {
+            let effectKept = true;
             if (effect.type === 'regenerate') {
                 const healAmount = effect.value;
                 const originalHp = activeMonsterForTurnPlayer.hp;
@@ -252,7 +253,7 @@ export function GameBoard() {
                 }
                 effect.duration -= 1;
             }
-            // Add other status effect processing here
+            // Add other status effect processing here like poison DoT
 
             if (effect.duration > 0) {
                 effectsToKeep.push(effect);
@@ -503,8 +504,10 @@ export function GameBoard() {
                     case 'Stone Skin':
                         if (currentPlayersMonsterRef) {
                             const boost = 5;
-                            currentPlayersMonsterRef.defense = Math.max(0, currentPlayersMonsterRef.defense + boost);
-                            newLogMessages.push(`${actingPlayer.name}'s Stone Skin increases ${currentPlayersMonsterRef.title}'s defense by ${boost}! New Defense: ${currentPlayersMonsterRef.defense}.`);
+                            // This spell might need a rework if 'defense' is gone. For now, let's say it adds a small shield.
+                            const newEffect: StatusEffect = { id: `stone-skin-${Date.now()}`, type: 'shield', duration: 1, value: boost };
+                            currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
+                            newLogMessages.push(`${actingPlayer.name}'s Stone Skin grants ${currentPlayersMonsterRef.title} a temporary shield of ${boost} health!`);
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;
                         }
@@ -551,8 +554,17 @@ export function GameBoard() {
                         break;
 
                     case 'Arcane Shield':
-                         newLogMessages.push(`${actingPlayer.name}'s Arcane Shield fizzles with no effect due to atmospheric disturbances.`);
-                         spellEffectApplied = true;
+                         if (currentPlayersMonsterRef) {
+                            const shieldValue = 15;
+                            const newEffect: StatusEffect = { id: `arcane-shield-${Date.now()}`, type: 'shield', duration: 99, value: shieldValue }; // Duration 99 = lasts until broken
+                            currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
+                            newLogMessages.push(`${actingPlayer.name}'s Arcane Shield grants ${currentPlayersMonsterRef.title} a shield that absorbs ${shieldValue} damage!`);
+                            if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                            spellEffectApplied = true;
+                         } else {
+                             newLogMessages.push(`${actingPlayer.name}'s Arcane Shield fizzles with no active monster to target.`);
+                             spellEffectApplied = true;
+                         }
                         break;
 
                     case 'Weakening Curse':
@@ -775,6 +787,51 @@ export function GameBoard() {
     let newActiveMonsterP1 = activeMonsterP1 ? { ...activeMonsterP1 } : undefined;
     let newActiveMonsterP2 = activeMonsterP2 ? { ...activeMonsterP2 } : undefined;
 
+    // Helper function to process damage against a monster
+    const applyDamage = (
+        targetMonster: MonsterCardData,
+        damage: number,
+        damageType: 'melee' | 'magic'
+    ): {
+        updatedMonster: MonsterCardData;
+        log: string[];
+        damageDealt: number;
+    } => {
+        let logs: string[] = [];
+        let remainingDamage = damage;
+        let totalDamageDealt = 0;
+        let monster = { ...targetMonster, statusEffects: [...(targetMonster.statusEffects || [])] };
+        
+        const shieldIndex = monster.statusEffects.findIndex(e => e.type === 'shield');
+
+        if (shieldIndex > -1) {
+            const shield = monster.statusEffects[shieldIndex];
+            const damageToShield = Math.min(remainingDamage, shield.value);
+            shield.value -= damageToShield;
+            remainingDamage -= damageToShield;
+            totalDamageDealt += damageToShield;
+            logs.push(`${monster.title}'s shield absorbs ${damageToShield} damage!`);
+            if (shield.value <= 0) {
+                logs.push(`The shield on ${monster.title} breaks!`);
+                monster.statusEffects.splice(shieldIndex, 1);
+            }
+        }
+
+        if (remainingDamage > 0) {
+            const originalHp = monster.hp;
+            monster.hp = Math.max(0, monster.hp - remainingDamage);
+            const hpDamage = originalHp - monster.hp;
+            totalDamageDealt += hpDamage;
+            logs.push(`${monster.title} takes ${hpDamage} ${damageType} damage. (HP: ${originalHp} -> ${monster.hp})`);
+        }
+
+        if (totalDamageDealt === 0) {
+            logs.push(`${monster.title} takes no damage.`);
+        }
+        
+        return { updatedMonster: monster, log: logs, damageDealt: totalDamageDealt };
+    };
+
 
     newLogMessages.push(`${attackerPlayer.name}'s ${attackerMonster.title} attacks!`);
 
@@ -786,23 +843,11 @@ export function GameBoard() {
       const isMagicAttack = attackerMonster.magic > attackerMonster.melee;
       const attackValue = isMagicAttack ? attackerMonster.magic : attackerMonster.melee;
       const attackType = isMagicAttack ? "magic" : "melee";
-      let damageDealtToDefender = 0;
 
-      if (isMagicAttack) { // Magic Attack
-          damageDealtToDefender = attackValue;
-          defenderMonster.hp = Math.max(0, defenderMonster.hp - damageDealtToDefender);
-          newLogMessages.push(`${defenderMonster.title} takes ${damageDealtToDefender} ${attackType} damage. (HP: ${defenderMonster.hp + damageDealtToDefender} -> ${defenderMonster.hp})`);
-      } else { // Melee Attack
-        const damageAfterDefense = Math.max(0, attackValue - defenderMonster.defense);
-        if (damageAfterDefense > 0) {
-            damageDealtToDefender = damageAfterDefense;
-            defenderMonster.hp = Math.max(0, defenderMonster.hp - damageDealtToDefender);
-            newLogMessages.push(`${defenderMonster.title} takes ${damageDealtToDefender} ${attackType} damage after defense. (HP: ${defenderMonster.hp + damageDealtToDefender} -> ${defenderMonster.hp})`);
-        } else {
-            newLogMessages.push(`${defenderMonster.title}'s defense (${defenderMonster.defense}) negates the incoming melee damage.`);
-        }
-      }
-
+      const defenderResult = applyDamage(defenderMonster, attackValue, attackType);
+      defenderMonster = defenderResult.updatedMonster;
+      newLogMessages.push(...defenderResult.log);
+      
       if (defenderMonster.hp <= 0) {
         newLogMessages.push(`${defenderMonster.title} is defeated!`);
         const defeatedCard = {...defenderMonster, hp:0, statusEffects: [] }; // Reset for discard pile
@@ -817,22 +862,10 @@ export function GameBoard() {
         const isCounterMagic = defenderMonster.magic > defenderMonster.melee;
         const counterAttackValue = isCounterMagic ? defenderMonster.magic : defenderMonster.melee;
         const counterAttackType = isCounterMagic ? "magic" : "melee";
-        let damageDealtToAttacker = 0;
 
-        if (isCounterMagic) { // Magic Counter-Attack
-            damageDealtToAttacker = counterAttackValue;
-            attackerMonster.hp = Math.max(0, attackerMonster.hp - damageDealtToAttacker);
-            newLogMessages.push(`${attackerMonster.title} takes ${damageDealtToAttacker} ${counterAttackType} damage. (HP: ${attackerMonster.hp + damageDealtToAttacker} -> ${attackerMonster.hp})`);
-        } else { // Melee Counter-Attack
-            const damageAfterDefense = Math.max(0, counterAttackValue - attackerMonster.defense);
-             if (damageAfterDefense > 0) {
-                damageDealtToAttacker = damageAfterDefense;
-                attackerMonster.hp = Math.max(0, attackerMonster.hp - damageDealtToAttacker);
-                newLogMessages.push(`${attackerMonster.title} takes ${damageDealtToAttacker} ${counterAttackType} damage after defense. (HP: ${attackerMonster.hp + damageDealtToAttacker} -> ${attackerMonster.hp})`);
-            } else {
-                newLogMessages.push(`${attackerMonster.title}'s defense (${attackerMonster.defense}) negates the counter-damage.`);
-            }
-        }
+        const attackerResult = applyDamage(attackerMonster, counterAttackValue, counterAttackType);
+        attackerMonster = attackerResult.updatedMonster;
+        newLogMessages.push(...attackerResult.log);
 
         if (attackerMonster.hp <= 0) {
           newLogMessages.push(`${attackerMonster.title} is defeated in the counter-attack!`);
