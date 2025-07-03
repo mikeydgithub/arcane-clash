@@ -82,11 +82,13 @@ export default function ArcaneClashPage() {
       <div
         style={{
           position: 'fixed',
-          top: '50%',
-          left: '50%',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          margin: 'auto',
           width: '150vmax',
           height: '150vmax',
-          transform: 'translate(-50%, -50%)',
           zIndex: -10,
           animation: 'rotateSpiral 60s linear infinite, slowFadeInOut 20s ease-in-out infinite alternate',
         }}
