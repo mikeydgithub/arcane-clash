@@ -504,7 +504,6 @@ export function GameBoard() {
                     case 'Stone Skin':
                         if (currentPlayersMonsterRef) {
                             const boost = 5;
-                            // This spell might need a rework if 'defense' is gone. For now, let's say it adds a small shield.
                             const newEffect: StatusEffect = { id: `stone-skin-${Date.now()}`, type: 'shield', duration: 1, value: boost };
                             currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
                             newLogMessages.push(`${actingPlayer.name}'s Stone Skin grants ${currentPlayersMonsterRef.title} a temporary shield of ${boost} health!`);
@@ -807,13 +806,17 @@ export function GameBoard() {
         if (shieldIndex > -1) {
             const shield = monster.statusEffects[shieldIndex];
             const damageToShield = Math.min(remainingDamage, shield.value);
-            shield.value -= damageToShield;
+            
             remainingDamage -= damageToShield;
             totalDamageDealt += damageToShield;
             logs.push(`${monster.title}'s shield absorbs ${damageToShield} damage!`);
-            if (shield.value <= 0) {
+
+            if (shield.value <= damageToShield) {
                 logs.push(`The shield on ${monster.title} breaks!`);
                 monster.statusEffects.splice(shieldIndex, 1);
+            } else {
+                // Shield is damaged but not broken. Update its value.
+                monster.statusEffects[shieldIndex] = { ...shield, value: shield.value - damageToShield };
             }
         }
 
@@ -825,7 +828,7 @@ export function GameBoard() {
             logs.push(`${monster.title} takes ${hpDamage} ${damageType} damage. (HP: ${originalHp} -> ${monster.hp})`);
         }
 
-        if (totalDamageDealt === 0) {
+        if (totalDamageDealt === 0 && damage > 0) {
             logs.push(`${monster.title} takes no damage.`);
         }
         
