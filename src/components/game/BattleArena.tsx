@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { CardData, MonsterCardData, DamageIndicatorState } from '@/types';
+import type { CardData, MonsterCardData, DamageIndicatorState, GameLogEntry } from '@/types';
 import { CardView } from './CardView';
 import { CoinFlipAnimation } from './CoinFlipAnimation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,7 +17,7 @@ interface BattleArenaProps {
   player1Name: string;
   player2Name: string;
   showClashAnimation?: boolean;
-  gameLogMessages: string[];
+  gameLogMessages: GameLogEntry[];
   gamePhase: string;
   damageIndicators: DamageIndicatorState;
 
@@ -38,10 +38,10 @@ export function BattleArena({
   winningPlayerNameForCoinFlip,
 }: BattleArenaProps) {
 
-  const [displayedLogEntries, setDisplayedLogEntries] = useState<string[]>([]);
+  const [displayedLogEntries, setDisplayedLogEntries] = useState<GameLogEntry[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const entriesToAnimateRef = useRef<string[]>([]);
+  const entriesToAnimateRef = useRef<GameLogEntry[]>([]);
 
   const [clashTextVisible, setClashTextVisible] = useState(false);
   const hideClashTextTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -72,7 +72,8 @@ export function BattleArena({
       const nextEntry = entriesToAnimateRef.current.shift();
       if (nextEntry) {
         setDisplayedLogEntries(prev => {
-            if (prev.length > 0 && prev[prev.length -1] === nextEntry) {
+            const entryExists = prev.some(e => e.id === nextEntry.id);
+            if (entryExists) {
                 return prev;
             }
             return [...prev, nextEntry];
@@ -99,7 +100,8 @@ export function BattleArena({
       setDisplayedLogEntries([...gameLogMessages]);
       return;
     }
-
+    
+    // Quick reset if log shrinks
     if (gameLogMessages.length < displayedLogEntries.length) {
         if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
         animationTimeoutRef.current = null;
@@ -107,20 +109,25 @@ export function BattleArena({
         setDisplayedLogEntries([...gameLogMessages]);
         return;
     }
-
-    const newEntriesToPotentiallyQueue = gameLogMessages.slice(displayedLogEntries.length);
+    
+    const displayedIds = new Set(displayedLogEntries.map(e => e.id));
+    const newEntriesToPotentiallyQueue = gameLogMessages.filter(msg => !displayedIds.has(msg.id));
 
     if (newEntriesToPotentiallyQueue.length > 0) {
-        entriesToAnimateRef.current = [...newEntriesToPotentiallyQueue];
+        entriesToAnimateRef.current = [...entriesToAnimateRef.current, ...newEntriesToPotentiallyQueue];
 
         if (!animationTimeoutRef.current) {
             animateNextEntry();
         }
-    } else if (gameLogMessages.length === displayedLogEntries.length && JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries)) {
-        if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
-        animationTimeoutRef.current = null;
-        setDisplayedLogEntries([...gameLogMessages]);
-        entriesToAnimateRef.current = [];
+    } else if (gameLogMessages.length === displayedLogEntries.length) {
+        // Handle case where log content changes but length does not (e.g. state reset)
+        const logIdsMatch = gameLogMessages.every((msg, index) => displayedLogEntries[index]?.id === msg.id);
+        if(!logIdsMatch) {
+            if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+            animationTimeoutRef.current = null;
+            entriesToAnimateRef.current = [];
+            setDisplayedLogEntries([...gameLogMessages]);
+        }
     }
 
   }, [gameLogMessages, gamePhase]);
@@ -129,6 +136,24 @@ export function BattleArena({
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [displayedLogEntries]);
+
+  const getLogTextStyle = (type: GameLogEntry['type']) => {
+    switch (type) {
+        case 'player1':
+            return 'text-primary';
+        case 'player2':
+            return 'text-accent';
+        case 'damage':
+            return 'text-destructive';
+        case 'heal':
+            return 'text-green-400';
+        case 'info':
+            return 'text-sky-300';
+        case 'system':
+        default:
+            return 'text-muted-foreground';
+    }
+  };
 
 
   if (gamePhase === 'coin_flip_animation' && onCoinFlipAnimationComplete && winningPlayerNameForCoinFlip) {
@@ -142,15 +167,18 @@ export function BattleArena({
         />
         <div className="w-full max-w-xl h-[30%] max-h-40 md:max-h-48 mb-1 md:mb-2 mt-4">
           <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
-            {displayedLogEntries.map((entry, index) => (
+            {displayedLogEntries.map((entry) => (
               <motion.p
-                key={`coin-log-${index}-${entry.slice(0,20)}`}
+                key={entry.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="text-[10px] md:text-xs text-foreground mb-1 last:mb-0 text-center"
+                className={cn(
+                  "text-[10px] md:text-xs mb-1 last:mb-0 text-center",
+                  getLogTextStyle(entry.type)
+                )}
               >
-                {entry}
+                {entry.text}
               </motion.p>
             ))}
             <div ref={logEndRef} />
@@ -227,15 +255,18 @@ export function BattleArena({
               Waiting for player action...
             </p>
           )}
-          {displayedLogEntries.map((entry, index) => (
+          {displayedLogEntries.map((entry) => (
             <motion.p
-              key={`log-entry-${index}-${entry}`}
+              key={entry.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="text-[10px] md:text-xs text-foreground mb-1 last:mb-0 whitespace-pre-line"
+              className={cn(
+                "text-[10px] md:text-xs mb-1 last:mb-0 whitespace-pre-line",
+                getLogTextStyle(entry.type)
+              )}
             >
-              {entry}
+              {entry.text}
             </motion.p>
           ))}
           <div ref={logEndRef} />
@@ -244,5 +275,3 @@ export function BattleArena({
     </div>
   );
 }
-
-    

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { CardData, GameState, PlayerData, GamePhase, MonsterCardData, SpellCardData, StatusEffect, DamageIndicatorState } from '@/types';
+import type { CardData, GameState, PlayerData, GamePhase, MonsterCardData, SpellCardData, StatusEffect, DamageIndicatorState, GameLogEntry, LogEntryType } from '@/types';
 import { generateMonsterCards, generateSpellCards, shuffleDeck, dealCards } from '@/lib/game-utils';
 import { PlayerHand } from './PlayerHand';
 import { PlayerStatusDisplay } from './PlayerStatusDisplay';
@@ -28,6 +28,8 @@ const initialDamageIndicatorState: DamageIndicatorState = {
     p1Player: null,
     p2Player: null,
 };
+
+let logIdCounter = 0;
 
 export function GameBoard() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -60,9 +62,9 @@ export function GameBoard() {
       }
       const prevLogs = prevState.gameLogMessages || [];
       const nextLogs = nextState.gameLogMessages || [];
-      if (prevLogs.length !== nextLogs.length || prevLogs.some((msg, i) => msg !== nextLogs[i])) {
-            const prevLast = prevLogs.slice(-3);
-            const nextLast = nextLogs.slice(-3);
+      if (prevLogs.length !== nextLogs.length || prevLogs.some((msg, i) => msg.id !== nextLogs[i]?.id)) {
+            const prevLast = prevLogs.slice(-3).map(l => l.text);
+            const nextLast = nextLogs.slice(-3).map(l => l.text);
             console.log('[GAME LOG CHANGED]', {
                 prevLength: prevLogs.length,
                 nextLength: nextLogs.length,
@@ -75,12 +77,39 @@ export function GameBoard() {
         if(nextState.gameLogMessages?.length > 0) {
             console.log('[INITIAL GAME LOG]', {
                 length: nextState.gameLogMessages.length,
-                tail: nextState.gameLogMessages.slice(-3)
+                tail: nextState.gameLogMessages.slice(-3).map(l => l.text)
             });
         }
     }
     previousGameStateRef.current = nextState ? JSON.parse(JSON.stringify(nextState)) : null;
   }, [gameState]);
+
+
+  const appendLog = (message: string, type: LogEntryType, stateUpdater?: (prev: GameState) => GameState) => {
+    const newLogEntry: GameLogEntry = { id: `log-${logIdCounter++}`, text: message, type };
+    
+    logAndSetGameState(prev => {
+        if (!prev) return null;
+        const updatedStateWithLog = {
+            ...prev,
+            gameLogMessages: [...(prev.gameLogMessages || []), newLogEntry].slice(-100)
+        };
+        return stateUpdater ? stateUpdater(updatedStateWithLog) : updatedStateWithLog;
+    });
+  };
+
+  const appendLogs = (messages: {text: string, type: LogEntryType}[], stateUpdater?: (prev: GameState) => GameState) => {
+    const newLogEntries: GameLogEntry[] = messages.map(msg => ({ id: `log-${logIdCounter++}`, text: msg.text, type: msg.type }));
+    
+    logAndSetGameState(prev => {
+        if (!prev) return null;
+        const updatedStateWithLogs = {
+            ...prev,
+            gameLogMessages: [...(prev.gameLogMessages || []), ...newLogEntries].slice(-100)
+        };
+        return stateUpdater ? stateUpdater(updatedStateWithLogs) : updatedStateWithLogs;
+    });
+  };
 
 
   const initializeGame = useCallback(async () => {
@@ -97,7 +126,7 @@ export function GameBoard() {
       logAndSetGameState(prev => ({
         ...(prev || {} as GameState),
         gamePhase: 'loading_art',
-        gameLogMessages: ["Connecting to the arcane archives..."],
+        gameLogMessages: [{ id: `log-${logIdCounter++}`, text: "Connecting to the arcane archives...", type: 'system' }],
         isProcessingAction: true,
         isInitialMonsterEngagement: true,
         damageIndicators: initialDamageIndicatorState,
@@ -119,7 +148,7 @@ export function GameBoard() {
           logAndSetGameState(prev => ({
             ...(prev || {} as GameState),
             gamePhase: 'initial',
-            gameLogMessages: ["Error: Not enough card data in the backend database."],
+            gameLogMessages: [{ id: `log-${logIdCounter++}`, text: "Error: Not enough card data in the backend database.", type: 'system' }],
             isProcessingAction: false,
             damageIndicators: initialDamageIndicatorState,
           }));
@@ -171,7 +200,7 @@ export function GameBoard() {
         activeMonsterP1: undefined,
         activeMonsterP2: undefined,
         winner: undefined,
-        gameLogMessages: ["Game cards ready. First player will be determined by coin flip. Flipping coin..."],
+        gameLogMessages: [{ id: `log-${logIdCounter++}`, text: "Game cards ready. First player will be determined by coin flip. Flipping coin...", type: 'system' }],
         isProcessingAction: false,
         isInitialMonsterEngagement: true,
         damageIndicators: initialDamageIndicatorState,
@@ -186,13 +215,17 @@ export function GameBoard() {
           variant: "destructive",
           duration: 10000,
       });
-      logAndSetGameState(prev => ({
-          ...(prev || {} as GameState),
-          gamePhase: 'initial',
-          gameLogMessages: [...(prev?.gameLogMessages?.slice(0, -1) || []), "Error: Critical problem during game setup. Refresh may be needed."],
-          isProcessingAction: false,
-          damageIndicators: initialDamageIndicatorState,
-      }));
+      logAndSetGameState(prev => {
+          if (!prev) return null;
+          const updatedLogs = [...(prev.gameLogMessages?.slice(0, -1) || []), { id: `log-${logIdCounter++}`, text: "Error: Critical problem during game setup. Refresh may be needed.", type: 'system' as LogEntryType }];
+          return {
+              ...(prev || {} as GameState),
+              gamePhase: 'initial',
+              gameLogMessages: updatedLogs,
+              isProcessingAction: false,
+              damageIndicators: initialDamageIndicatorState,
+          };
+      });
       hasInitialized.current = false;
     } finally {
       console.log('[GameBoard] Initializing game sequence finished.');
@@ -203,14 +236,18 @@ export function GameBoard() {
     logAndSetGameState(prev => {
       if (!prev) return null;
       const firstPlayer = prev.players[prev.currentPlayerIndex];
+      const playerType = firstPlayer.id === 'p1' ? 'player1' : 'player2';
+
+      const newLogs: GameLogEntry[] = [
+        ...prev.gameLogMessages,
+        { id: `log-${logIdCounter++}`, text: `${firstPlayer.name} wins the toss and will go first!`, type: 'system' },
+        { id: `log-${logIdCounter++}`, text: `${firstPlayer.name}, it's your first turn. You may mulligan your hand, or choose an action.`, type: playerType }
+      ];
+
       return {
         ...prev,
         gamePhase: 'player_action_phase',
-        gameLogMessages: [
-          ...(prev.gameLogMessages || []),
-          `${firstPlayer.name} wins the toss and will go first!`,
-          `${firstPlayer.name}, it's your first turn. You may mulligan your hand, or choose an action.`
-        ],
+        gameLogMessages: newLogs,
         isProcessingAction: false,
       };
     });
@@ -233,15 +270,6 @@ export function GameBoard() {
   }, [gameState, initializeGame]);
 
 
-  const appendLog = (message: string) => {
-    logAndSetGameState(prev => {
-      if (!prev) return null;
-      const newLogMessages = [...(prev.gameLogMessages || []), message].slice(-100);
-      return { ...prev, gameLogMessages: newLogMessages };
-    });
-  };
-
-
   const applyStatusEffectsAndCheckDefeats = (playerIndexForTurnStart: 0 | 1, currentState: GameState): GameState => {
     let newPlayers = [...currentState.players] as [PlayerData, PlayerData];
     let newActiveMonsterP1 = currentState.activeMonsterP1 ? { ...currentState.activeMonsterP1 } : undefined;
@@ -250,6 +278,7 @@ export function GameBoard() {
 
     const playerWhoseTurnIsStarting = newPlayers[playerIndexForTurnStart];
     let activeMonsterForTurnPlayer = playerIndexForTurnStart === 0 ? newActiveMonsterP1 : newActiveMonsterP2;
+    const playerLogType = playerWhoseTurnIsStarting.id === 'p1' ? 'player1' : 'player2';
 
     if (activeMonsterForTurnPlayer && activeMonsterForTurnPlayer.statusEffects && activeMonsterForTurnPlayer.statusEffects.length > 0) {
         const effectsToKeep: StatusEffect[] = [];
@@ -260,7 +289,7 @@ export function GameBoard() {
                 const originalHp = activeMonsterForTurnPlayer.hp;
                 activeMonsterForTurnPlayer.hp = Math.min(activeMonsterForTurnPlayer.maxHp, activeMonsterForTurnPlayer.hp + healAmount);
                 if (activeMonsterForTurnPlayer.hp > originalHp) {
-                    newLogMessages.push(`${playerWhoseTurnIsStarting.name}'s ${activeMonsterForTurnPlayer.title} regenerates ${activeMonsterForTurnPlayer.hp - originalHp} HP. (HP: ${originalHp} -> ${activeMonsterForTurnPlayer.hp})`);
+                    newLogMessages.push({ id: `log-${logIdCounter++}`, text: `${playerWhoseTurnIsStarting.name}'s ${activeMonsterForTurnPlayer.title} regenerates ${activeMonsterForTurnPlayer.hp - originalHp} HP. (HP: ${originalHp} -> ${activeMonsterForTurnPlayer.hp})`, type: 'heal' });
                 }
                 effect.duration -= 1;
             }
@@ -269,7 +298,7 @@ export function GameBoard() {
             if (effect.duration > 0) {
                 effectsToKeep.push(effect);
             } else {
-                newLogMessages.push(`${playerWhoseTurnIsStarting.name}'s ${activeMonsterForTurnPlayer.title}'s ${effect.type} effect wears off.`);
+                newLogMessages.push({ id: `log-${logIdCounter++}`, text: `${playerWhoseTurnIsStarting.name}'s ${activeMonsterForTurnPlayer.title}'s ${effect.type} effect wears off.`, type: 'info' });
             }
         }
         activeMonsterForTurnPlayer.statusEffects = effectsToKeep.length > 0 ? effectsToKeep : undefined;
@@ -296,7 +325,7 @@ export function GameBoard() {
     console.log("[GameBoard] Processing turn end...");
     logAndSetGameState(prev => {
       if (!prev) return null;
-      let { players, currentPlayerIndex, gameLogMessages, activeMonsterP1, activeMonsterP2, isInitialMonsterEngagement } = prev;
+      let { players, currentPlayerIndex, gameLogMessages, activeMonsterP1, activeMonsterP2 } = prev;
 
       const actingPlayerInitial = players[currentPlayerIndex];
       const opponentPlayerIndex = (1 - currentPlayerIndex) as 0 | 1;
@@ -310,7 +339,7 @@ export function GameBoard() {
       let updatedPlayersArr = [...players] as [PlayerData, PlayerData];
       updatedPlayersArr[currentPlayerIndex] = playerAfterAction;
 
-      let newLogMessages = [...(gameLogMessages || [])];
+      let newLogs: GameLogEntry[] = [...(gameLogMessages || [])];
 
       const stateForStatusEffects: GameState = {
           ...prev,
@@ -318,7 +347,7 @@ export function GameBoard() {
           currentPlayerIndex: opponentPlayerIndex, // Status effects apply to player whose turn is STARTING
           activeMonsterP1: activeMonsterP1 ? {...activeMonsterP1} : undefined,
           activeMonsterP2: activeMonsterP2 ? {...activeMonsterP2} : undefined,
-          gameLogMessages: newLogMessages,
+          gameLogMessages: newLogs,
       };
 
       const stateAfterStatusEffects = applyStatusEffectsAndCheckDefeats(opponentPlayerIndex, stateForStatusEffects);
@@ -326,11 +355,13 @@ export function GameBoard() {
       updatedPlayersArr = stateAfterStatusEffects.players;
       activeMonsterP1 = stateAfterStatusEffects.activeMonsterP1;
       activeMonsterP2 = stateAfterStatusEffects.activeMonsterP2;
-      newLogMessages = stateAfterStatusEffects.gameLogMessages;
+      newLogs = stateAfterStatusEffects.gameLogMessages;
 
       // Card draw logic for the player who JUST FINISHED their turn
       let actingPlayerHand = [...updatedPlayersArr[currentPlayerIndex].hand];
       let actingPlayerDeck = [...updatedPlayersArr[currentPlayerIndex].deck];
+      const actingPlayerLogType = updatedPlayersArr[currentPlayerIndex].id === 'p1' ? 'player1' : 'player2';
+
 
       if (actingPlayerHand.length < CARDS_IN_HAND && actingPlayerDeck.length > 0) {
         const { dealtCards, remainingDeck } = dealCards(actingPlayerDeck, 1);
@@ -338,10 +369,10 @@ export function GameBoard() {
 
         actingPlayerHand.push(drawnCard);
         actingPlayerDeck = remainingDeck;
-        newLogMessages.push(`${updatedPlayersArr[currentPlayerIndex].name} draws ${drawnCard.title}.`);
+        newLogs.push({ id: `log-${logIdCounter++}`, text: `${updatedPlayersArr[currentPlayerIndex].name} draws ${drawnCard.title}.`, type: actingPlayerLogType });
 
       } else if (actingPlayerHand.length < CARDS_IN_HAND) {
-        newLogMessages.push(`${updatedPlayersArr[currentPlayerIndex].name} has no cards left in their deck to draw.`);
+        newLogs.push({ id: `log-${logIdCounter++}`, text: `${updatedPlayersArr[currentPlayerIndex].name} has no cards left in their deck to draw.`, type: 'system' });
       }
 
       updatedPlayersArr[currentPlayerIndex] = { ...updatedPlayersArr[currentPlayerIndex], hand: actingPlayerHand, deck: actingPlayerDeck };
@@ -349,7 +380,7 @@ export function GameBoard() {
 
       // Check for game over conditions AFTER applying status effects and drawing cards
       if (updatedPlayersArr[0].hp <= 0 && updatedPlayersArr[1].hp <= 0) {
-        newLogMessages.push("It's a draw! Both players are defeated.");
+        newLogs.push({ id: `log-${logIdCounter++}`, text: "It's a draw! Both players are defeated.", type: 'system' });
         return {
             ...prev,
             players: updatedPlayersArr,
@@ -357,12 +388,12 @@ export function GameBoard() {
             activeMonsterP2,
             winner: undefined,
             gamePhase: 'game_over_phase',
-            gameLogMessages: newLogMessages,
+            gameLogMessages: newLogs,
             isProcessingAction: false,
             currentPlayerIndex: opponentPlayerIndex,
          };
       } else if (updatedPlayersArr[0].hp <= 0) {
-        newLogMessages.push(`${updatedPlayersArr[1].name} wins! ${updatedPlayersArr[0].name} is defeated.`);
+        newLogs.push({ id: `log-${logIdCounter++}`, text: `${updatedPlayersArr[1].name} wins! ${updatedPlayersArr[0].name} is defeated.`, type: 'system' });
         return {
             ...prev,
             players: updatedPlayersArr,
@@ -370,12 +401,12 @@ export function GameBoard() {
             activeMonsterP2,
             winner: updatedPlayersArr[1],
             gamePhase: 'game_over_phase',
-            gameLogMessages: newLogMessages,
+            gameLogMessages: newLogs,
             isProcessingAction: false,
             currentPlayerIndex: opponentPlayerIndex,
         };
       } else if (updatedPlayersArr[1].hp <= 0) {
-        newLogMessages.push(`${updatedPlayersArr[0].name} wins! ${updatedPlayersArr[1].name} is defeated.`);
+        newLogs.push({ id: `log-${logIdCounter++}`, text: `${updatedPlayersArr[0].name} wins! ${updatedPlayersArr[1].name} is defeated.`, type: 'system' });
         return {
             ...prev,
             players: updatedPlayersArr,
@@ -383,18 +414,21 @@ export function GameBoard() {
             activeMonsterP2,
             winner: updatedPlayersArr[0],
             gamePhase: 'game_over_phase',
-            gameLogMessages: newLogMessages,
+            gameLogMessages: newLogs,
             isProcessingAction: false,
             currentPlayerIndex: opponentPlayerIndex,
         };
       }
 
-      if (opponentPlayer.turnCount === 0 && !opponentPlayer.hasMulliganed) {
-        newLogMessages.push(`Turn ends. It's now ${players[opponentPlayerIndex].name}'s first turn.`);
-        newLogMessages.push(`${players[opponentPlayerIndex].name}, you may mulligan your hand, or choose an action.`);
+      const nextPlayer = players[opponentPlayerIndex];
+      const nextPlayerLogType = nextPlayer.id === 'p1' ? 'player1' : 'player2';
+
+      if (nextPlayer.turnCount === 0 && !nextPlayer.hasMulliganed) {
+        newLogs.push({ id: `log-${logIdCounter++}`, text: `Turn ends. It's now ${nextPlayer.name}'s first turn.`, type: 'system' });
+        newLogs.push({ id: `log-${logIdCounter++}`, text: `${nextPlayer.name}, you may mulligan your hand, or choose an action.`, type: nextPlayerLogType });
       } else {
-        newLogMessages.push(`Turn ends. It's now ${players[opponentPlayerIndex].name}'s turn.`);
-        newLogMessages.push(`${players[opponentPlayerIndex].name}, choose your action.`);
+        newLogs.push({ id: `log-${logIdCounter++}`, text: `Turn ends. It's now ${nextPlayer.name}'s turn.`, type: 'system' });
+        newLogs.push({ id: `log-${logIdCounter++}`, text: `${nextPlayer.name}, choose your action.`, type: nextPlayerLogType });
       }
 
       const finalStateForTurnEnd: GameState = {
@@ -405,7 +439,7 @@ export function GameBoard() {
         activeMonsterP1,
         activeMonsterP2,
         winner: undefined, // No winner yet
-        gameLogMessages: newLogMessages,
+        gameLogMessages: newLogs,
         isProcessingAction: false, // <<< CRITICAL: Ensure this is false for next player's turn
         damageIndicators: initialDamageIndicatorState, // Reset damage indicators for new turn
       };
@@ -428,6 +462,7 @@ export function GameBoard() {
 
         const { players, currentPlayerIndex, isInitialMonsterEngagement } = currentBoardGameState;
         const player = players[currentPlayerIndex];
+        const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
 
         const newHand = player.hand.filter(c => c.id !== card.id);
         const updatedPlayer = { ...player, hand: newHand, hasMulliganed: true };
@@ -436,7 +471,7 @@ export function GameBoard() {
 
         const wasFirstMonsterOfGame = isInitialMonsterEngagement;
         
-        appendLog(`${player.name} summons ${card.title} to the arena!`);
+        appendLog(`${player.name} summons ${card.title} to the arena!`, playerLogType);
 
         logAndSetGameState(prev => {
             if (!prev) return null;
@@ -450,13 +485,13 @@ export function GameBoard() {
 
         // The very first monster of the game ends the turn. All subsequent summons continue the turn.
         if (wasFirstMonsterOfGame) {
-            appendLog(`${card.title} cannot act this turn as it's the first monster in play.`);
+            appendLog(`${card.title} cannot act this turn as it's the first monster in play.`, 'info');
             logAndSetGameState(prev => ({ ...prev!, gamePhase: 'turn_resolution_phase' }));
             setTimeout(() => {
                 processTurnEnd();
             }, 1000);
         } else {
-            appendLog(`${card.title} is now active! ${player.name}, choose your next action.`);
+            appendLog(`${card.title} is now active! ${player.name}, choose your next action.`, playerLogType);
             logAndSetGameState(prev => ({
                 ...prev!,
                 gamePhase: 'player_action_phase',
@@ -465,12 +500,16 @@ export function GameBoard() {
         }
     } catch (error) {
         console.error("Error in handlePlayMonsterFromHand:", error);
-        logAndSetGameState(prev => prev ? {
-            ...prev,
-            gameLogMessages: [...(prev.gameLogMessages || []), "A critical error occurred while summoning a monster."],
-            isProcessingAction: false,
-            gamePhase: 'player_action_phase'
-        } : null);
+        logAndSetGameState(prev => {
+            if(!prev) return null;
+            const newLogs = [...(prev.gameLogMessages || []), {id: `log-${logIdCounter++}`, text: "A critical error occurred while summoning a monster.", type: 'system' as LogEntryType}];
+            return prev ? {
+                ...prev,
+                gameLogMessages: newLogs,
+                isProcessingAction: false,
+                gamePhase: 'player_action_phase'
+            } : null;
+        });
     }
 };
 
@@ -494,9 +533,10 @@ export function GameBoard() {
     }
 
     logAndSetGameState(prev => ({...prev!, isProcessingAction: true}));
-
-        const effectiveDescription = card.description || "Effect not yet loaded or defined.";
-        appendLog(`${player.name} casts ${card.title}! Effect: ${effectiveDescription}`);
+    
+    const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
+    const effectiveDescription = card.description || "Effect not yet loaded or defined.";
+    appendLog(`${player.name} casts ${card.title}! Effect: ${effectiveDescription}`, playerLogType);
 
 
         logAndSetGameState(prev => {
@@ -505,6 +545,8 @@ export function GameBoard() {
                 let { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2, gameLogMessages, damageIndicators } = prev;
 
                 let actingPlayer = {...players[currentPlayerIndex]};
+                const actingPlayerLogType = actingPlayer.id === 'p1' ? 'player1' : 'player2';
+
                 actingPlayer.spellsPlayedThisTurn += 1;
 
                 const opponentPlayerIndex = 1 - currentPlayerIndex;
@@ -515,7 +557,7 @@ export function GameBoard() {
 
                 let newActiveMonsterP1 = activeMonsterP1 ? { ...activeMonsterP1 } : undefined;
                 let newActiveMonsterP2 = activeMonsterP2 ? { ...activeMonsterP2 } : undefined;
-                let newLogMessages = [...(gameLogMessages || [])];
+                let logsToAppend: {text: string, type: LogEntryType}[] = [];
                 let newDamageIndicators = {...initialDamageIndicatorState};
 
                 const currentPlayersMonsterRef = currentPlayerIndex === 0 ? newActiveMonsterP1 : newActiveMonsterP2;
@@ -529,7 +571,7 @@ export function GameBoard() {
                             const boost = 5;
                             const newEffect: StatusEffect = { id: `stone-skin-${Date.now()}`, type: 'shield', duration: 1, value: boost };
                             currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
-                            newLogMessages.push(`${actingPlayer.name}'s Stone Skin grants ${currentPlayersMonsterRef.title} a temporary shield of ${boost} health!`);
+                            logsToAppend.push({text: `${actingPlayer.name}'s Stone Skin grants ${currentPlayersMonsterRef.title} a temporary shield of ${boost} health!`, type: 'info'});
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;
                         }
@@ -547,12 +589,12 @@ export function GameBoard() {
                             const damageTaken = originalHp - opponentPlayersMonsterRef.hp;
                             if (currentPlayerIndex === 0) newDamageIndicators.p2Monster = damageTaken; else newDamageIndicators.p1Monster = damageTaken;
 
-                            message += `Takes ${damageTaken} fire damage to HP. HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}.`;
-                            newLogMessages.push(message);
+                            message += `Takes ${damageTaken} fire damage to HP. (HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}).`;
+                            logsToAppend.push({text: message, type: 'damage'});
                             spellEffectApplied = true;
 
                             if (opponentPlayersMonsterRef.hp <= 0) {
-                                newLogMessages.push(`${opponentPlayersMonsterRef.title} is incinerated by the Fireball!`);
+                                logsToAppend.push({text: `${opponentPlayersMonsterRef.title} is incinerated by the Fireball!`, type: 'damage'});
                                 const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, statusEffects: []};
                                 newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
                                 if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
@@ -565,7 +607,7 @@ export function GameBoard() {
                             const damageTaken = originalPlayerHp - newPlayers[opponentPlayerIndex].hp;
                             if (currentPlayerIndex === 0) newDamageIndicators.p2Player = damageTaken; else newDamageIndicators.p1Player = damageTaken;
 
-                            newLogMessages.push(`${actingPlayer.name}'s Fireball strikes ${opponentPlayer.name} directly for ${damageTaken} damage! (HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp})`);
+                            logsToAppend.push({text: `${actingPlayer.name}'s Fireball strikes ${opponentPlayer.name} directly for ${damageTaken} damage! (HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp})`, type: 'damage'});
                             spellEffectApplied = true;
                         }
                         break;
@@ -575,7 +617,7 @@ export function GameBoard() {
                             const healAmount = 20;
                             const originalHp = currentPlayersMonsterRef.hp;
                             currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + healAmount);
-                            newLogMessages.push(`${actingPlayer.name}'s Healing Light restores ${currentPlayersMonsterRef.hp - originalHp} HP to ${currentPlayersMonsterRef.title}! HP: ${originalHp} -> ${currentPlayersMonsterRef.hp}.`);
+                            logsToAppend.push({text: `${actingPlayer.name}'s Healing Light restores ${currentPlayersMonsterRef.hp - originalHp} HP to ${currentPlayersMonsterRef.title}! HP: ${originalHp} -> ${currentPlayersMonsterRef.hp}.`, type: 'heal'});
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;
                         }
@@ -586,11 +628,11 @@ export function GameBoard() {
                             const shieldValue = 15;
                             const newEffect: StatusEffect = { id: `arcane-shield-${Date.now()}`, type: 'shield', duration: 99, value: shieldValue }; // Duration 99 = lasts until broken
                             currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
-                            newLogMessages.push(`${actingPlayer.name}'s Arcane Shield grants ${currentPlayersMonsterRef.title} a shield that absorbs ${shieldValue} damage!`);
+                            logsToAppend.push({text: `${actingPlayer.name}'s Arcane Shield grants ${currentPlayersMonsterRef.title} a shield that absorbs ${shieldValue} damage!`, type: 'info'});
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;
                          } else {
-                             newLogMessages.push(`${actingPlayer.name}'s Arcane Shield fizzles with no active monster to target.`);
+                             logsToAppend.push({text: `${actingPlayer.name}'s Arcane Shield fizzles with no active monster to target.`, type: 'system'});
                              spellEffectApplied = true;
                          }
                         break;
@@ -602,7 +644,7 @@ export function GameBoard() {
                             const originalMagic = opponentPlayersMonsterRef.magic;
                             opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - reduction);
                             opponentPlayersMonsterRef.magic = Math.max(0, opponentPlayersMonsterRef.magic - reduction);
-                            newLogMessages.push(`${actingPlayer.name}'s Weakening Curse reduces ${opponentPlayersMonsterRef.title}'s attack power! Melee: ${originalMelee} -> ${opponentPlayersMonsterRef.melee}, Magic: ${originalMagic} -> ${opponentPlayersMonsterRef.magic}.`);
+                            logsToAppend.push({text: `${actingPlayer.name}'s Weakening Curse reduces ${opponentPlayersMonsterRef.title}'s attack power! Melee: ${originalMelee} -> ${opponentPlayersMonsterRef.melee}, Magic: ${originalMagic} -> ${opponentPlayersMonsterRef.magic}.`, type: 'damage'});
                             if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
                             spellEffectApplied = true;
                         }
@@ -610,15 +652,15 @@ export function GameBoard() {
 
                     case 'Terrify':
                         if (opponentPlayersMonsterRef) {
-                            newLogMessages.push(`${actingPlayer.name}'s Terrify targets ${opponentPlayersMonsterRef.title}!`);
+                            logsToAppend.push({text: `${actingPlayer.name}'s Terrify targets ${opponentPlayersMonsterRef.title}!`, type: 'player1'});
                             const returnedMonster = { ...opponentPlayersMonsterRef, statusEffects: [] };
 
                             if (newPlayers[opponentPlayerIndex].hand.length < CARDS_IN_HAND) {
                                 newPlayers[opponentPlayerIndex].hand.push(returnedMonster);
-                                newLogMessages.push(`${opponentPlayersMonsterRef.title} is returned to ${opponentPlayer.name}'s hand!`);
+                                logsToAppend.push({text: `${opponentPlayersMonsterRef.title} is returned to ${opponentPlayer.name}'s hand!`, type: 'info'});
                             } else {
                                 newPlayers[opponentPlayerIndex].discardPile.push(returnedMonster);
-                                newLogMessages.push(`${opponentPlayersMonsterRef.title} couldn't return to a full hand and was discarded!`);
+                                logsToAppend.push({text: `${opponentPlayersMonsterRef.title} couldn't return to a full hand and was discarded!`, type: 'info'});
                             }
 
                             if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
@@ -630,7 +672,7 @@ export function GameBoard() {
                         if (currentPlayersMonsterRef) {
                             const newEffect: StatusEffect = { id: `regen-${Date.now()}`, type: 'regenerate', duration: 3, value: 5 };
                             currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
-                            newLogMessages.push(`${actingPlayer.name} applies Regenerate to ${currentPlayersMonsterRef.title}. It will heal 5 HP for 3 turns.`);
+                            logsToAppend.push({text: `${actingPlayer.name} applies Regenerate to ${currentPlayersMonsterRef.title}. It will heal 5 HP for 3 turns.`, type: 'info'});
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;
                         }
@@ -639,7 +681,7 @@ export function GameBoard() {
                     case 'Swiftness Aura':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 3);
-                            newLogMessages.push(`${currentPlayersMonsterRef.title} gains +3 Melee from Swiftness Aura. New Melee: ${currentPlayersMonsterRef.melee}.`);
+                            logsToAppend.push({text: `${currentPlayersMonsterRef.title} gains +3 Melee from Swiftness Aura. New Melee: ${currentPlayersMonsterRef.melee}.`, type: 'info'});
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;
                         }
@@ -659,11 +701,11 @@ export function GameBoard() {
 
                             message += `Takes ${damageTaken} magic damage. HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}.`;
                             
-                            newLogMessages.push(message);
+                            logsToAppend.push({text: message, type: 'damage'});
                             spellEffectApplied = true;
 
                             if (opponentPlayersMonsterRef.hp <= 0) {
-                                newLogMessages.push(`${opponentPlayersMonsterRef.title} is destroyed! The lightning arcs to ${opponentPlayer.name}!`);
+                                logsToAppend.push({text: `${opponentPlayersMonsterRef.title} is destroyed! The lightning arcs to ${opponentPlayer.name}!`, type: 'damage'});
                                 const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, statusEffects: []};
                                 newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
                                 if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
@@ -673,7 +715,7 @@ export function GameBoard() {
                                 const playerDamageTaken = originalPlayerHp - newPlayers[opponentPlayerIndex].hp;
                                 if (currentPlayerIndex === 0) newDamageIndicators.p2Player = playerDamageTaken; else newDamageIndicators.p1Player = playerDamageTaken;
 
-                                newLogMessages.push(`${opponentPlayer.name} takes ${playerDamageTaken} lightning damage! (HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp})`);
+                                logsToAppend.push({text: `${opponentPlayer.name} takes ${playerDamageTaken} lightning damage! (HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp})`, type: 'damage'});
                             } else {
                                 if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
                             }
@@ -685,7 +727,7 @@ export function GameBoard() {
                             currentPlayersMonsterRef.maxHp += 10;
                             const originalHp = currentPlayersMonsterRef.hp;
                             currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + 10);
-                            newLogMessages.push(`${currentPlayersMonsterRef.title}'s Growth Spurt increases Max HP to ${currentPlayersMonsterRef.maxHp} and heals ${currentPlayersMonsterRef.hp - originalHp} HP. Current HP: ${currentPlayersMonsterRef.hp}.`);
+                            logsToAppend.push({text: `${currentPlayersMonsterRef.title}'s Growth Spurt increases Max HP to ${currentPlayersMonsterRef.maxHp} and heals ${currentPlayersMonsterRef.hp - originalHp} HP. Current HP: ${currentPlayersMonsterRef.hp}.`, type: 'heal'});
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;
                         }
@@ -716,11 +758,11 @@ export function GameBoard() {
                                 }
                                 if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             }
-                            newLogMessages.push(message);
+                            logsToAppend.push({text: message, type: 'heal'});
 
 
                             if (opponentPlayersMonsterRef.hp <= 0) {
-                                newLogMessages.push(`${opponentPlayersMonsterRef.title} is drained completely!`);
+                                logsToAppend.push({text: `${opponentPlayersMonsterRef.title} is drained completely!`, type: 'damage'});
                                 const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, statusEffects: []};
                                 newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
                                 if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
@@ -731,14 +773,14 @@ export function GameBoard() {
                         break;
 
                     default:
-                        newLogMessages.push(`The spell ${card.title} fizzles, its effect not yet defined in the ancient tomes.`);
+                        logsToAppend.push({text: `The spell ${card.title} fizzles, its effect not yet defined in the ancient tomes.`, type: 'system'});
                         spellEffectApplied = true; // Consider it "applied" to prevent re-trying
                 }
 
                 if (!spellEffectApplied && currentPlayersMonsterRef) {
-                    newLogMessages.push(`${actingPlayer.name} casts ${card.title}, but it has no effect on ${currentPlayersMonsterRef.title} or the opponent.`);
+                    logsToAppend.push({text: `${actingPlayer.name} casts ${card.title}, but it has no effect on ${currentPlayersMonsterRef.title} or the opponent.`, type: 'system'});
                 } else if (!spellEffectApplied && !currentPlayersMonsterRef){
-                     newLogMessages.push(`${actingPlayer.name} casts ${card.title}, but with no active monster, it has no target or effect.`);
+                     logsToAppend.push({text: `${actingPlayer.name} casts ${card.title}, but with no active monster, it has no target or effect.`, type: 'system'});
                 }
 
 
@@ -753,7 +795,7 @@ export function GameBoard() {
                     players: newPlayers,
                     activeMonsterP1: newActiveMonsterP1,
                     activeMonsterP2: newActiveMonsterP2,
-                    gameLogMessages: newLogMessages,
+                    gameLogMessages: [...(gameLogMessages || []), ...logsToAppend.map(log => ({...log, id: `log-${logIdCounter++}`}))],
                     gamePhase: 'player_action_phase',
                     isProcessingAction: false,
                     damageIndicators: newDamageIndicators,
@@ -761,9 +803,10 @@ export function GameBoard() {
             } catch (error) {
                 console.error("Error processing spell effect:", error);
                 if (prev) {
+                    const newLogs = [...(prev.gameLogMessages || []), {id: `log-${logIdCounter++}`, text: `A magical mishap occurred while casting ${card.title}!`, type: 'system' as LogEntryType}];
                     return {
                         ...prev,
-                        gameLogMessages: [...(prev.gameLogMessages || []), `A magical mishap occurred while casting ${card.title}!`],
+                        gameLogMessages: newLogs,
                         isProcessingAction: false,
                         gamePhase: 'player_action_phase',
                     };
@@ -782,7 +825,7 @@ export function GameBoard() {
         } else if (currentStateAfterSpell && currentStateAfterSpell.players[1-currentStateAfterSpell.currentPlayerIndex].hp <= 0){
              processTurnEnd(); // Check for opponent defeat immediately
         } else {
-            appendLog(`${card.title} has been cast. ${players[currentPlayerIndex].name}, choose your next action or end turn.`);
+            appendLog(`${card.title} has been cast. ${players[currentPlayerIndex].name}, choose your next action or end turn.`, playerLogType);
             logAndSetGameState(prev => ({...prev!, gamePhase: 'player_action_phase', isProcessingAction: false }));
         }
 
@@ -823,17 +866,24 @@ export function GameBoard() {
             if (!freshState) return;
 
             let { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = freshState;
-            let newLogMessages: string[] = [...(freshState.gameLogMessages || [])];
+            let logsToAppend: {text: string, type: LogEntryType}[] = [];
             let newPlayers = [...players] as [PlayerData, PlayerData];
+            const attackerPlayer = newPlayers[currentPlayerIndex];
+            const attackerLogType = attackerPlayer.id === 'p1' ? 'player1' : 'player2';
+
             let currentAttackerMonster = (currentPlayerIndex === 0 ? { ...activeMonsterP1! } : { ...activeMonsterP2! });
             let currentDefenderMonster = currentPlayerIndex === 0 ? (activeMonsterP2 ? { ...activeMonsterP2 } : undefined) : (activeMonsterP1 ? { ...activeMonsterP1 } : undefined);
+            
             const defenderPlayerIndex = 1 - currentPlayerIndex as 0 | 1;
+            const defenderPlayer = newPlayers[defenderPlayerIndex];
+            const defenderLogType = defenderPlayer.id === 'p1' ? 'player1' : 'player2';
+            
             
             // Local tracking for damage indicators to ensure they are set only once per combat event
             let finalDamageIndicators: DamageIndicatorState = { ...initialDamageIndicatorState };
 
-            const applyDamage = (targetMonster: MonsterCardData, damage: number, damageType: 'melee' | 'magic'): { updatedMonster: MonsterCardData; log: string[]; damageDealt: number; } => {
-                let logs: string[] = [];
+            const applyDamage = (targetMonster: MonsterCardData, damage: number, damageType: 'melee' | 'magic'): { updatedMonster: MonsterCardData; log: {text: string, type: LogEntryType}[]; damageDealt: number; } => {
+                let logs: {text: string, type: LogEntryType}[] = [];
                 let remainingDamage = damage;
                 let totalDamageDealt = 0;
                 let monster = { ...targetMonster, statusEffects: [...(targetMonster.statusEffects || [])] };
@@ -846,15 +896,15 @@ export function GameBoard() {
                     const damageToShield = Math.min(remainingDamage, shield.value);
                     if (damageToShield > 0) {
                         remainingDamage -= damageToShield;
-                        logs.push(`${monster.title}'s shield absorbs ${damageToShield} ${damageType} damage!`);
+                        logs.push({ text: `${monster.title}'s shield absorbs ${damageToShield} ${damageType} damage!`, type: 'info' });
 
                         if (shield.value <= damageToShield) {
-                            logs.push(`The shield on ${monster.title} breaks!`);
+                            logs.push({ text: `The shield on ${monster.title} breaks!`, type: 'info' });
                             monster.statusEffects.splice(shieldIndex, 1);
                         } else {
                             shield.value -= damageToShield;
                             monster.statusEffects[shieldIndex] = shield;
-                            logs.push(`The shield has ${shield.value} health remaining.`);
+                            logs.push({ text: `The shield has ${shield.value} health remaining.`, type: 'info' });
                         }
                     }
                 }
@@ -866,26 +916,26 @@ export function GameBoard() {
                 totalDamageDealt = originalHp - monster.hp;
 
                 if (totalDamageDealt > 0) {
-                    logs.push(`${monster.title} takes ${totalDamageDealt} ${damageType} damage. (HP: ${originalHp} -> ${monster.hp})`);
+                    logs.push({ text: `${monster.title} takes ${totalDamageDealt} ${damageType} damage. (HP: ${originalHp} -> ${monster.hp})`, type: 'damage' });
                 } else if (damage > 0) {
-                    logs.push(`${monster.title} takes no damage.`);
+                    logs.push({ text: `${monster.title} takes no damage.`, type: 'info' });
                 }
                 return { updatedMonster: monster, log: logs, damageDealt: totalDamageDealt };
             };
 
-            newLogMessages.push(`${players[currentPlayerIndex].name}'s ${currentAttackerMonster.title} attacks!`);
+            logsToAppend.push({ text: `${players[currentPlayerIndex].name}'s ${currentAttackerMonster.title} attacks!`, type: attackerLogType});
 
             if (currentDefenderMonster && currentDefenderMonster.hp > 0) {
-                newLogMessages.push(`${currentAttackerMonster.title} clashes with ${currentDefenderMonster.title}!`);
+                logsToAppend.push({ text: `${currentAttackerMonster.title} clashes with ${currentDefenderMonster.title}!`, type: 'system' });
                 const isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
                 const attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
                 const attackType = isMagicAttack ? "magic" : "melee";
-                newLogMessages.push(`Attack is ${attackType}-based with a power of ${attackValue}.`);
+                logsToAppend.push({ text: `Attack is ${attackType}-based with a power of ${attackValue}.`, type: 'info'});
                 
                 const defenderHpBefore = currentDefenderMonster.hp;
                 const defenderResult = applyDamage(currentDefenderMonster, attackValue, attackType);
                 currentDefenderMonster = defenderResult.updatedMonster;
-                newLogMessages.push(...defenderResult.log);
+                logsToAppend.push(...defenderResult.log);
                 
                 if (defenderResult.damageDealt > 0) {
                     if (defenderPlayerIndex === 0) finalDamageIndicators.p1Monster = defenderResult.damageDealt;
@@ -893,14 +943,14 @@ export function GameBoard() {
                 }
 
                 if (currentDefenderMonster.hp <= 0) {
-                    newLogMessages.push(`${currentDefenderMonster.title} is defeated!`);
+                    logsToAppend.push({ text: `${currentDefenderMonster.title} is defeated!`, type: 'damage' });
                     const overkillDamage = attackValue - defenderHpBefore;
                     if (overkillDamage > 0) {
                         const originalPlayerHp = newPlayers[defenderPlayerIndex].hp;
                         newPlayers[defenderPlayerIndex].hp = Math.max(0, originalPlayerHp - overkillDamage);
                         const playerDamageTaken = originalPlayerHp - newPlayers[defenderPlayerIndex].hp;
                         if (playerDamageTaken > 0) {
-                            newLogMessages.push(`Overkill! ${players[defenderPlayerIndex].name} takes ${playerDamageTaken} trample damage! (HP: ${originalPlayerHp} -> ${newPlayers[defenderPlayerIndex].hp})`);
+                            logsToAppend.push({ text: `Overkill! ${players[defenderPlayerIndex].name} takes ${playerDamageTaken} trample damage! (HP: ${originalPlayerHp} -> ${newPlayers[defenderPlayerIndex].hp})`, type: 'damage' });
                             if(defenderPlayerIndex === 0) finalDamageIndicators.p1Player = playerDamageTaken; else finalDamageIndicators.p2Player = playerDamageTaken;
                         }
                     }
@@ -911,16 +961,16 @@ export function GameBoard() {
                 }
 
                 if (currentDefenderMonster && currentDefenderMonster.hp > 0) {
-                    newLogMessages.push(`${currentDefenderMonster.title} counter-attacks!`);
+                    logsToAppend.push({ text: `${currentDefenderMonster.title} counter-attacks!`, type: defenderLogType });
                     const isCounterMagic = currentDefenderMonster.magic > currentDefenderMonster.melee;
                     const counterAttackValue = isCounterMagic ? currentDefenderMonster.magic : currentDefenderMonster.melee;
                     const counterAttackType = isCounterMagic ? "magic" : "melee";
-                    newLogMessages.push(`Counter-attack is ${counterAttackType}-based with a power of ${counterAttackValue}.`);
+                    logsToAppend.push({ text: `Counter-attack is ${counterAttackType}-based with a power of ${counterAttackValue}.`, type: 'info' });
                     
                     const attackerHpBefore = currentAttackerMonster.hp;
                     const attackerResult = applyDamage(currentAttackerMonster, counterAttackValue, counterAttackType);
                     currentAttackerMonster = attackerResult.updatedMonster;
-                    newLogMessages.push(...attackerResult.log);
+                    logsToAppend.push(...attackerResult.log);
 
                     if(attackerResult.damageDealt > 0) {
                         if (currentPlayerIndex === 0) finalDamageIndicators.p1Monster = attackerResult.damageDealt;
@@ -928,14 +978,14 @@ export function GameBoard() {
                     }
 
                     if (currentAttackerMonster.hp <= 0) {
-                        newLogMessages.push(`${currentAttackerMonster.title} is defeated in the counter-attack!`);
+                        logsToAppend.push({ text: `${currentAttackerMonster.title} is defeated in the counter-attack!`, type: 'damage' });
                          const overkillDamage = counterAttackValue - attackerHpBefore;
                         if (overkillDamage > 0) {
                              const originalPlayerHp = newPlayers[currentPlayerIndex].hp;
                              newPlayers[currentPlayerIndex].hp = Math.max(0, originalPlayerHp - overkillDamage);
                              const playerDamageTaken = originalPlayerHp - newPlayers[currentPlayerIndex].hp;
                              if (playerDamageTaken > 0) {
-                                newLogMessages.push(`Overkill! ${players[currentPlayerIndex].name} takes ${playerDamageTaken} trample damage! (HP: ${originalPlayerHp} -> ${newPlayers[currentPlayerIndex].hp})`);
+                                logsToAppend.push({ text: `Overkill! ${players[currentPlayerIndex].name} takes ${playerDamageTaken} trample damage! (HP: ${originalPlayerHp} -> ${newPlayers[currentPlayerIndex].hp})`, type: 'damage' });
                                 if(currentPlayerIndex === 0) finalDamageIndicators.p1Player = playerDamageTaken;
                                 else finalDamageIndicators.p2Player = playerDamageTaken;
                              }
@@ -955,7 +1005,7 @@ export function GameBoard() {
                 const playerDamageTaken = originalDefenderHp - newPlayers[defenderPlayerIndex].hp;
 
                 if (playerDamageTaken > 0) {
-                    newLogMessages.push(`${players[defenderPlayerIndex].name}'s HP is targeted directly for ${playerDamageTaken} ${attackType} damage! (HP: ${originalDefenderHp} -> ${newPlayers[defenderPlayerIndex].hp})`);
+                    logsToAppend.push({ text: `${players[defenderPlayerIndex].name}'s HP is targeted directly for ${playerDamageTaken} ${attackType} damage! (HP: ${originalDefenderHp} -> ${newPlayers[defenderPlayerIndex].hp})`, type: 'damage' });
                     if(defenderPlayerIndex === 0) finalDamageIndicators.p1Player = playerDamageTaken; else finalDamageIndicators.p2Player = playerDamageTaken;
                 }
             }
@@ -968,7 +1018,7 @@ export function GameBoard() {
                 players: newPlayers,
                 activeMonsterP1: finalActiveMonsterP1,
                 activeMonsterP2: finalActiveMonsterP2,
-                gameLogMessages: newLogMessages,
+                gameLogMessages: [...(prev!.gameLogMessages || []), ...logsToAppend.map(log => ({...log, id: `log-${logIdCounter++}`}))],
                 gamePhase: 'turn_resolution_phase',
                 damageIndicators: finalDamageIndicators,
             }));
@@ -980,12 +1030,16 @@ export function GameBoard() {
         }, 1000); 
     } catch (error) {
         console.error("Error in handleAttack:", error);
-        logAndSetGameState(prev => prev ? {
-            ...prev,
-            gameLogMessages: [...(prev.gameLogMessages || []), "A critical error occurred during combat."],
-            isProcessingAction: false,
-            gamePhase: 'player_action_phase'
-        } : null);
+        logAndSetGameState(prev => {
+            if(!prev) return null;
+            const newLogs = [...(prev.gameLogMessages || []), {id: `log-${logIdCounter++}`, text: "A critical error occurred during combat.", type: 'system' as LogEntryType}];
+            return prev ? {
+                ...prev,
+                gameLogMessages: newLogs,
+                isProcessingAction: false,
+                gamePhase: 'player_action_phase'
+            } : null;
+        });
     }
 };
 
@@ -1002,11 +1056,11 @@ export function GameBoard() {
         return prev;
       }
 
-
       const player = players[currentPlayerIndex];
+      const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
       const currentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
 
-      let newLogMessages = [...(prev.gameLogMessages || [])];
+      let logsToAppend: {text: string, type: LogEntryType}[] = [];
       let newPlayers = [...players] as [PlayerData, PlayerData];
       let newPlayerHand = [...player.hand];
 
@@ -1014,35 +1068,33 @@ export function GameBoard() {
       newPlayerHand = newPlayerHand.filter(c => c.id !== selectedMonsterFromHand.id);
 
       if (currentActiveMonster) {
-        newLogMessages.push(`${player.name} recalls ${currentActiveMonster.title}.`);
+        logsToAppend.push({text: `${player.name} recalls ${currentActiveMonster.title}.`, type: playerLogType});
         // Add current active monster back to hand if space, else discard
         const monsterToReturn = { ...currentActiveMonster, statusEffects: [] }; // Clear status effects on return/discard
         if (newPlayerHand.length < CARDS_IN_HAND) {
           newPlayerHand.push(monsterToReturn);
-          newLogMessages.push(`${currentActiveMonster.title} returns to hand.`);
+          logsToAppend.push({text: `${currentActiveMonster.title} returns to hand.`, type: 'info'});
         } else {
           newPlayers[currentPlayerIndex].discardPile.push(monsterToReturn);
-          newLogMessages.push(`${currentActiveMonster.title} couldn't return to a full hand and was discarded.`);
+          logsToAppend.push({text: `${currentActiveMonster.title} couldn't return to a full hand and was discarded.`, type: 'info'});
         }
       }
 
       newPlayers[currentPlayerIndex] = { ...player, hand: newPlayerHand, hasMulliganed: true }; // Swapping also counts as keeping hand
-      newLogMessages.push(`${player.name} summons ${selectedMonsterFromHand.title} to replace it!`);
+      logsToAppend.push({text: `${player.name} summons ${selectedMonsterFromHand.title} to replace it!`, type: playerLogType});
 
-
-      // Update active monster and logs
       const updatedState = {
         ...prev,
         players: newPlayers,
         [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: selectedMonsterFromHand,
-        gameLogMessages: newLogMessages,
+        gameLogMessages: [...(prev.gameLogMessages || []), ...logsToAppend.map(l => ({...l, id: `log-${logIdCounter++}`}))],
         gamePhase: 'player_action_phase' as GamePhase, // Return to action phase after swap
         isProcessingAction: true, // Temporarily set, then resolve
       };
 
         // After swap, immediately move to turn resolution
         updatedState.gamePhase = 'turn_resolution_phase';
-        updatedState.gameLogMessages.push(`${selectedMonsterFromHand.title} is now active but cannot act further this turn after swapping.`);
+        updatedState.gameLogMessages.push({id: `log-${logIdCounter++}`, text: `${selectedMonsterFromHand.title} is now active but cannot act further this turn after swapping.`, type: 'info'});
 
         setTimeout(() => {
             processTurnEnd(); // This will set isProcessingAction to false
@@ -1053,6 +1105,10 @@ export function GameBoard() {
   };
 
   const handleInitiateSwap = () => {
+    const player = gameStateRef.current?.players[gameStateRef.current.currentPlayerIndex];
+    if (!player) return;
+    const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
+
     logAndSetGameState(prev => {
       if (!prev || prev.isProcessingAction) return prev;
       const { players, currentPlayerIndex, activeMonsterP2, activeMonsterP1 } = prev;
@@ -1062,7 +1118,7 @@ export function GameBoard() {
         toast({ title: "First Turn Rule", description: "You cannot swap monsters on the first turn of the game.", variant: "destructive"});
         return prev;
       }
-      appendLog(`${prev.players[prev.currentPlayerIndex].name} is considering a monster swap. Select a monster from your hand.`);
+      appendLog(`${prev.players[prev.currentPlayerIndex].name} is considering a monster swap. Select a monster from your hand.`, playerLogType);
       const newPlayers = [...prev.players] as [PlayerData, PlayerData];
       newPlayers[prev.currentPlayerIndex] = {...newPlayers[prev.currentPlayerIndex], hasMulliganed: true };
       return { ...prev, gamePhase: 'selecting_swap_monster_phase', players: newPlayers };
@@ -1073,6 +1129,8 @@ export function GameBoard() {
     const currentBoardGameState = gameStateRef.current;
     if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
     const player = currentBoardGameState.players[currentBoardGameState.currentPlayerIndex];
+    const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
+
 
     logAndSetGameState(prev => {
       if(!prev) return null;
@@ -1080,24 +1138,30 @@ export function GameBoard() {
       newPlayers[prev.currentPlayerIndex] = { ...newPlayers[prev.currentPlayerIndex], hasMulliganed: true };
       return { ...prev, isProcessingAction: true, gamePhase: 'turn_resolution_phase', players: newPlayers }
     });
-    appendLog(`${player.name} ends their turn.`);
+    appendLog(`${player.name} ends their turn.`, playerLogType);
     setTimeout(() => {
       processTurnEnd();
     }, 500); // Short delay
   };
 
   const handleInitiateMulligan = () => {
+    const player = gameStateRef.current?.players[gameStateRef.current.currentPlayerIndex];
+    if (!player) return;
+    const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
     logAndSetGameState(prev => {
       if (!prev || prev.isProcessingAction) return prev;
-      appendLog(`${prev.players[prev.currentPlayerIndex].name} is considering a mulligan. Select ${MULLIGAN_CARD_COUNT} cards to return.`);
+      appendLog(`${prev.players[prev.currentPlayerIndex].name} is considering a mulligan. Select ${MULLIGAN_CARD_COUNT} cards to return.`, playerLogType);
       return { ...prev, gamePhase: 'mulligan_phase' };
     });
   };
 
   const handleCancelMulligan = () => {
+    const player = gameStateRef.current?.players[gameStateRef.current.currentPlayerIndex];
+    if (!player) return;
+    const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
     logAndSetGameState(prev => {
       if (!prev) return prev;
-      appendLog(`Mulligan canceled. Choose an action.`);
+      appendLog(`Mulligan canceled. Choose an action.`, playerLogType);
       return { ...prev, gamePhase: 'player_action_phase' };
     });
     setSelectedForMulligan([]);
@@ -1112,9 +1176,12 @@ export function GameBoard() {
     logAndSetGameState(prev => {
       if (!prev) return null;
       
-      let newLogMessages = [...(prev.gameLogMessages || []), `${prev.players[prev.currentPlayerIndex].name} returns ${MULLIGAN_CARD_COUNT} cards to their deck...`];
+      const player = { ...prev.players[prev.currentPlayerIndex] };
+      const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
 
-      let player = { ...prev.players[prev.currentPlayerIndex] };
+      let logsToAppend: {text: string, type: LogEntryType}[] = [
+        { text: `${player.name} returns ${MULLIGAN_CARD_COUNT} cards to their deck...`, type: playerLogType }
+      ];
       
       const cardsToReturn = player.hand.filter(c => selectedForMulligan.includes(c.id));
       const newHand = player.hand.filter(c => !selectedForMulligan.includes(c.id));
@@ -1129,12 +1196,12 @@ export function GameBoard() {
       const newPlayers = [...prev.players] as [PlayerData, PlayerData];
       newPlayers[prev.currentPlayerIndex] = player;
       
-      newLogMessages.push(`...and draws ${MULLIGAN_CARD_COUNT} new cards. Choose an action.`);
+      logsToAppend.push({ text: `...and draws ${MULLIGAN_CARD_COUNT} new cards. Choose an action.`, type: playerLogType });
       
       return {
         ...prev,
         players: newPlayers,
-        gameLogMessages: newLogMessages,
+        gameLogMessages: [...(prev.gameLogMessages || []), ...logsToAppend.map(l => ({...l, id: `log-${logIdCounter++}`}))],
         gamePhase: 'player_action_phase',
         isProcessingAction: false,
       };
@@ -1145,6 +1212,7 @@ export function GameBoard() {
 
   const handleRestartGame = () => {
     console.log("[GameBoard] Restarting game...");
+    logIdCounter = 0;
     setGameState(null); // This will trigger the useEffect to re-initialize
     hasInitialized.current = false; // Allow re-initialization
     setSelectedForMulligan([]);
@@ -1157,7 +1225,7 @@ export function GameBoard() {
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
         <p className="text-xl font-semibold">Loading Arcane Clash...</p>
         <p className="text-muted-foreground mt-2">
-          {gameState?.gameLogMessages?.slice(-1)[0] || 'Connecting to the arcane archives...'}
+          {gameState?.gameLogMessages?.slice(-1)[0]?.text || 'Connecting to the arcane archives...'}
         </p>
       </div>
     );
@@ -1317,7 +1385,7 @@ export function GameBoard() {
                 onClick={() => {
                     logAndSetGameState(prev => {
                         if (!prev) return null;
-                        const newLog = [...prev.gameLogMessages, "DEV: Forced turn end."];
+                        const newLog = [...prev.gameLogMessages, {id: `log-${logIdCounter++}`, text:"DEV: Forced turn end.", type: 'system' as LogEntryType}];
                         return {
                             ...prev,
                             gameLogMessages: newLog,

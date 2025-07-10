@@ -32,7 +32,7 @@ export interface SpellCardData extends BaseCardData {
 export type CardData = MonsterCardData | SpellCardData;
 
 export interface PlayerData {
-  id: string;
+  id: 'p1' | 'p2';
   name: string;
   hp: number;
   hand: CardData[];
@@ -63,6 +63,14 @@ export interface DamageIndicatorState {
   p2Player: number | null;
 }
 
+export type LogEntryType = 'system' | 'player1' | 'player2' | 'damage' | 'heal' | 'info';
+
+export interface GameLogEntry {
+  id: string;
+  text: string;
+  type: LogEntryType;
+}
+
 export interface GameState {
   players: [PlayerData, PlayerData];
   currentPlayerIndex: 0 | 1; // Index of the player whose turn it is to act
@@ -70,7 +78,7 @@ export interface GameState {
   activeMonsterP1?: MonsterCardData; // Monster P1 has in the arena
   activeMonsterP2?: MonsterCardData; // Monster P2 has in the arena
   winner?: PlayerData;
-  gameLogMessages: string[];
+  gameLogMessages: GameLogEntry[];
   isProcessingAction?: boolean; // To disable inputs during animations/AI calls
   isInitialMonsterEngagement: boolean; // True if no monster has been played yet, false otherwise
   damageIndicators: DamageIndicatorState;
