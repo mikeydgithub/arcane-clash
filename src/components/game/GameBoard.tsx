@@ -426,7 +426,7 @@ export function GameBoard() {
 
         logAndSetGameState(prev => ({ ...prev!, isProcessingAction: true }));
 
-        const { players, currentPlayerIndex, isInitialMonsterEngagement, activeMonsterP2 } = currentBoardGameState;
+        const { players, currentPlayerIndex, isInitialMonsterEngagement } = currentBoardGameState;
         const player = players[currentPlayerIndex];
 
         const newHand = player.hand.filter(c => c.id !== card.id);
@@ -434,7 +434,6 @@ export function GameBoard() {
         const newPlayers = [...players] as [PlayerData, PlayerData];
         newPlayers[currentPlayerIndex] = updatedPlayer;
 
-        const opponentHasMonster = !!activeMonsterP2;
         const wasFirstMonsterOfGame = isInitialMonsterEngagement;
         
         appendLog(`${player.name} summons ${card.title} to the arena!`);
@@ -449,7 +448,7 @@ export function GameBoard() {
             };
         });
 
-        // The very first monster of the game (played by P1) ends the turn.
+        // The very first monster of the game ends the turn. All subsequent summons continue the turn.
         if (wasFirstMonsterOfGame) {
             appendLog(`${card.title} cannot act this turn as it's the first monster in play.`);
             logAndSetGameState(prev => ({ ...prev!, gamePhase: 'turn_resolution_phase' }));
@@ -457,7 +456,6 @@ export function GameBoard() {
                 processTurnEnd();
             }, 1000);
         } else {
-            // This is for P2's first summon or any subsequent summon by either player.
             appendLog(`${card.title} is now active! ${player.name}, choose your next action.`);
             logAndSetGameState(prev => ({
                 ...prev!,
@@ -480,12 +478,12 @@ export function GameBoard() {
   const handlePlaySpellFromHand = (card: SpellCardData) => {
     const currentBoardGameState = gameStateRef.current;
     if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
-    const { players, currentPlayerIndex, activeMonsterP1: currentActiveP1, activeMonsterP2: currentActiveP2, isInitialMonsterEngagement } = currentBoardGameState;
+    const { players, currentPlayerIndex, activeMonsterP1: currentActiveP1, activeMonsterP2: currentActiveP2 } = currentBoardGameState;
     const player = players[currentPlayerIndex];
     const opponentActiveMonster = currentPlayerIndex === 0 ? currentActiveP2 : currentActiveP1;
 
 
-    if (isInitialMonsterEngagement || (player.turnCount === 0 && !opponentActiveMonster)) {
+    if (player.turnCount === 0 && !opponentActiveMonster) {
         toast({ title: "First Turn Restriction", description: "You cannot play spell cards on the first turn of the game.", variant: "destructive" });
         return;
     }
@@ -797,11 +795,11 @@ export function GameBoard() {
         const currentBoardGameState = gameStateRef.current;
         if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
 
-        const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2, isInitialMonsterEngagement } = currentBoardGameState;
+        const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = currentBoardGameState;
         const attackerPlayer = players[currentPlayerIndex];
         const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
 
-        if (isInitialMonsterEngagement || (attackerPlayer.turnCount === 0 && !opponentActiveMonster)) {
+        if (attackerPlayer.turnCount === 0 && !opponentActiveMonster) {
             toast({ title: "First Turn Rule", description: "The first player cannot attack on their first turn.", variant: "destructive" });
             return;
         }
@@ -830,7 +828,9 @@ export function GameBoard() {
             let currentAttackerMonster = (currentPlayerIndex === 0 ? { ...activeMonsterP1! } : { ...activeMonsterP2! });
             let currentDefenderMonster = currentPlayerIndex === 0 ? (activeMonsterP2 ? { ...activeMonsterP2 } : undefined) : (activeMonsterP1 ? { ...activeMonsterP1 } : undefined);
             const defenderPlayerIndex = 1 - currentPlayerIndex as 0 | 1;
-            let newDamageIndicators = {...initialDamageIndicatorState};
+            
+            // Local tracking for damage indicators to ensure they are set only once per combat event
+            let finalDamageIndicators: DamageIndicatorState = { ...initialDamageIndicatorState };
 
             const applyDamage = (targetMonster: MonsterCardData, damage: number, damageType: 'melee' | 'magic'): { updatedMonster: MonsterCardData; log: string[]; damageDealt: number; } => {
                 let logs: string[] = [];
@@ -887,20 +887,20 @@ export function GameBoard() {
                 newLogMessages.push(...defenderResult.log);
                 
                 if (defenderResult.damageDealt > 0) {
-                    if (defenderPlayerIndex === 0) newDamageIndicators.p1Monster = defenderResult.damageDealt;
-                    else newDamageIndicators.p2Monster = defenderResult.damageDealt;
+                    if (defenderPlayerIndex === 0) finalDamageIndicators.p1Monster = defenderResult.damageDealt;
+                    else finalDamageIndicators.p2Monster = defenderResult.damageDealt;
                 }
 
                 if (currentDefenderMonster.hp <= 0) {
                     newLogMessages.push(`${currentDefenderMonster.title} is defeated!`);
-                    const overkillDamage = Math.abs(currentDefenderMonster.hp); // hp is negative if overkill
+                    const overkillDamage = Math.abs(currentDefenderMonster.hp); // hp is <= 0
                     if (overkillDamage > 0) {
                         const originalPlayerHp = newPlayers[defenderPlayerIndex].hp;
                         newPlayers[defenderPlayerIndex].hp = Math.max(0, originalPlayerHp - overkillDamage);
                         const playerDamageTaken = originalPlayerHp - newPlayers[defenderPlayerIndex].hp;
                         if (playerDamageTaken > 0) {
                             newLogMessages.push(`Overkill! ${players[defenderPlayerIndex].name} takes ${playerDamageTaken} trample damage! (HP: ${originalPlayerHp} -> ${newPlayers[defenderPlayerIndex].hp})`);
-                            if(defenderPlayerIndex === 0) newDamageIndicators.p1Player = playerDamageTaken; else newDamageIndicators.p2Player = playerDamageTaken;
+                            if(defenderPlayerIndex === 0) finalDamageIndicators.p1Player = playerDamageTaken; else finalDamageIndicators.p2Player = playerDamageTaken;
                         }
                     }
 
@@ -921,8 +921,8 @@ export function GameBoard() {
                     newLogMessages.push(...attackerResult.log);
 
                     if(attackerResult.damageDealt > 0) {
-                        if (currentPlayerIndex === 0) newDamageIndicators.p1Monster = (newDamageIndicators.p1Monster || 0) + attackerResult.damageDealt;
-                        else newDamageIndicators.p2Monster = (newDamageIndicators.p2Monster || 0) + attackerResult.damageDealt;
+                        if (currentPlayerIndex === 0) finalDamageIndicators.p1Monster = (finalDamageIndicators.p1Monster || 0) + attackerResult.damageDealt;
+                        else finalDamageIndicators.p2Monster = (finalDamageIndicators.p2Monster || 0) + attackerResult.damageDealt;
                     }
 
                     if (currentAttackerMonster.hp <= 0) {
@@ -934,7 +934,8 @@ export function GameBoard() {
                              const playerDamageTaken = originalPlayerHp - newPlayers[currentPlayerIndex].hp;
                              if (playerDamageTaken > 0) {
                                 newLogMessages.push(`Overkill! ${players[currentPlayerIndex].name} takes ${playerDamageTaken} trample damage! (HP: ${originalPlayerHp} -> ${newPlayers[currentPlayerIndex].hp})`);
-                                if(currentPlayerIndex === 0) newDamageIndicators.p1Player = playerDamageTaken; else newDamageIndicators.p2Player = playerDamageTaken;
+                                if(currentPlayerIndex === 0) finalDamageIndicators.p1Player = (finalDamageIndicators.p1Player || 0) + playerDamageTaken;
+                                else finalDamageIndicators.p2Player = (finalDamageIndicators.p2Player || 0) + playerDamageTaken;
                              }
                         }
                         const defeatedCard = { ...currentAttackerMonster, hp: 0, statusEffects: [] };
@@ -953,7 +954,7 @@ export function GameBoard() {
 
                 if (playerDamageTaken > 0) {
                     newLogMessages.push(`${players[defenderPlayerIndex].name}'s HP is targeted directly for ${playerDamageTaken} ${attackType} damage! (HP: ${originalDefenderHp} -> ${newPlayers[defenderPlayerIndex].hp})`);
-                    if(defenderPlayerIndex === 0) newDamageIndicators.p1Player = playerDamageTaken; else newDamageIndicators.p2Player = playerDamageTaken;
+                    if(defenderPlayerIndex === 0) finalDamageIndicators.p1Player = playerDamageTaken; else finalDamageIndicators.p2Player = playerDamageTaken;
                 }
             }
 
@@ -967,12 +968,10 @@ export function GameBoard() {
                 activeMonsterP2: finalActiveMonsterP2,
                 gameLogMessages: newLogMessages,
                 gamePhase: 'turn_resolution_phase',
-                damageIndicators: newDamageIndicators,
+                damageIndicators: finalDamageIndicators,
             }));
             
             setTimeout(() => {
-                // Clear damage indicators after animation
-                logAndSetGameState(prev => prev ? { ...prev, damageIndicators: initialDamageIndicatorState } : null);
                 processTurnEnd();
             }, 1500);
 
@@ -993,10 +992,10 @@ export function GameBoard() {
   const handleSwapMonster = (selectedMonsterFromHand: MonsterCardData) => {
     logAndSetGameState(prev => {
       if (!prev || prev.isProcessingAction) return prev;
-      const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2, isInitialMonsterEngagement } = prev;
+      const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = prev;
       const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
 
-      if (isInitialMonsterEngagement || (players[currentPlayerIndex].turnCount === 0 && !opponentActiveMonster)) {
+      if (players[currentPlayerIndex].turnCount === 0 && !opponentActiveMonster) {
         toast({ title: "First Turn Rule", description: "The first player cannot swap monsters on their first turn.", variant: "destructive"});
         return prev;
       }
@@ -1054,10 +1053,10 @@ export function GameBoard() {
   const handleInitiateSwap = () => {
     logAndSetGameState(prev => {
       if (!prev || prev.isProcessingAction) return prev;
-      const { players, currentPlayerIndex, activeMonsterP2, activeMonsterP1, isInitialMonsterEngagement } = prev;
+      const { players, currentPlayerIndex, activeMonsterP2, activeMonsterP1 } = prev;
       const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
 
-      if (isInitialMonsterEngagement || (players[currentPlayerIndex].turnCount === 0 && !opponentActiveMonster)) {
+      if (players[currentPlayerIndex].turnCount === 0 && !opponentActiveMonster) {
         toast({ title: "First Turn Rule", description: "You cannot swap monsters on the first turn of the game.", variant: "destructive"});
         return prev;
       }
@@ -1289,7 +1288,6 @@ export function GameBoard() {
             playerHandFull={currentPlayer.hand.length >= CARDS_IN_HAND}
             spellsPlayedThisTurn={currentPlayer.spellsPlayedThisTurn}
             maxSpellsPerTurn={SPELLS_PER_TURN_LIMIT}
-            isFirstTurn={currentPlayer.turnCount === 0 && gameState.isInitialMonsterEngagement}
             isEffectivelyFirstTurn={currentPlayer.turnCount === 0 && !opponentActiveMonster}
             gamePhase={gamePhase}
             onInitiateMulligan={handleInitiateMulligan}
@@ -1346,3 +1344,5 @@ export function GameBoard() {
     </div>
   );
 }
+
+    

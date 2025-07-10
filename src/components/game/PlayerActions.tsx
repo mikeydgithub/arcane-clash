@@ -19,7 +19,6 @@ interface PlayerActionsProps {
   playerHandFull: boolean;
   spellsPlayedThisTurn: number;
   maxSpellsPerTurn: number;
-  isFirstTurn: boolean; // First turn of the game overall
   isEffectivelyFirstTurn: boolean; // Is it this player's turn 0?
   gamePhase: GamePhase;
   onInitiateMulligan: () => void;
@@ -40,7 +39,6 @@ export function PlayerActions({
   playerHandFull,
   spellsPlayedThisTurn,
   maxSpellsPerTurn,
-  isFirstTurn,
   isEffectivelyFirstTurn,
   gamePhase,
   onInitiateMulligan,
@@ -121,7 +119,7 @@ export function PlayerActions({
         </Button>
       </div>
 
-      {(!activeMonster && !canPlayMonsterFromHand && (isFirstTurn || !canPlaySpellFromHand || !canStillPlaySpellThisTurn)) && (
+      {(!activeMonster && !canPlayMonsterFromHand && (!canPlaySpellFromHand || !canStillPlaySpellThisTurn)) && (
          <p className="text-xs text-muted-foreground italic mt-2 text-center">
             No direct actions available. Consider ending turn.
         </p>
@@ -149,7 +147,7 @@ export function PlayerActions({
         </p>
       )}
 
-       {activeMonster && !canPlayMonsterFromHand && (isFirstTurn || !canPlaySpellFromHand || !canStillPlaySpellThisTurn) && !canAttack && !canSwap && (
+       {activeMonster && !canPlayMonsterFromHand && (!canPlaySpellFromHand || !canStillPlaySpellThisTurn) && !canAttack && !canSwap && (
          <p className="text-xs text-muted-foreground italic mt-2 text-center">
             No further actions with current hand or active monster. End turn or summon if possible.
         </p>
@@ -162,3 +160,5 @@ export function PlayerActions({
     </div>
   );
 }
+
+    

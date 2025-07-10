@@ -185,8 +185,9 @@ export function BattleArena({
               <motion.div
                 key={`p1-active-${player1Card.id}`}
                 initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1, transition: { duration: 0.5 } }}
+                animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
+                transition={{ duration: 0.5 }}
               >
                 <div className={cn(isCombatPhase && 'box-left')}>
                   <CardView card={player1Card} inBattleArena={true} />
@@ -204,8 +205,9 @@ export function BattleArena({
               <motion.div
                 key={`p2-active-${player2Card.id}`}
                 initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1, transition: { duration: 0.5 } }}
+                animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
+                transition={{ duration: 0.5 }}
               >
                 <div className={cn(isCombatPhase && 'box-right')}>
                   <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} />
@@ -242,3 +244,5 @@ export function BattleArena({
     </div>
   );
 }
+
+    

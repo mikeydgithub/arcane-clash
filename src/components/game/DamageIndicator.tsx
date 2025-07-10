@@ -12,7 +12,7 @@ export function DamageIndicator({ damage }: DamageIndicatorProps) {
     <AnimatePresence>
       {damage !== null && damage > 0 && (
         <motion.div
-          key={`damage-${damage}-${Date.now()}`} // Use a unique key to re-trigger animation only when damage changes.
+          key={`damage-${damage}-${Date.now()}`} // Re-trigger animation even if damage value is the same for subsequent hits.
           initial={{ opacity: 1, y: 0, scale: 0.8 }}
           animate={{ opacity: 0, y: -60, scale: 1.2 }}
           exit={{ opacity: 0 }}
@@ -33,3 +33,5 @@ export function DamageIndicator({ damage }: DamageIndicatorProps) {
     </AnimatePresence>
   );
 }
+
+    
