@@ -15,7 +15,7 @@ interface PlayerStatusDisplayProps {
 }
 
 export function PlayerStatusDisplay({ player, isCurrentPlayer, isOpponent = false }: PlayerStatusDisplayProps) {
-  const MAX_HP = 100; // Initial HP
+  const MAX_HP = 30; // Initial HP
 
   return (
     <Card className={cn(

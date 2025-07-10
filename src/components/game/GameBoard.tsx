@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 
-const INITIAL_PLAYER_HP = 100;
+const INITIAL_PLAYER_HP = 30;
 const CARDS_IN_HAND = 5;
 const MAX_MONSTERS_PER_DECK = 13;
 const MAX_SPELLS_PER_DECK = 12;
@@ -458,11 +458,13 @@ export function GameBoard() {
   const handlePlaySpellFromHand = (card: SpellCardData) => {
     const currentBoardGameState = gameStateRef.current;
     if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
-    const { players, currentPlayerIndex } = currentBoardGameState;
+    const { players, currentPlayerIndex, activeMonsterP1: currentActiveP1, activeMonsterP2: currentActiveP2 } = currentBoardGameState;
     const player = players[currentPlayerIndex];
+    const opponentActiveMonster = currentPlayerIndex === 0 ? currentActiveP2 : currentActiveP1;
 
-    if (player.turnCount === 0) {
-        toast({ title: "First Turn Restriction", description: "You cannot play spell cards on your first turn.", variant: "destructive" });
+
+    if (player.turnCount === 0 && !opponentActiveMonster) {
+        toast({ title: "First Turn Restriction", description: "You cannot play spell cards on the first turn of the game.", variant: "destructive" });
         return;
     }
 
@@ -751,27 +753,24 @@ export function GameBoard() {
     const currentBoardGameState = gameStateRef.current;
     if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
 
-    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2, isInitialMonsterEngagement } = currentBoardGameState;
+    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = currentBoardGameState;
     const attackerPlayer = players[currentPlayerIndex];
-    const defenderPlayerIndex = 1 - currentPlayerIndex as 0 | 1;
-    const defenderPlayer = players[defenderPlayerIndex];
+    const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
 
-    const attackerMonster = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
-    const defenderMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
 
-    if (!attackerMonster) {
+    if (!attackerPlayer) {
       toast({ title: "No Attacker", description: "You need an active monster to attack.", variant: "destructive" });
       return;
     }
     
-    // The player who goes first (turnCount 0 and no opponent monster) cannot attack.
-    if (attackerPlayer.turnCount === 0 && !defenderMonster) {
+    if (attackerPlayer.turnCount === 0 && !opponentActiveMonster) {
         toast({ title: "First Turn Rule", description: "The first player cannot attack on their first turn.", variant: "destructive"});
         return;
     }
+    const attackerMonster = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
 
-     if (attackerMonster.hp <=0) { // This check is mostly for safety, defeated monsters should be removed.
-        toast({ title: "Cannot Attack", description: `${attackerMonster.title} is defeated and cannot attack.`, variant: "destructive"});
+     if (!attackerMonster || attackerMonster.hp <=0) { // This check is mostly for safety, defeated monsters should be removed.
+        toast({ title: "Cannot Attack", description: `Your active monster is defeated and cannot attack.`, variant: "destructive"});
         return;
     }
 
@@ -783,8 +782,6 @@ export function GameBoard() {
     });
     
 
-    // This block will be executed with a fresh state reference from the GameBoard's state update
-    // We can't rely on variables from before the state update, so we get them again from gameStateRef
     setTimeout(() => {
         const freshState = gameStateRef.current;
         if (!freshState) return;
@@ -794,12 +791,10 @@ export function GameBoard() {
         let newLogMessages: string[] = [...(freshState.gameLogMessages || [])];
         let newPlayers = [...players] as [PlayerData, PlayerData];
         
-        let attackerMonster = (currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2)!; // It must exist to get here
-        let defenderMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
+        let currentAttackerMonster = (currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2)!;
+        let currentDefenderMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
         const defenderPlayerIndex = 1 - currentPlayerIndex as 0 | 1;
 
-
-        // Helper function to process damage against a monster
         const applyDamage = (
             targetMonster: MonsterCardData,
             damage: number,
@@ -812,7 +807,6 @@ export function GameBoard() {
             let logs: string[] = [];
             let remainingDamage = damage;
             let totalDamageDealt = 0;
-            // IMPORTANT: Create a deep copy to avoid direct mutation issues
             let monster = JSON.parse(JSON.stringify(targetMonster));
             
             const shieldIndex = (monster.statusEffects || []).findIndex(e => e.type === 'shield');
@@ -830,7 +824,7 @@ export function GameBoard() {
                     monster.statusEffects.splice(shieldIndex, 1);
                 } else {
                     shield.value -= damageToShield;
-                    monster.statusEffects[shieldIndex] = shield;
+                    monster.statusEffects[shieldIndex] = shield; // <<< THIS LINE IS THE FIX
                     logs.push(`The shield has ${shield.value} health remaining.`);
                 }
             }
@@ -851,88 +845,88 @@ export function GameBoard() {
         };
 
 
-        newLogMessages.push(`${players[currentPlayerIndex].name}'s ${attackerMonster.title} attacks!`);
+        newLogMessages.push(`${players[currentPlayerIndex].name}'s ${currentAttackerMonster.title} attacks!`);
 
-        if (defenderMonster && defenderMonster.hp > 0) {
-          // Monster vs Monster combat
-          newLogMessages.push(`${attackerMonster.title} clashes with ${defenderMonster.title}!`);
+        if (currentDefenderMonster && currentDefenderMonster.hp > 0) {
+          newLogMessages.push(`${currentAttackerMonster.title} clashes with ${currentDefenderMonster.title}!`);
 
-          // --- Attacker's damage to Defender Monster ---
-          const isMagicAttack = attackerMonster.magic > attackerMonster.melee;
-          const attackValue = isMagicAttack ? attackerMonster.magic : attackerMonster.melee;
+          const isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
+          const attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
           const attackType = isMagicAttack ? "magic" : "melee";
+          newLogMessages.push(`Attack is ${attackType}-based with a power of ${attackValue}.`);
 
-          const defenderResult = applyDamage(defenderMonster, attackValue, attackType);
-          defenderMonster = defenderResult.updatedMonster;
+
+          const defenderResult = applyDamage(currentDefenderMonster, attackValue, attackType);
+          currentDefenderMonster = defenderResult.updatedMonster;
           newLogMessages.push(...defenderResult.log);
           
-          if (defenderMonster.hp <= 0) {
-            newLogMessages.push(`${defenderMonster.title} is defeated!`);
-            const defeatedCard = {...defenderMonster, hp:0, statusEffects: [] }; // Reset for discard pile
+          if (currentDefenderMonster.hp <= 0) {
+            newLogMessages.push(`${currentDefenderMonster.title} is defeated!`);
+            const defeatedCard = {...currentDefenderMonster, hp:0, statusEffects: [] }; 
             newPlayers[defenderPlayerIndex].discardPile.push(defeatedCard);
-            defenderMonster = undefined; // Defender monster is gone
+            currentDefenderMonster = undefined;
           }
 
-          // --- Defender Monster's counter-attack (if still alive) ---
-          if (defenderMonster && defenderMonster.hp > 0) {
-            newLogMessages.push(`${defenderMonster.title} counter-attacks!`);
-            const isCounterMagic = defenderMonster.magic > defenderMonster.melee;
-            const counterAttackValue = isCounterMagic ? defenderMonster.magic : defenderMonster.melee;
+          if (currentDefenderMonster && currentDefenderMonster.hp > 0) {
+            newLogMessages.push(`${currentDefenderMonster.title} counter-attacks!`);
+            const isCounterMagic = currentDefenderMonster.magic > currentDefenderMonster.melee;
+            const counterAttackValue = isCounterMagic ? currentDefenderMonster.magic : currentDefenderMonster.melee;
             const counterAttackType = isCounterMagic ? "magic" : "melee";
+            newLogMessages.push(`Counter-attack is ${counterAttackType}-based with a power of ${counterAttackValue}.`);
 
-            const attackerResult = applyDamage(attackerMonster, counterAttackValue, counterAttackType);
-            attackerMonster = attackerResult.updatedMonster;
+
+            const attackerResult = applyDamage(currentAttackerMonster, counterAttackValue, counterAttackType);
+            currentAttackerMonster = attackerResult.updatedMonster;
             newLogMessages.push(...attackerResult.log);
 
-            if (attackerMonster.hp <= 0) {
-              newLogMessages.push(`${attackerMonster.title} is defeated in the counter-attack!`);
-              const defeatedCard = {...attackerMonster, hp:0, statusEffects: [] };
+            if (currentAttackerMonster.hp <= 0) {
+              newLogMessages.push(`${currentAttackerMonster.title} is defeated in the counter-attack!`);
+              const defeatedCard = {...currentAttackerMonster, hp:0, statusEffects: [] };
               newPlayers[currentPlayerIndex].discardPile.push(defeatedCard);
-              attackerMonster = undefined!; // Attacker is gone
+              currentAttackerMonster = undefined!;
             }
           }
         } else {
-          // Attacking player directly
-          const isMagicAttack = attackerMonster.magic > attackerMonster.melee;
-          const attackValue = isMagicAttack ? attackerMonster.magic : attackerMonster.melee;
+          const isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
+          const attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
           const attackType = isMagicAttack ? "magic" : "melee";
           const originalDefenderHp = newPlayers[defenderPlayerIndex].hp;
 
           newPlayers[defenderPlayerIndex].hp = Math.max(0, newPlayers[defenderPlayerIndex].hp - attackValue);
-          newLogMessages.push(`${attackerMonster.title} attacks ${players[defenderPlayerIndex].name} directly for ${attackValue} ${attackType} damage! (HP: ${originalDefenderHp} -> ${newPlayers[defenderPlayerIndex].hp})`);
+          newLogMessages.push(`${currentAttackerMonster.title} attacks ${players[defenderPlayerIndex].name} directly for ${attackValue} ${attackType} damage! (HP: ${originalDefenderHp} -> ${newPlayers[defenderPlayerIndex].hp})`);
         }
 
-        // Final state update based on combat results
-        const finalActiveMonsterP1 = currentPlayerIndex === 0 ? attackerMonster : defenderMonster;
-        const finalActiveMonsterP2 = currentPlayerIndex === 1 ? attackerMonster : defenderMonster;
+        const finalActiveMonsterP1 = currentPlayerIndex === 0 ? currentAttackerMonster : currentDefenderMonster;
+        const finalActiveMonsterP2 = currentPlayerIndex === 1 ? currentAttackerMonster : currentDefenderMonster;
 
         logAndSetGameState(prev => ({
           ...prev!,
           players: newPlayers,
-          activeMonsterP1: finalActiveMonsterP1 ? { ...finalActiveMonsterP1 } : undefined,
-          activeMonsterP2: finalActiveMonsterP2 ? { ...finalActiveMonsterP2 } : undefined,
+          activeMonsterP1: finalActiveMonsterP1,
+          activeMonsterP2: finalActiveMonsterP2,
           gameLogMessages: newLogMessages,
-          gamePhase: 'turn_resolution_phase', // Proceed to resolve turn
+          gamePhase: 'turn_resolution_phase',
         }));
 
         setTimeout(() => {
           processTurnEnd();
-        }, 1500); // Delay for clash animation and reading logs
-    }, 100); // Small delay to allow state to update before reading it
+        }, 1500);
+    }, 100);
   };
 
 
   const handleSwapMonster = (selectedMonsterFromHand: MonsterCardData) => {
     logAndSetGameState(prev => {
       if (!prev || prev.isProcessingAction) return prev;
-       // The player who goes first (turnCount 0 and no opponent monster) cannot swap.
-      if (prev.players[prev.currentPlayerIndex].turnCount === 0 && !(prev.currentPlayerIndex === 0 ? prev.activeMonsterP2 : prev.activeMonsterP1)) {
+      const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = prev;
+      const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
+
+      if (players[currentPlayerIndex].turnCount === 0 && !opponentActiveMonster) {
         toast({ title: "First Turn Rule", description: "The first player cannot swap monsters on their first turn.", variant: "destructive"});
         return prev;
       }
 
 
-      const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = prev;
       const player = players[currentPlayerIndex];
       const currentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP1 : activeMonsterP2;
 
@@ -1171,6 +1165,7 @@ export function GameBoard() {
                 currentPlayerTurnCount={players[0].turnCount}
                 isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 0}
                 selectedCardIds={selectedForMulligan}
+                opponentActiveMonster={activeMonsterP2}
             />
         </div>
 
@@ -1199,6 +1194,7 @@ export function GameBoard() {
                 currentPlayerTurnCount={players[1].turnCount}
                 isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 1}
                 selectedCardIds={selectedForMulligan}
+                opponentActiveMonster={activeMonsterP1}
             />
         </div>
       </div>
