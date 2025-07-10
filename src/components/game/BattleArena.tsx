@@ -43,6 +43,8 @@ export function BattleArena({
   const [clashTextVisible, setClashTextVisible] = useState(false);
   const hideClashTextTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const isCombatPhase = gamePhase === 'combat_phase';
+
   useEffect(() => {
     if (showClashAnimation && player1Card && player2Card) {
       setClashTextVisible(true);
@@ -66,10 +68,8 @@ export function BattleArena({
     if (entriesToAnimateRef.current.length > 0) {
       const nextEntry = entriesToAnimateRef.current.shift();
       if (nextEntry) {
-        console.log('[BattleArena] Animating next entry from queue:', nextEntry.length > 70 ? nextEntry.substring(0,70) + "..." : nextEntry);
         setDisplayedLogEntries(prev => {
             if (prev.length > 0 && prev[prev.length -1] === nextEntry) {
-                console.warn(`[BattleArena] Prevented adding duplicate log entry: ${nextEntry.substring(0,30)}...`);
                 return prev;
             }
             return [...prev, nextEntry];
@@ -79,22 +79,17 @@ export function BattleArena({
       if (entriesToAnimateRef.current.length > 0) {
         animationTimeoutRef.current = setTimeout(animateNextEntry, 300);
       } else {
-        console.log('[BattleArena] Animation queue empty.');
         animationTimeoutRef.current = null;
       }
     } else {
-      console.log('[BattleArena] animateNextEntry called but queue is empty.');
       animationTimeoutRef.current = null;
     }
   };
 
   useEffect(() => {
-    console.log(`[BattleArena] Log effect triggered. gameLogMessages length: ${gameLogMessages.length}, displayedLogEntries length: ${displayedLogEntries.length}, gamePhase: ${gamePhase}`);
-
     if (
       (gamePhase === 'initial' || gamePhase === 'loading_art' || gamePhase === 'coin_flip_animation')
     ) {
-      console.log('[BattleArena] Initial/reset phase detected. Syncing displayedLogEntries.');
       if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
       entriesToAnimateRef.current = [];
@@ -103,7 +98,6 @@ export function BattleArena({
     }
 
     if (gameLogMessages.length < displayedLogEntries.length) {
-        console.log('[BattleArena] gameLogMessages shorter than displayed. Resetting display and queue.');
         if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
         animationTimeoutRef.current = null;
         entriesToAnimateRef.current = [];
@@ -114,23 +108,16 @@ export function BattleArena({
     const newEntriesToPotentiallyQueue = gameLogMessages.slice(displayedLogEntries.length);
 
     if (newEntriesToPotentiallyQueue.length > 0) {
-        console.log('[BattleArena] New entries to potentially queue:', newEntriesToPotentiallyQueue);
         entriesToAnimateRef.current = [...newEntriesToPotentiallyQueue];
 
         if (!animationTimeoutRef.current) {
-            console.log('[BattleArena] Starting animation chain for queue of length:', entriesToAnimateRef.current.length);
             animateNextEntry();
-        } else {
-            console.log('[BattleArena] Animation already in progress. Queue ref updated. Current queue length:', entriesToAnimateRef.current.length);
         }
     } else if (gameLogMessages.length === displayedLogEntries.length && JSON.stringify(gameLogMessages) !== JSON.stringify(displayedLogEntries)) {
-        console.warn('[BattleArena] Log content mismatch at same length. Re-syncing display and queue.');
         if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
         animationTimeoutRef.current = null;
         setDisplayedLogEntries([...gameLogMessages]);
         entriesToAnimateRef.current = [];
-    } else {
-        console.log('[BattleArena] No new log entries to animate, or display is already in sync.');
     }
 
   }, [gameLogMessages, gamePhase]);
@@ -170,8 +157,6 @@ export function BattleArena({
     );
   }
 
-  const isCombatPhase = gamePhase === 'combat_phase';
-
   return (
     <div className="flex-grow flex flex-col justify-center items-center relative p-1 md:p-2 min-h-0 w-full h-full">
       <AnimatePresence>
@@ -196,7 +181,7 @@ export function BattleArena({
               <motion.div
                 key={`p1-active-${player1Card.id}`}
                 initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1, transition: { duration: 0.5 } }}
+                animate={isCombatPhase ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1, transition: { duration: 0.5 } }}
                 exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
                 className={cn(isCombatPhase && 'box-left')}
                 style={{ transformOrigin: 'center top' }}
@@ -214,7 +199,7 @@ export function BattleArena({
               <motion.div
                 key={`p2-active-${player2Card.id}`}
                 initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1, transition: { duration: 0.5 } }}
+                animate={isCombatPhase ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1, transition: { duration: 0.5 } }}
                 exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
                 className={cn(isCombatPhase && 'box-right')}
                 style={{ transformOrigin: 'center top' }}
