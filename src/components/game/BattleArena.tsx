@@ -140,18 +140,18 @@ export function BattleArena({
   const getLogTextStyle = (type: GameLogEntry['type']) => {
     switch (type) {
         case 'player1':
-            return 'text-primary';
+            return 'text-primary-foreground/90 font-semibold';
         case 'player2':
-            return 'text-accent';
+            return 'text-accent-foreground/90 font-semibold';
         case 'damage':
-            return 'text-destructive';
+            return 'text-destructive font-bold';
         case 'heal':
-            return 'text-green-400';
+            return 'text-emerald-400 font-semibold';
         case 'info':
-            return 'text-sky-300';
+            return 'text-cyan-400';
         case 'system':
         default:
-            return 'text-muted-foreground';
+            return 'text-muted-foreground italic';
     }
   };
 
@@ -206,44 +206,38 @@ export function BattleArena({
       </AnimatePresence>
       <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
 
-        <div className="relative w-1/2 flex justify-center items-center h-full">
+        <motion.div
+            key={player1Card ? `p1-active-${player1Card.id}`: 'p1-empty'}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
+            transition={{ duration: 0.5 }}
+            className="relative w-1/2 flex justify-center items-center h-full"
+          >
           <DamageIndicator damage={damageIndicators.p1Monster} />
-          <AnimatePresence>
             {player1Card && (
-              <motion.div
-                key={`p1-active-${player1Card.id}`}
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-                transition={{ duration: 0.5 }}
-              >
                 <div className={cn(isCombatPhase && 'box-left')}>
                   <CardView card={player1Card} inBattleArena={true} />
                 </div>
-              </motion.div>
             )}
-          </AnimatePresence>
-        </div>
+        </motion.div>
 
 
-        <div className="relative w-1/2 flex justify-center items-center h-full">
+        <motion.div
+            key={player2Card ? `p2-active-${player2Card.id}`: 'p2-empty'}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
+            transition={{ duration: 0.5 }}
+            className="relative w-1/2 flex justify-center items-center h-full"
+          >
           <DamageIndicator damage={damageIndicators.p2Monster} />
-          <AnimatePresence>
             {player2Card && (
-              <motion.div
-                key={`p2-active-${player2Card.id}`}
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-                transition={{ duration: 0.5 }}
-              >
                 <div className={cn(isCombatPhase && 'box-right')}>
                   <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} />
                 </div>
-              </motion.div>
             )}
-          </AnimatePresence>
-        </div>
+        </motion.div>
       </div>
 
 
