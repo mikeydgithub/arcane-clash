@@ -139,7 +139,7 @@ export function CardView({
   const cardElementInner = (
     <MotionCard
       className={cn(
-        "flex flex-col overflow-hidden shadow-xl relative", // Added relative positioning
+        "flex flex-col overflow-visible shadow-xl relative", // overflow-visible to allow icons to hang off
         baseCardSize,
         cardHoverEffect,
         isSelected && !inBattleArena ? "ring-2 ring-accent" : "",
@@ -227,8 +227,8 @@ export function CardView({
 
       <div className="mt-auto flex-shrink-0 min-h-[3rem]">
         {inBattleArena && isMonster && statusEffects.length > 0 && (
-            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-full px-1 z-10">
-                <div className="flex items-center justify-center space-x-1 bg-card/50 backdrop-blur-sm p-1 rounded-md">
+            <div className="absolute left-1/2 -translate-x-1/2 w-full px-1 z-20" style={{bottom: '-14px'}}>
+                <div className="flex items-center justify-center space-x-1 p-1">
                     <AnimatePresence>
                         {statusEffects.map(effect => (
                             <StatusEffectIcon key={effect.id} effect={effect} />
