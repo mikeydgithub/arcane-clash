@@ -181,12 +181,12 @@ export function BattleArena({
               <motion.div
                 key={`p1-active-${player1Card.id}`}
                 initial={{ opacity: 0, scale: 0.5 }}
-                animate={isCombatPhase ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1, transition: { duration: 0.5 } }}
+                animate={{ opacity: 1, scale: 1, transition: { duration: 0.5 } }}
                 exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-                className={cn(isCombatPhase && 'box-left')}
-                style={{ transformOrigin: 'center top' }}
               >
-                <CardView card={player1Card} inBattleArena={true} />
+                <div className={cn(isCombatPhase && 'box-left')}>
+                  <CardView card={player1Card} inBattleArena={true} />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -199,12 +199,12 @@ export function BattleArena({
               <motion.div
                 key={`p2-active-${player2Card.id}`}
                 initial={{ opacity: 0, scale: 0.5 }}
-                animate={isCombatPhase ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1, transition: { duration: 0.5 } }}
+                animate={{ opacity: 1, scale: 1, transition: { duration: 0.5 } }}
                 exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-                className={cn(isCombatPhase && 'box-right')}
-                style={{ transformOrigin: 'center top' }}
               >
-                <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} />
+                <div className={cn(isCombatPhase && 'box-right')}>
+                  <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
