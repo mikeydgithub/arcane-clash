@@ -204,7 +204,7 @@ export function BattleArena({
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className={cn(isCombatPhase && 'box-right')}
+                className={cn(isCombatPhase && 'box-left')}
                 style={{ transformOrigin: 'center top' }}
               >
                 <CardView card={player1Card} inBattleArena={true} />
@@ -223,7 +223,7 @@ export function BattleArena({
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className={cn(isCombatPhase && 'box-left')}
+                className={cn(isCombatPhase && 'box-right')}
                 style={{ transformOrigin: 'center top' }}
               >
                 <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} />
