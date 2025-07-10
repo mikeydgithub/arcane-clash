@@ -684,6 +684,15 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
+                    case 'Silence':
+                        if (opponentPlayersMonsterRef) {
+                            const newEffect: StatusEffect = { id: `silence-${Date.now()}`, type: 'silence', duration: 3, value: 0 }; // Duration is 2 player turns, so 3 half-turns
+                            opponentPlayersMonsterRef.statusEffects = [...(opponentPlayersMonsterRef.statusEffects || []), newEffect];
+                            logsToAppend.push({text: `${actingPlayer.name} silences ${opponentPlayersMonsterRef.title}! It cannot use abilities for 2 turns.`, type: 'info'});
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                            spellEffectApplied = true;
+                        }
+                        break;
                     case 'Swiftness Aura':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 3);
