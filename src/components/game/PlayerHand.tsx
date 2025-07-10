@@ -15,7 +15,8 @@ interface PlayerHandProps {
   canPlayMonster?: boolean; 
   currentPhase: GamePhase; 
   spellsPlayedThisTurn: number;
-  currentPlayerTurnCount: number; // Added to check first turn rule
+  isInitialEngagement: boolean;
+  opponentActiveMonster?: MonsterCardData;
   isMulliganPhase?: boolean;
   selectedCardIds?: string[];
 }
@@ -28,7 +29,8 @@ export function PlayerHand({
   canPlayMonster = true,
   currentPhase,
   spellsPlayedThisTurn,
-  currentPlayerTurnCount,
+  isInitialEngagement,
+  opponentActiveMonster,
   isMulliganPhase = false,
   selectedCardIds = [],
 }: PlayerHandProps) {
@@ -61,8 +63,8 @@ export function PlayerHand({
             if (card.cardType === 'Monster' && canPlayMonster) {
               cardIsActuallyPlayable = true;
             } else if (card.cardType === 'Spell') {
-              cardIsActuallyPlayable = currentPlayerTurnCount > 0 &&
-                                     (spellsPlayedThisTurn === undefined || spellsPlayedThisTurn < SPELLS_PER_TURN_LIMIT);
+              const isFirstTurnOfGame = isInitialEngagement || !opponentActiveMonster;
+              cardIsActuallyPlayable = !isFirstTurnOfGame && (spellsPlayedThisTurn < SPELLS_PER_TURN_LIMIT);
             }
           }
         }

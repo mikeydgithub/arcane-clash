@@ -7,22 +7,25 @@ import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { Heart, ShieldCheck } from 'lucide-react';
+import { DamageIndicator } from './DamageIndicator';
 
 interface PlayerStatusDisplayProps {
   player: PlayerData;
   isCurrentPlayer: boolean;
   isOpponent?: boolean;
+  damage: number | null;
 }
 
-export function PlayerStatusDisplay({ player, isCurrentPlayer, isOpponent = false }: PlayerStatusDisplayProps) {
+export function PlayerStatusDisplay({ player, isCurrentPlayer, isOpponent = false, damage }: PlayerStatusDisplayProps) {
   const MAX_HP = 30; // Initial HP
 
   return (
     <Card className={cn(
-      "w-full md:w-72 shadow-lg transition-all duration-300",
+      "relative w-full md:w-72 shadow-lg transition-all duration-300", // Added relative positioning
       isCurrentPlayer ? "border-accent ring-2 ring-accent" : "border-transparent",
       isOpponent ? "bg-card/70" : "bg-card"
     )}>
+      <DamageIndicator damage={damage} />
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">

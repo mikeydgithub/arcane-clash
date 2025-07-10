@@ -1,12 +1,13 @@
 
 'use client';
 
-import type { CardData, MonsterCardData } from '@/types';
+import type { CardData, MonsterCardData, DamageIndicatorState } from '@/types';
 import { CardView } from './CardView';
 import { CoinFlipAnimation } from './CoinFlipAnimation';
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { DamageIndicator } from './DamageIndicator';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -18,6 +19,7 @@ interface BattleArenaProps {
   showClashAnimation?: boolean;
   gameLogMessages: string[];
   gamePhase: string;
+  damageIndicators: DamageIndicatorState;
 
   onCoinFlipAnimationComplete?: () => void;
   winningPlayerNameForCoinFlip?: string;
@@ -31,6 +33,7 @@ export function BattleArena({
   showClashAnimation,
   gameLogMessages,
   gamePhase,
+  damageIndicators,
   onCoinFlipAnimationComplete,
   winningPlayerNameForCoinFlip,
 }: BattleArenaProps) {
@@ -175,7 +178,8 @@ export function BattleArena({
       </AnimatePresence>
       <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
 
-        <div className="w-1/2 flex justify-center items-center h-full">
+        <div className="relative w-1/2 flex justify-center items-center h-full">
+          <DamageIndicator damage={damageIndicators.p1Monster} />
           <AnimatePresence>
             {player1Card && (
               <motion.div
@@ -193,7 +197,8 @@ export function BattleArena({
         </div>
 
 
-        <div className="w-1/2 flex justify-center items-center h-full">
+        <div className="relative w-1/2 flex justify-center items-center h-full">
+          <DamageIndicator damage={damageIndicators.p2Monster} />
           <AnimatePresence>
             {player2Card && (
               <motion.div

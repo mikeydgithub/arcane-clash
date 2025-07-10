@@ -56,6 +56,13 @@ export type GamePhase =
   | "turn_resolution_phase" // After action: check defeated monsters, draw card, check game over
   | "game_over_phase";
 
+export interface DamageIndicatorState {
+  p1Monster: number | null;
+  p2Monster: number | null;
+  p1Player: number | null;
+  p2Player: number | null;
+}
+
 export interface GameState {
   players: [PlayerData, PlayerData];
   currentPlayerIndex: 0 | 1; // Index of the player whose turn it is to act
@@ -66,4 +73,5 @@ export interface GameState {
   gameLogMessages: string[];
   isProcessingAction?: boolean; // To disable inputs during animations/AI calls
   isInitialMonsterEngagement: boolean; // True if no monster has been played yet, false otherwise
+  damageIndicators: DamageIndicatorState;
 }
