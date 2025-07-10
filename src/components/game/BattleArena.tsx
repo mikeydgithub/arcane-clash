@@ -140,9 +140,9 @@ export function BattleArena({
   const getLogTextStyle = (type: GameLogEntry['type']) => {
     switch (type) {
         case 'player1':
-            return 'text-primary-foreground/90 font-semibold';
+            return 'text-primary font-semibold';
         case 'player2':
-            return 'text-accent-foreground/90 font-semibold';
+            return 'text-accent font-semibold';
         case 'damage':
             return 'text-destructive font-bold';
         case 'heal':
@@ -209,7 +209,7 @@ export function BattleArena({
         <motion.div
             key={player1Card ? `p1-active-${player1Card.id}`: 'p1-empty'}
             initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
+            animate={isCombatPhase ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
             transition={{ duration: 0.5 }}
             className="relative w-1/2 flex justify-center items-center h-full"
@@ -226,7 +226,7 @@ export function BattleArena({
         <motion.div
             key={player2Card ? `p2-active-${player2Card.id}`: 'p2-empty'}
             initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
+            animate={isCombatPhase ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
             transition={{ duration: 0.5 }}
             className="relative w-1/2 flex justify-center items-center h-full"
