@@ -1,9 +1,9 @@
 
 export interface StatusEffect {
   id: string; // Unique ID for this specific application of the effect
-  type: 'regenerate' | 'shield' | 'stun' | 'silence'; // Can be expanded to other types like 'poison'
+  type: 'regenerate' | 'shield' | 'stun' | 'silence' | 'ethereal'; // Can be expanded to other types like 'poison'
   duration: number; // Number of turns remaining for the effect
-  value: number; // Potency of the effect (e.g., HP healed per turn for regenerate, shield health for shield)
+  value: number; // Potency of the effect (e.g., HP healed per turn for regenerate, shield health for shield, 50 for 50% ethereal reduction)
   // Potentially add sourceCardId if needed for complex interactions later
 }
 

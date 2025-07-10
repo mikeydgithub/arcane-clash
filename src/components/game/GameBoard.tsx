@@ -293,7 +293,7 @@ export function GameBoard() {
                 }
                 effect.duration -= 1;
             }
-            if(effect.type === 'stun' || effect.type === 'shield' || effect.type === 'silence'){
+            if(effect.type === 'stun' || effect.type === 'shield' || effect.type === 'silence' || effect.type === 'ethereal'){
                 effect.duration -= 1;
             }
 
@@ -567,6 +567,18 @@ export function GameBoard() {
                 let spellEffectApplied = false;
 
                 switch (card.title) {
+                    case 'Ethereal Form':
+                        if (currentPlayersMonsterRef) {
+                            const newEffect: StatusEffect = { id: `ethereal-${Date.now()}`, type: 'ethereal', duration: 2, value: 50 }; // Lasts for player's turn and opponent's turn
+                            currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
+                            logsToAppend.push({text: `${actingPlayer.name}'s Ethereal Form causes ${currentPlayersMonsterRef.title} to shimmer, taking 50% reduced damage until its next turn.`, type: 'info'});
+                            if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                            spellEffectApplied = true;
+                        } else {
+                            logsToAppend.push({text: `${actingPlayer.name}'s Ethereal Form fizzles with no active monster to target.`, type: 'system'});
+                            spellEffectApplied = true;
+                        }
+                        break;
                     case 'Stone Skin':
                         if (currentPlayersMonsterRef) {
                             const boost = 5;
@@ -954,6 +966,15 @@ export function GameBoard() {
                 let monster = { ...targetMonster, statusEffects: [...(targetMonster.statusEffects || [])] };
                 const originalHp = monster.hp;
 
+                // Ethereal check first
+                const etherealIndex = monster.statusEffects.findIndex(e => e.type === 'ethereal');
+                if (etherealIndex > -1) {
+                    const reductionPercent = monster.statusEffects[etherealIndex].value / 100;
+                    const reducedDamage = Math.ceil(remainingDamage * (1 - reductionPercent));
+                    logs.push({ text: `${monster.title} is ethereal, reducing damage by 50%!`, type: 'info' });
+                    remainingDamage = reducedDamage;
+                }
+
                 const shieldIndex = monster.statusEffects.findIndex(e => e.type === 'shield');
 
                 if (shieldIndex > -1) {
@@ -993,7 +1014,7 @@ export function GameBoard() {
             if (currentDefenderMonster && currentDefenderMonster.hp > 0) {
                 logsToAppend.push({ text: `${currentAttackerMonster.title} clashes with ${currentDefenderMonster.title}!`, type: 'system' });
                 const isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
-                const attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
+                let attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
                 const attackType = isMagicAttack ? "magic" : "melee";
                 logsToAppend.push({ text: `Attack is ${attackType}-based with a power of ${attackValue}.`, type: 'info'});
                 
@@ -1009,7 +1030,8 @@ export function GameBoard() {
 
                 if (currentDefenderMonster.hp <= 0) {
                     logsToAppend.push({ text: `${currentDefenderMonster.title} is defeated!`, type: 'damage' });
-                    const overkillDamage = attackValue - defenderHpBefore;
+                    // Trample damage calculation
+                    const overkillDamage = Math.max(0, attackValue - defenderHpBefore); // Use original HP before any reductions
                     if (overkillDamage > 0) {
                         const originalPlayerHp = newPlayers[defenderPlayerIndex].hp;
                         newPlayers[defenderPlayerIndex].hp = Math.max(0, originalPlayerHp - overkillDamage);
@@ -1044,7 +1066,7 @@ export function GameBoard() {
 
                     if (currentAttackerMonster.hp <= 0) {
                         logsToAppend.push({ text: `${currentAttackerMonster.title} is defeated in the counter-attack!`, type: 'damage' });
-                         const overkillDamage = counterAttackValue - attackerHpBefore;
+                         const overkillDamage = Math.max(0, counterAttackValue - attackerHpBefore);
                         if (overkillDamage > 0) {
                              const originalPlayerHp = newPlayers[currentPlayerIndex].hp;
                              newPlayers[currentPlayerIndex].hp = Math.max(0, originalPlayerHp - overkillDamage);

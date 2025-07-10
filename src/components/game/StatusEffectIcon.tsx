@@ -3,7 +3,7 @@
 
 import type { StatusEffect } from '@/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Shield, HeartPulse, ZapOff, MicOff } from 'lucide-react';
+import { Shield, HeartPulse, ZapOff, MicOff, Ghost } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +35,12 @@ const effectDetails = {
     label: 'Silence',
     description: () => `Cannot use abilities.`,
     color: 'text-purple-400',
+  },
+  ethereal: {
+    icon: Ghost,
+    label: 'Ethereal',
+    description: (value: number) => `Takes ${value}% reduced damage.`,
+    color: 'text-slate-400',
   },
 };
 
