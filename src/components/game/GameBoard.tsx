@@ -882,6 +882,7 @@ export function GameBoard() {
                 const attackType = isMagicAttack ? "magic" : "melee";
                 newLogMessages.push(`Attack is ${attackType}-based with a power of ${attackValue}.`);
                 
+                const defenderHpBefore = currentDefenderMonster.hp;
                 const defenderResult = applyDamage(currentDefenderMonster, attackValue, attackType);
                 currentDefenderMonster = defenderResult.updatedMonster;
                 newLogMessages.push(...defenderResult.log);
@@ -893,7 +894,7 @@ export function GameBoard() {
 
                 if (currentDefenderMonster.hp <= 0) {
                     newLogMessages.push(`${currentDefenderMonster.title} is defeated!`);
-                    const overkillDamage = Math.abs(currentDefenderMonster.hp); // hp is <= 0
+                    const overkillDamage = attackValue - defenderHpBefore;
                     if (overkillDamage > 0) {
                         const originalPlayerHp = newPlayers[defenderPlayerIndex].hp;
                         newPlayers[defenderPlayerIndex].hp = Math.max(0, originalPlayerHp - overkillDamage);
@@ -915,7 +916,8 @@ export function GameBoard() {
                     const counterAttackValue = isCounterMagic ? currentDefenderMonster.magic : currentDefenderMonster.melee;
                     const counterAttackType = isCounterMagic ? "magic" : "melee";
                     newLogMessages.push(`Counter-attack is ${counterAttackType}-based with a power of ${counterAttackValue}.`);
-
+                    
+                    const attackerHpBefore = currentAttackerMonster.hp;
                     const attackerResult = applyDamage(currentAttackerMonster, counterAttackValue, counterAttackType);
                     currentAttackerMonster = attackerResult.updatedMonster;
                     newLogMessages.push(...attackerResult.log);
@@ -927,7 +929,7 @@ export function GameBoard() {
 
                     if (currentAttackerMonster.hp <= 0) {
                         newLogMessages.push(`${currentAttackerMonster.title} is defeated in the counter-attack!`);
-                         const overkillDamage = Math.abs(currentAttackerMonster.hp);
+                         const overkillDamage = counterAttackValue - attackerHpBefore;
                         if (overkillDamage > 0) {
                              const originalPlayerHp = newPlayers[currentPlayerIndex].hp;
                              newPlayers[currentPlayerIndex].hp = Math.max(0, originalPlayerHp - overkillDamage);
@@ -1344,5 +1346,3 @@ export function GameBoard() {
     </div>
   );
 }
-
-    
