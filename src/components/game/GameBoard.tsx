@@ -99,7 +99,7 @@ export function GameBoard() {
   };
 
   const appendLogs = (messages: {text: string, type: LogEntryType}[], stateUpdater?: (prev: GameState) => GameState) => {
-    const newLogEntries: GameLogEntry[] = messages.map(msg => ({ id: `log-${logIdCounter++}`, text: msg.text, type: msg.type }));
+    const newLogEntries: GameLogEntry[] = messages.map(msg => ({...msg, id: `log-${logIdCounter++}`}));
     
     logAndSetGameState(prev => {
         if (!prev) return null;
@@ -293,7 +293,9 @@ export function GameBoard() {
                 }
                 effect.duration -= 1;
             }
-            // Add other status effect processing here like poison DoT
+            if(effect.type === 'stun' || effect.type === 'shield' || effect.type === 'silence'){
+                effect.duration -= 1;
+            }
 
             if (effect.duration > 0) {
                 effectsToKeep.push(effect);
@@ -309,7 +311,6 @@ export function GameBoard() {
             newActiveMonsterP2 = activeMonsterForTurnPlayer;
         }
     }
-    // Potentially check for defeats caused by DoT effects here in the future
 
     return {
         ...currentState,
@@ -569,14 +570,13 @@ export function GameBoard() {
                     case 'Stone Skin':
                         if (currentPlayersMonsterRef) {
                             const boost = 5;
-                            const newEffect: StatusEffect = { id: `stone-skin-${Date.now()}`, type: 'shield', duration: 1, value: boost };
+                            const newEffect: StatusEffect = { id: `stone-skin-${Date.now()}`, type: 'shield', duration: 2, value: boost }; // lasts for player's turn and opponent's turn
                             currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
                             logsToAppend.push({text: `${actingPlayer.name}'s Stone Skin grants ${currentPlayersMonsterRef.title} a temporary shield of ${boost} health!`, type: 'info'});
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;
                         }
                         break;
-
                     case 'Fireball':
                         const fireDamage = 15;
                         const directPlayerDamage = 10;
@@ -611,7 +611,6 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-
                     case 'Healing Light':
                         if (currentPlayersMonsterRef) {
                             const healAmount = 20;
@@ -622,7 +621,6 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-
                     case 'Arcane Shield':
                          if (currentPlayersMonsterRef) {
                             const shieldValue = 15;
@@ -636,7 +634,6 @@ export function GameBoard() {
                              spellEffectApplied = true;
                          }
                         break;
-
                     case 'Weakening Curse':
                         if (opponentPlayersMonsterRef) {
                             const reduction = 3;
@@ -649,10 +646,9 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-
                     case 'Terrify':
                         if (opponentPlayersMonsterRef) {
-                            logsToAppend.push({text: `${actingPlayer.name}'s Terrify targets ${opponentPlayersMonsterRef.title}!`, type: 'player1'});
+                            logsToAppend.push({text: `${actingPlayer.name}'s Terrify targets ${opponentPlayersMonsterRef.title}!`, type: actingPlayerLogType});
                             const returnedMonster = { ...opponentPlayersMonsterRef, statusEffects: [] };
 
                             if (newPlayers[opponentPlayerIndex].hand.length < CARDS_IN_HAND) {
@@ -667,7 +663,6 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-
                     case 'Regenerate':
                         if (currentPlayersMonsterRef) {
                             const newEffect: StatusEffect = { id: `regen-${Date.now()}`, type: 'regenerate', duration: 3, value: 5 };
@@ -677,7 +672,6 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-
                     case 'Swiftness Aura':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 3);
@@ -686,7 +680,6 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-
                     case 'Chain Lightning':
                         const chainLightningDmg = 10;
                         const chainPlayerDmg = 5;
@@ -721,7 +714,6 @@ export function GameBoard() {
                             }
                         }
                         break;
-
                     case 'Growth Spurt':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.maxHp += 10;
@@ -732,7 +724,6 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
-
                     case 'Drain Life':
                         const drainDamage = 8;
                         if (opponentPlayersMonsterRef) {
@@ -771,7 +762,78 @@ export function GameBoard() {
                             }
                         }
                         break;
+                    case 'Blinding Flash':
+                        if (opponentPlayersMonsterRef) {
+                            const newEffect: StatusEffect = { id: `stun-${Date.now()}`, type: 'stun', duration: 2, value: 0 }; // Stun for 1 opponent turn
+                            opponentPlayersMonsterRef.statusEffects = [...(opponentPlayersMonsterRef.statusEffects || []), newEffect];
+                            logsToAppend.push({text: `${actingPlayer.name}'s Blinding Flash stuns ${opponentPlayersMonsterRef.title}! It cannot act on its next turn.`, type: 'info'});
+                            if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                            spellEffectApplied = true;
+                        }
+                        break;
+                    case 'Might Infusion':
+                        if(currentPlayersMonsterRef) {
+                            currentPlayersMonsterRef.melee += 4;
+                            currentPlayersMonsterRef.magic += 4;
+                            logsToAppend.push({text: `${actingPlayer.name}'s Might Infusion empowers ${currentPlayersMonsterRef.title}! Melee: ${currentPlayersMonsterRef.melee-4} -> ${currentPlayersMonsterRef.melee}, Magic: ${currentPlayersMonsterRef.magic-4} -> ${currentPlayersMonsterRef.magic}.`, type: 'info'});
+                            if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                            spellEffectApplied = true;
+                        }
+                        break;
+                    case 'Frost Nova':
+                        if (opponentPlayersMonsterRef) {
+                            const frostDamage = 12;
+                            const meleeReduction = 2;
+                            const originalHp = opponentPlayersMonsterRef.hp;
+                            const originalMelee = opponentPlayersMonsterRef.melee;
+                            
+                            opponentPlayersMonsterRef.hp = Math.max(0, opponentPlayersMonsterRef.hp - frostDamage);
+                            const damageTaken = originalHp - opponentPlayersMonsterRef.hp;
+                            if (currentPlayerIndex === 0) newDamageIndicators.p2Monster = damageTaken; else newDamageIndicators.p1Monster = damageTaken;
 
+                            opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - meleeReduction);
+
+                            logsToAppend.push({text: `${actingPlayer.name}'s Frost Nova hits ${opponentPlayersMonsterRef.title} for ${damageTaken} damage and reduces its Melee by ${meleeReduction}! HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}, Melee: ${originalMelee} -> ${opponentPlayersMonsterRef.melee}.`, type: 'damage'});
+                            
+                            spellEffectApplied = true;
+
+                            if (opponentPlayersMonsterRef.hp <= 0) {
+                                logsToAppend.push({text: `${opponentPlayersMonsterRef.title} is shattered by the frost!`, type: 'damage'});
+                                const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, statusEffects: []};
+                                newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
+                                if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
+                            } else {
+                                if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                            }
+                        }
+                        break;
+                    case 'Focused Mind':
+                         const cardsInDeck = actingPlayer.deck.length;
+                         if (cardsInDeck > 0) {
+                            const { dealtCards, remainingDeck } = dealCards(actingPlayer.deck, 1);
+                            actingPlayer.deck = remainingDeck;
+                            actingPlayer.hand.push(dealtCards[0]);
+                            logsToAppend.push({text: `${actingPlayer.name} draws ${dealtCards[0].title}.`, type: actingPlayerLogType});
+                         } else {
+                            logsToAppend.push({text: `${actingPlayer.name} has no cards left to draw.`, type: 'system'});
+                         }
+                        if(currentPlayersMonsterRef) {
+                            currentPlayersMonsterRef.magic += 2;
+                            logsToAppend.push({text: `Focused Mind increases ${currentPlayersMonsterRef.title}'s Magic by 2. New Magic: ${currentPlayersMonsterRef.magic}.`, type: 'info'});
+                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        }
+                         spellEffectApplied = true;
+                        break;
+                    case 'Mage Armor':
+                        if (currentPlayersMonsterRef) {
+                            const shieldValue = 20;
+                            const newEffect: StatusEffect = { id: `mage-armor-${Date.now()}`, type: 'shield', duration: 99, value: shieldValue }; // Persists until broken
+                            currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
+                            logsToAppend.push({text: `${actingPlayer.name} conjures Mage Armor on ${currentPlayersMonsterRef.title}, absorbing ${shieldValue} damage.`, type: 'info'});
+                            if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                            spellEffectApplied = true;
+                        }
+                        break;
                     default:
                         logsToAppend.push({text: `The spell ${card.title} fizzles, its effect not yet defined in the ancient tomes.`, type: 'system'});
                         spellEffectApplied = true; // Consider it "applied" to prevent re-trying
@@ -828,8 +890,6 @@ export function GameBoard() {
             appendLog(`${card.title} has been cast. ${players[currentPlayerIndex].name}, choose your next action or end turn.`, playerLogType);
             logAndSetGameState(prev => ({...prev!, gamePhase: 'player_action_phase', isProcessingAction: false }));
         }
-
-
   };
 
 
@@ -851,6 +911,11 @@ export function GameBoard() {
 
         if (!attackerMonster || attackerMonster.hp <= 0) {
             toast({ title: "Cannot Attack", description: `Your active monster is defeated and cannot attack.`, variant: "destructive" });
+            return;
+        }
+        
+        if (attackerMonster.statusEffects?.some(e => e.type === 'stun')) {
+            toast({ title: "Cannot Attack", description: `${attackerMonster.title} is stunned and cannot attack this turn.`, variant: "destructive" });
             return;
         }
 
@@ -960,7 +1025,7 @@ export function GameBoard() {
                     currentDefenderMonster = undefined;
                 }
 
-                if (currentDefenderMonster && currentDefenderMonster.hp > 0) {
+                if (currentDefenderMonster && currentDefenderMonster.hp > 0 && !currentDefenderMonster.statusEffects?.some(e => e.type === 'stun')) {
                     logsToAppend.push({ text: `${currentDefenderMonster.title} counter-attacks!`, type: defenderLogType });
                     const isCounterMagic = currentDefenderMonster.magic > currentDefenderMonster.melee;
                     const counterAttackValue = isCounterMagic ? currentDefenderMonster.magic : currentDefenderMonster.melee;
@@ -994,6 +1059,8 @@ export function GameBoard() {
                         newPlayers[currentPlayerIndex].discardPile.push(defeatedCard);
                         currentAttackerMonster = undefined!;
                     }
+                } else if (currentDefenderMonster?.statusEffects?.some(e => e.type === 'stun')) {
+                    logsToAppend.push({ text: `${currentDefenderMonster.title} is stunned and cannot counter-attack!`, type: 'info' });
                 }
             } else {
                 const isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
