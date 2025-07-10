@@ -34,11 +34,6 @@ export function BattleArena({
   onCoinFlipAnimationComplete,
   winningPlayerNameForCoinFlip,
 }: BattleArenaProps) {
-  const cardVariants = {
-    hidden: { opacity: 0, scale: 0.5, y: 50, x: 0 },
-    visible: { opacity: 1, scale: 1, y: 0, x: 0, transition: { duration: 0.5, type: 'spring', stiffness: 120 } },
-    exit: { opacity: 0, scale: 0.5, y: -50, x: 0, transition: { duration: 0.3 } },
-  };
 
   const [displayedLogEntries, setDisplayedLogEntries] = useState<string[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -200,10 +195,9 @@ export function BattleArena({
             {player1Card && (
               <motion.div
                 key={`p1-active-${player1Card.id}`}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1, transition: { duration: 0.5 } }}
+                exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
                 className={cn(isCombatPhase && 'box-left')}
                 style={{ transformOrigin: 'center top' }}
               >
@@ -219,10 +213,9 @@ export function BattleArena({
             {player2Card && (
               <motion.div
                 key={`p2-active-${player2Card.id}`}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1, transition: { duration: 0.5 } }}
+                exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
                 className={cn(isCombatPhase && 'box-right')}
                 style={{ transformOrigin: 'center top' }}
               >
