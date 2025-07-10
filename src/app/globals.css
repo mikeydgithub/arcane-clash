@@ -136,6 +136,26 @@ body {
   animation: lightningFlash 4s linear infinite;
 }
 
+@keyframes bounceLeft {
+    0% { transform: translateX(0); } /* Start at original position */
+    50% { transform: translateX(16px); } /* Move 16px to the right to meet in the middle */
+    100% { transform: translateX(0); } /* Return to original position */
+}
+
+@keyframes bounceRight {
+    0% { transform: translateX(0); } /* Start at original position */
+    50% { transform: translateX(-16px); } /* Move 16px to the left to meet in the middle */
+    100% { transform: translateX(0); } /* Return to original position */
+}
+
+.box-left {
+    animation: bounceLeft 1s infinite alternate ease-in-out; /* Apply animation - changed to 1s */
+}
+
+.box-right {
+    animation: bounceRight 1s infinite alternate ease-in-out; /* Apply animation - changed to 1s */
+}
+
 
 @layer base {
   :root {
