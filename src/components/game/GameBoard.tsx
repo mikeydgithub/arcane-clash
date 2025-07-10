@@ -565,7 +565,7 @@ export function GameBoard() {
                             const damageTaken = originalPlayerHp - newPlayers[opponentPlayerIndex].hp;
                             if (currentPlayerIndex === 0) newDamageIndicators.p2Player = damageTaken; else newDamageIndicators.p1Player = damageTaken;
 
-                            newLogMessages.push(`${actingPlayer.name}'s Fireball strikes ${opponentPlayer.name} directly for ${damageTaken} damage! HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp}.`);
+                            newLogMessages.push(`${actingPlayer.name}'s Fireball strikes ${opponentPlayer.name} directly for ${damageTaken} damage! (HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp})`);
                             spellEffectApplied = true;
                         }
                         break;
@@ -673,7 +673,7 @@ export function GameBoard() {
                                 const playerDamageTaken = originalPlayerHp - newPlayers[opponentPlayerIndex].hp;
                                 if (currentPlayerIndex === 0) newDamageIndicators.p2Player = playerDamageTaken; else newDamageIndicators.p1Player = playerDamageTaken;
 
-                                newLogMessages.push(`${opponentPlayer.name} takes ${playerDamageTaken} lightning damage! HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp}.`);
+                                newLogMessages.push(`${opponentPlayer.name} takes ${playerDamageTaken} lightning damage! (HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp})`);
                             } else {
                                 if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
                             }
@@ -923,8 +923,8 @@ export function GameBoard() {
                     newLogMessages.push(...attackerResult.log);
 
                     if(attackerResult.damageDealt > 0) {
-                        if (currentPlayerIndex === 0) finalDamageIndicators.p1Monster = (finalDamageIndicators.p1Monster || 0) + attackerResult.damageDealt;
-                        else finalDamageIndicators.p2Monster = (finalDamageIndicators.p2Monster || 0) + attackerResult.damageDealt;
+                        if (currentPlayerIndex === 0) finalDamageIndicators.p1Monster = attackerResult.damageDealt;
+                        else finalDamageIndicators.p2Monster = attackerResult.damageDealt;
                     }
 
                     if (currentAttackerMonster.hp <= 0) {
@@ -936,8 +936,8 @@ export function GameBoard() {
                              const playerDamageTaken = originalPlayerHp - newPlayers[currentPlayerIndex].hp;
                              if (playerDamageTaken > 0) {
                                 newLogMessages.push(`Overkill! ${players[currentPlayerIndex].name} takes ${playerDamageTaken} trample damage! (HP: ${originalPlayerHp} -> ${newPlayers[currentPlayerIndex].hp})`);
-                                if(currentPlayerIndex === 0) finalDamageIndicators.p1Player = (finalDamageIndicators.p1Player || 0) + playerDamageTaken;
-                                else finalDamageIndicators.p2Player = (finalDamageIndicators.p2Player || 0) + playerDamageTaken;
+                                if(currentPlayerIndex === 0) finalDamageIndicators.p1Player = playerDamageTaken;
+                                else finalDamageIndicators.p2Player = playerDamageTaken;
                              }
                         }
                         const defeatedCard = { ...currentAttackerMonster, hp: 0, statusEffects: [] };
