@@ -147,6 +147,7 @@ async function seedDatabase() {
   const batch = writeBatch(db);
 
   const allCards = [...monsterCards, ...spellCards];
+  const cacheBuster = new Date().getTime();
 
   allCards.forEach(card => {
     // Use card.title as the document ID
@@ -155,7 +156,7 @@ async function seedDatabase() {
     // Create the object to be seeded
     const cardData = {
         ...card,
-        artUrl: `/card-art/${card.title.toLowerCase().replace(/ /g, '-')}.png`,
+        artUrl: `/card-art/${card.title.toLowerCase().replace(/ /g, '-')}.png?v=${cacheBuster}`,
         isLoadingArt: false,
         isLoadingDescription: false
     };
