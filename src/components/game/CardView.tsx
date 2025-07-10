@@ -2,14 +2,15 @@
 'use client';
 
 import Image from 'next/image';
-import type { CardData, MonsterCardData, SpellCardData } from '@/types';
+import type { CardData, MonsterCardData, SpellCardData, StatusEffect } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Swords, Sparkles, Heart, Zap, HelpCircle } from 'lucide-react';
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { StatusEffectIcon } from './StatusEffectIcon';
 
 interface AnimatedNumberProps {
   value: number;
@@ -91,6 +92,7 @@ interface CardViewProps {
   inBattleArena?: boolean;
   isPlayerTurnForThisCard?: boolean;
   showDescriptionTooltip?: boolean;
+  statusEffects?: StatusEffect[];
 }
 
 const MotionCard = motion.create(Card);
@@ -120,6 +122,7 @@ export function CardView({
   inBattleArena = false,
   isPlayerTurnForThisCard = false,
   showDescriptionTooltip = false,
+  statusEffects = [],
 }: CardViewProps) {
   const baseCardSize = "w-40 h-56 md:w-48 md:h-64";
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-lg transition-transform duration-200 cursor-pointer" : "";
@@ -136,7 +139,7 @@ export function CardView({
   const cardElementInner = (
     <MotionCard
       className={cn(
-        "flex flex-col overflow-hidden shadow-xl",
+        "flex flex-col overflow-hidden shadow-xl relative", // Added relative positioning
         baseCardSize,
         cardHoverEffect,
         isSelected && !inBattleArena ? "ring-2 ring-accent" : "",
@@ -222,29 +225,40 @@ export function CardView({
         )}
       </CardContent>
 
-      {!inBattleArena && (
-        <CardFooter className="p-1.5 mt-auto flex items-center justify-center text-center leading-tight">
-          {card.isLoadingDescription ? (
-            <p className="text-xs text-muted-foreground italic">Generating info...</p>
-          ) : card.cardType === 'Spell' ? (
-              card.description ? (
-                <p className="text-xs text-muted-foreground italic">
-                  Effect: {card.description}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground italic flex items-center">
-                  <HelpCircle className="w-3 h-3 mr-1"/> Effect: No info yet.
-                </p>
-              )
-          ) : card.cardType === 'Monster' && !card.description ? (
-            // Only show "No info" for monster if description is truly absent AND not loading.
-            // If monster has description, it's in the tooltip, so footer remains empty for this part.
-            <p className="text-xs text-muted-foreground italic flex items-center">
-                <HelpCircle className="w-3 h-3 mr-1"/> Flavor: No info yet.
-            </p>
-          ) : null}
-        </CardFooter>
-      )}
+      <div className="mt-auto flex-shrink-0 min-h-[3rem]">
+        {inBattleArena && isMonster && statusEffects.length > 0 && (
+            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-full px-1 z-10">
+                <div className="flex items-center justify-center space-x-1 bg-card/50 backdrop-blur-sm p-1 rounded-md">
+                    <AnimatePresence>
+                        {statusEffects.map(effect => (
+                            <StatusEffectIcon key={effect.id} effect={effect} />
+                        ))}
+                    </AnimatePresence>
+                </div>
+            </div>
+        )}
+        {!inBattleArena && (
+          <CardFooter className="p-1.5 flex items-center justify-center text-center leading-tight">
+            {card.isLoadingDescription ? (
+              <p className="text-xs text-muted-foreground italic">Generating info...</p>
+            ) : card.cardType === 'Spell' ? (
+                card.description ? (
+                  <p className="text-xs text-muted-foreground italic">
+                    Effect: {card.description}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic flex items-center">
+                    <HelpCircle className="w-3 h-3 mr-1"/> Effect: No info yet.
+                  </p>
+                )
+            ) : card.cardType === 'Monster' && !card.description ? (
+              <p className="text-xs text-muted-foreground italic flex items-center">
+                  <HelpCircle className="w-3 h-3 mr-1"/> Flavor: No info yet.
+              </p>
+            ) : null}
+          </CardFooter>
+        )}
+      </div>
     </MotionCard>
   );
 

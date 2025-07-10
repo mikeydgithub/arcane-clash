@@ -217,7 +217,7 @@ export function BattleArena({
           <DamageIndicator damage={damageIndicators.p1Monster} />
             {player1Card && (
                 <div className={cn(isCombatPhase && 'box-left')}>
-                  <CardView card={player1Card} inBattleArena={true} />
+                  <CardView card={player1Card} inBattleArena={true} statusEffects={player1Card.statusEffects} />
                 </div>
             )}
         </motion.div>
@@ -234,7 +234,7 @@ export function BattleArena({
           <DamageIndicator damage={damageIndicators.p2Monster} />
             {player2Card && (
                 <div className={cn(isCombatPhase && 'box-right')}>
-                  <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} />
+                  <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} statusEffects={player2Card.statusEffects} />
                 </div>
             )}
         </motion.div>
