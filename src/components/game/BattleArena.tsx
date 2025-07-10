@@ -140,13 +140,13 @@ export function BattleArena({
   const getLogTextStyle = (type: GameLogEntry['type']) => {
     switch (type) {
         case 'player1':
-            return 'text-primary font-semibold';
+            return 'text-primary font-bold';
         case 'player2':
-            return 'text-accent font-semibold';
+            return 'text-accent font-bold';
         case 'damage':
             return 'text-destructive font-bold';
         case 'heal':
-            return 'text-emerald-400 font-semibold';
+            return 'text-emerald-400 font-bold';
         case 'info':
             return 'text-cyan-400';
         case 'system':
@@ -174,7 +174,7 @@ export function BattleArena({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
                 className={cn(
-                  "text-[10px] md:text-xs mb-1 last:mb-0 text-center",
+                  "text-xs md:text-sm mb-1 last:mb-0 text-center",
                   getLogTextStyle(entry.type)
                 )}
               >
@@ -256,7 +256,7 @@ export function BattleArena({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
               className={cn(
-                "text-[10px] md:text-xs mb-1 last:mb-0 whitespace-pre-line",
+                "text-xs md:text-sm mb-1 last:mb-0 whitespace-pre-line",
                 getLogTextStyle(entry.type)
               )}
             >
