@@ -137,23 +137,21 @@ body {
 }
 
 @keyframes bounceLeft {
-    0% { transform: translateX(0); } /* Start at original position */
-    50% { transform: translateX(16px); } /* Move 16px to the right to meet in the middle */
-    100% { transform: translateX(0); } /* Return to original position */
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(50%); }
 }
 
 @keyframes bounceRight {
-    0% { transform: translateX(0); } /* Start at original position */
-    50% { transform: translateX(-16px); } /* Move 16px to the left to meet in the middle */
-    100% { transform: translateX(0); } /* Return to original position */
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-50%); }
 }
 
 .box-left {
-    animation: bounceLeft 1s infinite alternate ease-in-out; /* Apply animation - changed to 1s */
+    animation: bounceLeft 0.5s ease-in-out;
 }
 
 .box-right {
-    animation: bounceRight 1s infinite alternate ease-in-out; /* Apply animation - changed to 1s */
+    animation: bounceRight 0.5s ease-in-out;
 }
 
 
