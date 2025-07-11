@@ -1037,7 +1037,7 @@ export function GameBoard() {
             const freshState = gameStateRef.current;
             if (!freshState) return;
 
-            let { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = freshState;
+            let { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2, gameLogMessages } = freshState;
             let logsToAppend: {text: string, type: LogEntryType}[] = [];
             let newPlayers = [...players] as [PlayerData, PlayerData];
             const attackerPlayer = newPlayers[currentPlayerIndex];
@@ -1218,19 +1218,22 @@ export function GameBoard() {
 
             const finalActiveMonsterP1 = currentPlayerIndex === 0 ? currentAttackerMonster : currentDefenderMonster;
             const finalActiveMonsterP2 = currentPlayerIndex === 1 ? currentAttackerMonster : currentDefenderMonster;
+            
+            logsToAppend.push({ text: `Combat concludes. Turn ends.`, type: 'system' });
 
             logAndSetGameState(prev => ({
                 ...prev!,
                 players: newPlayers,
                 activeMonsterP1: finalActiveMonsterP1,
                 activeMonsterP2: finalActiveMonsterP2,
-                gameLogMessages: [...(prev!.gameLogMessages || []), ...logsToAppend.map(log => ({...log, id: `log-${logIdCounter++}`}))],
+                gameLogMessages: [...(gameLogMessages || []), ...logsToAppend.map(log => ({...log, id: `log-${logIdCounter++}`}))],
                 gamePhase: 'combat_phase',
                 indicators: finalIndicators,
             }));
             
+            // Automatically end turn after combat
             setTimeout(() => {
-                logAndSetGameState(prev => ({...prev!, gamePhase: 'player_action_phase', isProcessingAction: false }));
+                processTurnEnd();
             }, 1500);
 
         }, 1000); 
