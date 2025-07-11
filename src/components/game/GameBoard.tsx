@@ -929,9 +929,6 @@ export function GameBoard() {
             processTurnEnd(); // Check for player defeat immediately
         } else if (currentStateAfterSpell && currentStateAfterSpell.players[1-currentStateAfterSpell.currentPlayerIndex].hp <= 0){
              processTurnEnd(); // Check for opponent defeat immediately
-        } else {
-            appendLog(`${card.title} has been cast. ${players[currentPlayerIndex].name}, choose your next action or end turn.`, playerLogType);
-            logAndSetGameState(prev => ({...prev!, gamePhase: 'player_action_phase', isProcessingAction: false }));
         }
   };
 
