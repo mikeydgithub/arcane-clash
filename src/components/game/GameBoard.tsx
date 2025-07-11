@@ -855,6 +855,26 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
+                    case 'Dark Pact':
+                        const selfDamage = 5;
+                        const cardsToDraw = 2;
+                        const originalPlayerHp = actingPlayer.hp;
+                        actingPlayer.hp = Math.max(0, actingPlayer.hp - selfDamage);
+                        const selfDamageTaken = originalPlayerHp - actingPlayer.hp;
+                        if (currentPlayerIndex === 0) newDamageIndicators.p1Player = selfDamageTaken; else newDamageIndicators.p2Player = selfDamageTaken;
+                        logsToAppend.push({text: `${actingPlayer.name} makes a Dark Pact, taking ${selfDamageTaken} damage! (HP: ${originalPlayerHp} -> ${actingPlayer.hp})`, type: 'damage'});
+
+                        const cardsInPactDeck = actingPlayer.deck.length;
+                        if (cardsInPactDeck > 0) {
+                            const { dealtCards, remainingDeck } = dealCards(actingPlayer.deck, cardsToDraw);
+                            actingPlayer.deck = remainingDeck;
+                            actingPlayer.hand.push(...dealtCards);
+                            logsToAppend.push({text: `${actingPlayer.name} draws ${dealtCards.length} card(s) from the pact.`, type: actingPlayerLogType});
+                        } else {
+                            logsToAppend.push({text: `${actingPlayer.name} has no cards left to draw. The pact offers nothing.`, type: 'system'});
+                        }
+                        spellEffectApplied = true;
+                        break;
                     default:
                         logsToAppend.push({text: `The spell ${card.title} fizzles, its effect not yet defined in the ancient tomes.`, type: 'system'});
                         spellEffectApplied = true; // Consider it "applied" to prevent re-trying
@@ -1408,6 +1428,7 @@ export function GameBoard() {
                 opponentActiveMonster={activeMonsterP2}
                 isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 0}
                 selectedCardIds={selectedForMulligan}
+                showDescriptionTooltip={true}
             />
         </div>
 
@@ -1438,6 +1459,7 @@ export function GameBoard() {
                 opponentActiveMonster={activeMonsterP1}
                 isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 1}
                 selectedCardIds={selectedForMulligan}
+                showDescriptionTooltip={true}
             />
         </div>
       </div>
