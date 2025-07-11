@@ -19,11 +19,11 @@ interface PlayerActionsProps {
   playerHandFull: boolean;
   spellsPlayedThisTurn: number;
   maxSpellsPerTurn: number;
-  isEffectivelyFirstTurn: boolean; // Is it this player's turn 0?
+  isEffectivelyFirstTurn: boolean; // Is it this player's turn 0 and no opposing monster?
   gamePhase: GamePhase;
   onInitiateMulligan: () => void;
   onConfirmMulligan: () => void;
-  onCancelMulligan: () => void;
+  onCancelAction: () => void; // More generic cancel
   mulliganCardCount: number;
 }
 
@@ -43,31 +43,36 @@ export function PlayerActions({
   gamePhase,
   onInitiateMulligan,
   onConfirmMulligan,
-  onCancelMulligan,
+  onCancelAction,
   mulliganCardCount
 }: PlayerActionsProps) {
 
-  const canAttack = !!activeMonster;
+  const canAttack = !!activeMonster && !currentPlayer.monsterJustPlayed;
   const hasMonsterInHandToSwapTo = currentPlayer.hand.some(card => card.cardType === 'Monster' && card.id !== activeMonster?.id);
-  const canSwap = !!activeMonster && hasMonsterInHandToSwapTo;
+  const canSwap = !!activeMonster && hasMonsterInHandToSwapTo && !currentPlayer.monsterJustPlayed;
   const canStillPlaySpellThisTurn = spellsPlayedThisTurn < maxSpellsPerTurn;
 
   const canMulligan = currentPlayer.turnCount === 0 && !currentPlayer.hasMulliganed;
   
-  if (gamePhase === 'mulligan_phase') {
+  if (gamePhase === 'mulligan_phase' || gamePhase === 'selecting_swap_monster_phase') {
     return (
       <div className="flex flex-col items-center space-y-2 p-2 md:p-4 my-2 md:my-3 bg-card/50 rounded-lg shadow-md border border-border">
         <h3 className="text-sm md:text-base font-semibold text-center mb-2 text-foreground">
-          Mulligan Phase
+          {gamePhase === 'mulligan_phase' ? 'Mulligan Phase' : 'Select Monster to Swap'}
         </h3>
         <p className="text-xs text-muted-foreground italic text-center">
-            Select {MULLIGAN_CARD_COUNT} cards from your hand to shuffle back into your deck.
+            {gamePhase === 'mulligan_phase' 
+                ? `Select ${MULLIGAN_CARD_COUNT} cards from your hand to shuffle back into your deck.`
+                : `Select a monster from your hand to swap with your active monster.`
+            }
         </p>
         <div className="flex flex-wrap justify-center gap-2 mt-2">
-            <Button onClick={onConfirmMulligan} className="bg-primary hover:bg-primary/90" disabled={mulliganCardCount !== MULLIGAN_CARD_COUNT}>
-                <Check className="mr-2 h-4 w-4" /> Confirm ({mulliganCardCount}/{MULLIGAN_CARD_COUNT})
-            </Button>
-            <Button onClick={onCancelMulligan} variant="outline">
+            {gamePhase === 'mulligan_phase' && (
+                <Button onClick={onConfirmMulligan} className="bg-primary hover:bg-primary/90" disabled={mulliganCardCount !== MULLIGAN_CARD_COUNT}>
+                    <Check className="mr-2 h-4 w-4" /> Confirm ({mulliganCardCount}/{MULLIGAN_CARD_COUNT})
+                </Button>
+            )}
+            <Button onClick={onCancelAction} variant="outline">
                 <X className="mr-2 h-4 w-4" /> Cancel
             </Button>
         </div>
@@ -88,7 +93,7 @@ export function PlayerActions({
             disabled={isEffectivelyFirstTurn}
             className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             aria-label="Attack with active monster"
-            title={isEffectivelyFirstTurn ? "The first player cannot attack on their first turn." : "Attack with active monster"}
+            title={isEffectivelyFirstTurn ? "The first player cannot attack on their first turn." : currentPlayer.monsterJustPlayed ? "This monster has summoning sickness." : "Attack with active monster"}
           >
             <Swords className="mr-2 h-4 w-4" /> Attack
           </Button>
@@ -99,15 +104,10 @@ export function PlayerActions({
             disabled={isEffectivelyFirstTurn}
             variant="outline"
             aria-label="Swap active monster"
-            title={isEffectivelyFirstTurn ? "The first player cannot swap on their first turn." : "Swap active monster"}
+            title={isEffectivelyFirstTurn ? "The first player cannot swap on their first turn." : currentPlayer.monsterJustPlayed ? "This monster has summoning sickness." : "Swap active monster"}
           >
             <Replace className="mr-2 h-4 w-4" /> Swap Monster
           </Button>
-        )}
-        {!!activeMonster && !hasMonsterInHandToSwapTo && (
-             <Button variant="outline" aria-label="Cannot swap, no other monster in hand" disabled>
-                <Replace className="mr-2 h-4 w-4" /> Swap (No Monster)
-            </Button>
         )}
         {canMulligan && (
             <Button onClick={onInitiateMulligan} variant="secondary" aria-label="Mulligan your hand">
@@ -119,44 +119,20 @@ export function PlayerActions({
         </Button>
       </div>
 
-      {(!activeMonster && !canPlayMonsterFromHand && (!canPlaySpellFromHand || !canStillPlaySpellThisTurn)) && (
-         <p className="text-xs text-muted-foreground italic mt-2 text-center">
-            No direct actions available. Consider ending turn.
-        </p>
-      )}
-
-      {(!activeMonster && canPlayMonsterFromHand) && (
-        <p className="text-xs text-muted-foreground italic mt-2 text-center">
-          Click a <ShieldPlus className="inline h-3 w-3" /> Monster card from your hand to summon.
-        </p>
-      )}
-      
-      {isEffectivelyFirstTurn && (
-         <p className="text-xs text-muted-foreground italic mt-1 text-center">
-          Spells, attacks, and swaps are disabled on the first turn of the game.
-        </p>
-      )}
-      {!isEffectivelyFirstTurn && canPlaySpellFromHand && canStillPlaySpellThisTurn && (
-         <p className="text-xs text-muted-foreground italic mt-1 text-center">
-          Click a <WandSparkles className="inline h-3 w-3" /> Spell card to cast. ({maxSpellsPerTurn - spellsPlayedThisTurn} remaining this turn)
-        </p>
-      )}
-      {!isEffectivelyFirstTurn && canPlaySpellFromHand && !canStillPlaySpellThisTurn && (
-         <p className="text-xs text-muted-foreground italic mt-1 text-center">
-          No more spells can be played this turn. ({spellsPlayedThisTurn}/{maxSpellsPerTurn} played)
-        </p>
-      )}
-
-       {activeMonster && !canPlayMonsterFromHand && (!canPlaySpellFromHand || !canStillPlaySpellThisTurn) && !canAttack && !canSwap && (
-         <p className="text-xs text-muted-foreground italic mt-2 text-center">
-            No further actions with current hand or active monster. End turn or summon if possible.
-        </p>
-      )}
-      {canSwap && playerHandFull && (
-        <p className="text-xs text-muted-foreground italic mt-1 text-center">
-          Note: Swapping with a full hand will discard the active monster.
-        </p>
-      )}
+      <div className="text-xs text-muted-foreground italic mt-2 text-center max-w-md space-y-1">
+        {(!activeMonster && canPlayMonsterFromHand) && (
+          <p>Click a <ShieldPlus className="inline h-3 w-3" /> Monster card from your hand to summon.</p>
+        )}
+        {!isEffectivelyFirstTurn && canPlaySpellFromHand && canStillPlaySpellThisTurn && (
+          <p>Click a <WandSparkles className="inline h-3 w-3" /> Spell card to cast. ({maxSpellsPerTurn - spellsPlayedThisTurn} remaining this turn)</p>
+        )}
+        {activeMonster && currentPlayer.monsterJustPlayed && (
+          <p className="text-yellow-400">Your active monster has summoning sickness and cannot attack or be swapped this turn.</p>
+        )}
+        {isEffectivelyFirstTurn && (
+          <p>Attacks and swaps are disabled on the first turn of the game.</p>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { CardData, MonsterCardData, GamePhase } from '@/types'; 
+import type { CardData, PlayerData, GamePhase } from '@/types'; 
 import { CardView } from './CardView';
 import { cn } from '@/lib/utils';
 
@@ -9,27 +9,27 @@ const SPELLS_PER_TURN_LIMIT = 1; // Consistent with GameBoard
 
 interface PlayerHandProps {
   cards: CardData[];
+  player: PlayerData;
   onCardSelect: (card: CardData) => void; 
   isPlayerTurn: boolean;
   isOpponent?: boolean;
   canPlayMonster?: boolean; 
   currentPhase: GamePhase; 
   spellsPlayedThisTurn: number;
-  isInitialEngagement: boolean;
-  opponentActiveMonster?: MonsterCardData;
+  opponentActiveMonster?: CardData;
   isMulliganPhase?: boolean;
   selectedCardIds?: string[];
 }
 
 export function PlayerHand({ 
   cards, 
+  player,
   onCardSelect, 
   isPlayerTurn, 
   isOpponent = false, 
   canPlayMonster = true,
   currentPhase,
   spellsPlayedThisTurn,
-  isInitialEngagement,
   opponentActiveMonster,
   isMulliganPhase = false,
   selectedCardIds = [],
@@ -63,7 +63,7 @@ export function PlayerHand({
             if (card.cardType === 'Monster' && canPlayMonster) {
               cardIsActuallyPlayable = true;
             } else if (card.cardType === 'Spell') {
-              const isFirstTurnOfGame = isInitialEngagement || !opponentActiveMonster;
+              const isFirstTurnOfGame = player.turnCount === 0 && !opponentActiveMonster;
               cardIsActuallyPlayable = !isFirstTurnOfGame && (spellsPlayedThisTurn < SPELLS_PER_TURN_LIMIT);
             }
           }
@@ -96,3 +96,5 @@ export function PlayerHand({
     </div>
   );
 }
+
+    

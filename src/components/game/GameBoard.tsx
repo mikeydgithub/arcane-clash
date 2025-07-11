@@ -19,7 +19,7 @@ const INITIAL_PLAYER_HP = 30;
 const CARDS_IN_HAND = 5;
 const MAX_MONSTERS_PER_DECK = 13;
 const MAX_SPELLS_PER_DECK = 12;
-const SPELLS_PER_TURN_LIMIT = 1; // New limit for spells per turn
+const SPELLS_PER_TURN_LIMIT = 1;
 const MULLIGAN_CARD_COUNT = 3;
 
 const initialIndicatorState: IndicatorState = {
@@ -132,7 +132,6 @@ export function GameBoard() {
         gamePhase: 'loading_art',
         gameLogMessages: [{ id: `log-${logIdCounter++}`, text: "Connecting to the arcane archives...", type: 'system' }],
         isProcessingAction: true,
-        isInitialMonsterEngagement: true,
         indicators: initialIndicatorState,
       }));
       
@@ -185,6 +184,7 @@ export function GameBoard() {
         spellsPlayedThisTurn: 0,
         turnCount: 0,
         hasMulliganed: false,
+        monsterJustPlayed: false,
       };
       const initialPlayer2: PlayerData = {
         id: 'p2', name: 'Player 2', hp: INITIAL_PLAYER_HP,
@@ -195,6 +195,7 @@ export function GameBoard() {
         spellsPlayedThisTurn: 0,
         turnCount: 0,
         hasMulliganed: false,
+        monsterJustPlayed: false,
       };
 
       logAndSetGameState({
@@ -206,7 +207,6 @@ export function GameBoard() {
         winner: undefined,
         gameLogMessages: [{ id: `log-${logIdCounter++}`, text: "Game cards ready. First player will be determined by coin flip. Flipping coin...", type: 'system' }],
         isProcessingAction: false,
-        isInitialMonsterEngagement: true,
         indicators: initialIndicatorState,
       });
 
@@ -283,7 +283,6 @@ export function GameBoard() {
 
     const playerWhoseTurnIsStarting = newPlayers[playerIndexForTurnStart];
     let activeMonsterForTurnPlayer = playerIndexForTurnStart === 0 ? newActiveMonsterP1 : newActiveMonsterP2;
-    const playerLogType = playerWhoseTurnIsStarting.id === 'p1' ? 'player1' : 'player2';
 
     if (activeMonsterForTurnPlayer && activeMonsterForTurnPlayer.statusEffects && activeMonsterForTurnPlayer.statusEffects.length > 0) {
         const effectsToKeep: StatusEffect[] = [];
@@ -338,12 +337,12 @@ export function GameBoard() {
 
       const actingPlayerInitial = players[currentPlayerIndex];
       const opponentPlayerIndex = (1 - currentPlayerIndex) as 0 | 1;
-      const opponentPlayer = players[opponentPlayerIndex];
 
       const playerAfterAction = {
           ...actingPlayerInitial,
           spellsPlayedThisTurn: 0,
-          turnCount: actingPlayerInitial.turnCount + 1, // Increment turn count for player whose turn just ended
+          turnCount: actingPlayerInitial.turnCount + 1,
+          monsterJustPlayed: false, // Reset summoning sickness flag for player whose turn just ended
       };
       let updatedPlayersArr = [...players] as [PlayerData, PlayerData];
       updatedPlayersArr[currentPlayerIndex] = playerAfterAction;
@@ -353,7 +352,7 @@ export function GameBoard() {
       const stateForStatusEffects: GameState = {
           ...prev,
           players: updatedPlayersArr,
-          currentPlayerIndex: opponentPlayerIndex, // Status effects apply to player whose turn is STARTING
+          currentPlayerIndex: opponentPlayerIndex,
           activeMonsterP1: activeMonsterP1 ? {...activeMonsterP1} : undefined,
           activeMonsterP2: activeMonsterP2 ? {...activeMonsterP2} : undefined,
           gameLogMessages: newLogs,
@@ -453,8 +452,8 @@ export function GameBoard() {
         activeMonsterP2,
         winner: undefined, // No winner yet
         gameLogMessages: newLogs,
-        isProcessingAction: false, // <<< CRITICAL: Ensure this is false for next player's turn
-        indicators: stateAfterStatusEffects.indicators, // Reset damage indicators for new turn
+        isProcessingAction: false,
+        indicators: stateAfterStatusEffects.indicators,
       };
       console.log('[GameBoard] processTurnEnd: Setting final state for new turn:', {
           currentPlayerIndex: finalStateForTurnEnd.currentPlayerIndex,
@@ -467,63 +466,33 @@ export function GameBoard() {
   };
 
   const handlePlayMonsterFromHand = (card: MonsterCardData) => {
-    try {
-        const currentBoardGameState = gameStateRef.current;
-        if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
+    logAndSetGameState(prev => {
+        if (!prev || prev.isProcessingAction) return prev;
 
-        logAndSetGameState(prev => ({ ...prev!, isProcessingAction: true }));
-
-        const { players, currentPlayerIndex, isInitialMonsterEngagement } = currentBoardGameState;
+        const { players, currentPlayerIndex } = prev;
         const player = players[currentPlayerIndex];
         const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
 
         const newHand = player.hand.filter(c => c.id !== card.id);
-        const updatedPlayer = { ...player, hand: newHand, hasMulliganed: true };
+        const updatedPlayer = { ...player, hand: newHand, hasMulliganed: true, monsterJustPlayed: true }; // Set summon sickness flag
         const newPlayers = [...players] as [PlayerData, PlayerData];
         newPlayers[currentPlayerIndex] = updatedPlayer;
 
-        const wasFirstMonsterOfGame = isInitialMonsterEngagement;
-        
-        appendLog(`${player.name} summons ${card.title} to the arena!`, playerLogType);
+        const logs = [
+            { text: `${player.name} summons ${card.title} to the arena!`, type: playerLogType },
+            { text: `${card.title} cannot act this turn due to summoning sickness.`, type: 'info' as LogEntryType }
+        ];
 
-        logAndSetGameState(prev => {
-            if (!prev) return null;
-            return {
-                ...prev,
-                players: newPlayers,
-                [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: card,
-                isInitialMonsterEngagement: false,
-            };
-        });
+        appendLogs(logs);
 
-        // The very first monster of the game ends the turn. All subsequent summons continue the turn.
-        if (wasFirstMonsterOfGame) {
-            appendLog(`${card.title} cannot act this turn as it's the first monster in play.`, 'info');
-            logAndSetGameState(prev => ({ ...prev!, gamePhase: 'turn_resolution_phase' }));
-            setTimeout(() => {
-                processTurnEnd();
-            }, 1000);
-        } else {
-            appendLog(`${card.title} is now active! ${player.name}, choose your next action.`, playerLogType);
-            logAndSetGameState(prev => ({
-                ...prev!,
-                gamePhase: 'player_action_phase',
-                isProcessingAction: false, 
-            }));
-        }
-    } catch (error) {
-        console.error("Error in handlePlayMonsterFromHand:", error);
-        logAndSetGameState(prev => {
-            if(!prev) return null;
-            const newLogs = [...(prev.gameLogMessages || []), {id: `log-${logIdCounter++}`, text: "A critical error occurred while summoning a monster.", type: 'system' as LogEntryType}];
-            return prev ? {
-                ...prev,
-                gameLogMessages: newLogs,
-                isProcessingAction: false,
-                gamePhase: 'player_action_phase'
-            } : null;
-        });
-    }
+        return {
+            ...prev,
+            players: newPlayers,
+            [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: card,
+            gamePhase: 'player_action_phase',
+            isProcessingAction: false,
+        };
+    });
 };
 
 
@@ -537,8 +506,8 @@ export function GameBoard() {
     const player = players[currentPlayerIndex];
     const opponentActiveMonster = currentPlayerIndex === 0 ? currentActiveP2 : currentActiveP1;
 
-
-    if (player.turnCount === 0 && !opponentActiveMonster) {
+    const isFirstTurnOfGame = player.turnCount === 0 && !opponentActiveMonster;
+    if (isFirstTurnOfGame) {
         toast({ title: "First Turn Restriction", description: "You cannot play spell cards on the first turn of the game.", variant: "destructive" });
         logAndSetGameState(prev => ({ ...prev!, isProcessingAction: false }));
         return;
@@ -976,9 +945,8 @@ export function GameBoard() {
             actingPlayer.hand = newHand;
             actingPlayer.discardPile.push(card); // Spell goes to discard
             newPlayers[currentPlayerIndex] = { ...actingPlayer, hasMulliganed: true }; // Playing a spell also counts as keeping hand
-            newPlayers[currentPlayerIndex] = actingPlayer;
 
-            logsToAppend.push({id: `log-${logIdCounter++}`, text: `${actingPlayer.name} has cast a spell. Choose your next action or end turn.`, type: actingPlayerLogType});
+            logsToAppend.push({text: `${actingPlayer.name} has cast a spell. Choose your next action or end turn.`, type: actingPlayerLogType});
             
             const finalState: GameState = {
                 ...prev,
@@ -986,7 +954,7 @@ export function GameBoard() {
                 activeMonsterP1: newActiveMonsterP1,
                 activeMonsterP2: newActiveMonsterP2,
                 gameLogMessages: [...(gameLogMessages || []), ...logsToAppend.map(log => ({...log, id: `log-${logIdCounter++}`}))],
-                isProcessingAction: true, // Will be set to false shortly
+                isProcessingAction: false, 
                 indicators: newIndicators,
                 gamePhase: 'player_action_phase',
             };
@@ -1000,10 +968,8 @@ export function GameBoard() {
             }
             
             if (immediateTurnEnd) {
-                finalState.gamePhase = 'turn_resolution_phase';
-                setTimeout(() => processTurnEnd(), 500); // Check for player defeat immediately
-            } else {
-                 finalState.isProcessingAction = false;
+                finalState.gamePhase = 'combat_phase';
+                setTimeout(() => processTurnEnd(), 500); 
             }
 
             return finalState;
@@ -1047,6 +1013,11 @@ export function GameBoard() {
 
         if (!attackerMonster || attackerMonster.hp <= 0) {
             toast({ title: "Cannot Attack", description: `Your active monster is defeated and cannot attack.`, variant: "destructive" });
+            return;
+        }
+
+        if (attackerPlayer.monsterJustPlayed) {
+            toast({ title: "Summoning Sickness", description: `${attackerMonster.title} cannot attack on the turn it was played.`, variant: "destructive" });
             return;
         }
         
@@ -1114,7 +1085,7 @@ export function GameBoard() {
                         } else {
                             shield.value -= damageToShield;
                             monster.statusEffects[shieldIndex] = shield;
-                            logs.push({ text: `The shield has ${shield.value} health remaining.`, type: 'info' });
+                            logsToAppend.push({ text: `The shield has ${shield.value} health remaining.`, type: 'info' });
                         }
                     }
                 }
@@ -1254,12 +1225,12 @@ export function GameBoard() {
                 activeMonsterP1: finalActiveMonsterP1,
                 activeMonsterP2: finalActiveMonsterP2,
                 gameLogMessages: [...(prev!.gameLogMessages || []), ...logsToAppend.map(log => ({...log, id: `log-${logIdCounter++}`}))],
-                gamePhase: 'turn_resolution_phase',
+                gamePhase: 'combat_phase',
                 indicators: finalIndicators,
             }));
             
             setTimeout(() => {
-                processTurnEnd();
+                logAndSetGameState(prev => ({...prev!, gamePhase: 'player_action_phase', isProcessingAction: false }));
             }, 1500);
 
         }, 1000); 
@@ -1284,12 +1255,6 @@ export function GameBoard() {
     logAndSetGameState(prev => {
       if (!prev || prev.isProcessingAction) return prev;
       const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = prev;
-      const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
-
-      if (players[currentPlayerIndex].turnCount === 0 && !opponentActiveMonster) {
-        toast({ title: "First Turn Rule", description: "The first player cannot swap monsters on their first turn.", variant: "destructive"});
-        return prev;
-      }
 
       const player = players[currentPlayerIndex];
       const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
@@ -1315,44 +1280,45 @@ export function GameBoard() {
         }
       }
 
-      newPlayers[currentPlayerIndex] = { ...player, hand: newPlayerHand, hasMulliganed: true }; // Swapping also counts as keeping hand
+      newPlayers[currentPlayerIndex] = { ...player, hand: newPlayerHand, hasMulliganed: true, monsterJustPlayed: true }; // Swapping also counts for summoning sickness
       logsToAppend.push({text: `${player.name} summons ${selectedMonsterFromHand.title} to replace it!`, type: playerLogType});
+      logsToAppend.push({text: `${selectedMonsterFromHand.title} cannot act this turn due to summoning sickness.`, type: 'info'});
 
       const updatedState = {
         ...prev,
         players: newPlayers,
         [currentPlayerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2']: selectedMonsterFromHand,
         gameLogMessages: [...(prev.gameLogMessages || []), ...logsToAppend.map(l => ({...l, id: `log-${logIdCounter++}`}))],
-        gamePhase: 'player_action_phase' as GamePhase, // Return to action phase after swap
-        isProcessingAction: true, // Temporarily set, then resolve
+        gamePhase: 'player_action_phase' as GamePhase,
+        isProcessingAction: false,
       };
-
-        // After swap, immediately move to turn resolution
-        updatedState.gamePhase = 'turn_resolution_phase';
-        updatedState.gameLogMessages.push({id: `log-${logIdCounter++}`, text: `${selectedMonsterFromHand.title} is now active but cannot act further this turn after swapping.`, type: 'info'});
-
-        setTimeout(() => {
-            processTurnEnd(); // This will set isProcessingAction to false
-        }, 1000); // Short delay for log reading
 
       return updatedState;
     });
   };
 
   const handleInitiateSwap = () => {
-    const player = gameStateRef.current?.players[gameStateRef.current.currentPlayerIndex];
-    if (!player) return;
+    const currentState = gameStateRef.current;
+    if (!currentState || currentState.isProcessingAction) return;
+
+    const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = currentState;
+    const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
+    const player = players[currentPlayerIndex];
+
+    if (player.turnCount === 0 && !opponentActiveMonster) {
+      toast({ title: "First Turn Rule", description: "You cannot swap monsters on the first turn of the game.", variant: "destructive"});
+      return;
+    }
+
+    if (player.monsterJustPlayed) {
+      toast({ title: "Summoning Sickness", description: "A monster that was just played cannot be swapped out in the same turn.", variant: "destructive" });
+      return;
+    }
+
     const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
 
     logAndSetGameState(prev => {
-      if (!prev || prev.isProcessingAction) return prev;
-      const { players, currentPlayerIndex, activeMonsterP2, activeMonsterP1 } = prev;
-      const opponentActiveMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
-
-      if (players[currentPlayerIndex].turnCount === 0 && !opponentActiveMonster) {
-        toast({ title: "First Turn Rule", description: "You cannot swap monsters on the first turn of the game.", variant: "destructive"});
-        return prev;
-      }
+      if (!prev) return prev;
       appendLog(`${prev.players[prev.currentPlayerIndex].name} is considering a monster swap. Select a monster from your hand.`, playerLogType);
       const newPlayers = [...prev.players] as [PlayerData, PlayerData];
       newPlayers[prev.currentPlayerIndex] = {...newPlayers[prev.currentPlayerIndex], hasMulliganed: true };
@@ -1371,7 +1337,7 @@ export function GameBoard() {
       if(!prev) return null;
       const newPlayers = [...prev.players] as [PlayerData, PlayerData];
       newPlayers[prev.currentPlayerIndex] = { ...newPlayers[prev.currentPlayerIndex], hasMulliganed: true };
-      return { ...prev, isProcessingAction: true, gamePhase: 'turn_resolution_phase', players: newPlayers }
+      return { ...prev, isProcessingAction: true, gamePhase: 'combat_phase', players: newPlayers }
     });
     appendLog(`${player.name} ends their turn.`, playerLogType);
     setTimeout(() => {
@@ -1390,16 +1356,20 @@ export function GameBoard() {
     });
   };
 
-  const handleCancelMulligan = () => {
+  const handleCancelAction = () => {
     const player = gameStateRef.current?.players[gameStateRef.current.currentPlayerIndex];
     if (!player) return;
     const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
     logAndSetGameState(prev => {
       if (!prev) return prev;
-      appendLog(`Mulligan canceled. Choose an action.`, playerLogType);
+      if (prev.gamePhase === 'mulligan_phase') {
+        appendLog(`Mulligan canceled. Choose an action.`, playerLogType);
+        setSelectedForMulligan([]);
+      } else if (prev.gamePhase === 'selecting_swap_monster_phase') {
+        appendLog(`Swap canceled. Choose an action.`, playerLogType);
+      }
       return { ...prev, gamePhase: 'player_action_phase' };
     });
-    setSelectedForMulligan([]);
   };
 
   const handleConfirmMulligan = () => {
@@ -1541,10 +1511,10 @@ export function GameBoard() {
                 canPlayMonster={!activeMonsterP1 && (gamePhase === 'player_action_phase')}
                 currentPhase={gamePhase}
                 spellsPlayedThisTurn={players[0].spellsPlayedThisTurn}
-                isInitialEngagement={gameState.isInitialMonsterEngagement}
                 opponentActiveMonster={activeMonsterP2}
                 isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 0}
                 selectedCardIds={selectedForMulligan}
+                player={players[0]}
             />
         </div>
 
@@ -1571,10 +1541,10 @@ export function GameBoard() {
                 canPlayMonster={!activeMonsterP2 && (gamePhase === 'player_action_phase')}
                 currentPhase={gamePhase}
                 spellsPlayedThisTurn={players[1].spellsPlayedThisTurn}
-                isInitialEngagement={gameState.isInitialMonsterEngagement}
                 opponentActiveMonster={activeMonsterP1}
                 isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 1}
                 selectedCardIds={selectedForMulligan}
+                player={players[1]}
             />
         </div>
       </div>
@@ -1596,7 +1566,7 @@ export function GameBoard() {
             isEffectivelyFirstTurn={currentPlayer.turnCount === 0 && !opponentActiveMonster}
             gamePhase={gamePhase}
             onInitiateMulligan={handleInitiateMulligan}
-            onCancelMulligan={handleCancelMulligan}
+            onCancelAction={handleCancelAction}
             onConfirmMulligan={handleConfirmMulligan}
             mulliganCardCount={selectedForMulligan.length}
           />
@@ -1649,3 +1619,5 @@ export function GameBoard() {
     </div>
   );
 }
+
+    
