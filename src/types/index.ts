@@ -25,6 +25,7 @@ export interface MonsterCardData extends BaseCardData {
   statusEffects?: StatusEffect[];
   hasSwiftnessAura?: boolean;
   hasMightInfusion?: boolean;
+  hasGrowthSpurt?: boolean;
 }
 
 export interface SpellCardData extends BaseCardData {

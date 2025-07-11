@@ -737,6 +737,7 @@ export function GameBoard() {
                         currentPlayersMonsterRef.maxHp += 10;
                         const originalHp = currentPlayersMonsterRef.hp;
                         currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + 10);
+                        currentPlayersMonsterRef.hasGrowthSpurt = true;
                         logsToAppend.push({text: `${currentPlayersMonsterRef.title}'s Growth Spurt increases Max HP to ${currentPlayersMonsterRef.maxHp} and heals ${currentPlayersMonsterRef.hp - originalHp} HP. Current HP: ${currentPlayersMonsterRef.hp}.`, type: 'heal'});
                         if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                         spellEffectApplied = true;
@@ -1623,5 +1624,3 @@ export function GameBoard() {
     </div>
   );
 }
-
-    

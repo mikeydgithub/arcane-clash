@@ -6,7 +6,7 @@ import type { CardData, MonsterCardData, SpellCardData, StatusEffect } from '@/t
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, Heart, Zap, HelpCircle, Wind, Flame } from 'lucide-react';
+import { Swords, Sparkles, Heart, Zap, HelpCircle, Wind, Flame, Sprout } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -41,6 +41,22 @@ function AnimatedNumber({ value }: AnimatedNumberProps) {
   return <motion.span>{displayTransformed}</motion.span>;
 }
 
+interface BuffIconProps {
+  icon: React.ReactNode;
+  tooltipText: string;
+}
+
+function BuffIcon({ icon, tooltipText }: BuffIconProps) {
+  return (
+    <Tooltip delayDuration={100}>
+      <TooltipTrigger asChild>{icon}</TooltipTrigger>
+      <TooltipContent side="top" align="center" className="max-w-[180px] text-xs p-2">
+        <p>{tooltipText}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 
 interface StatDisplayProps {
   icon: React.ReactNode;
@@ -50,12 +66,12 @@ interface StatDisplayProps {
   isSingleValue?: boolean;
   animateStats?: boolean;
   tooltipText?: string;
-  extraIcon?: React.ReactNode;
+  buffIcons?: BuffIconProps[];
   isDominant?: boolean;
   dominantStatType?: 'melee' | 'magic';
 }
 
-function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false, tooltipText, extraIcon, isDominant = false, dominantStatType }: StatDisplayProps) {
+function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false, tooltipText, buffIcons, isDominant = false, dominantStatType }: StatDisplayProps) {
   const displayCurrentValueNode = animateStats ? <AnimatedNumber value={currentValue} /> : Math.round(currentValue);
   const ariaCurrentValue = Math.round(currentValue);
   const ariaMaxValue = maxValue !== undefined ? Math.round(maxValue) : undefined;
@@ -76,7 +92,7 @@ function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = fals
         {displayCurrentValueNode}
         {!isSingleValue && maxValue !== undefined && ` / ${Math.round(maxValue)}`}
       </span>
-      {extraIcon}
+      {buffIcons && buffIcons.map((buff, index) => <BuffIcon key={index} {...buff} />)}
     </div>
   );
 
@@ -228,13 +244,10 @@ export function CardView({
                     tooltipText="Melee Attack: Physical damage dealt."
                     isDominant={dominantAttack === 'melee'}
                     dominantStatType="melee"
-                    extraIcon={
-                      (card as MonsterCardData).hasSwiftnessAura ? 
-                      <Wind className={cn(iconSize, "text-green-400")} title="Swiftness Aura active" /> : 
-                      (card as MonsterCardData).hasMightInfusion ?
-                      <Flame className={cn(iconSize, "text-orange-400")} title="Might Infusion active" /> :
-                      undefined
-                    }
+                    buffIcons={[
+                      ...((card as MonsterCardData).hasSwiftnessAura ? [{ icon: <Wind className={cn(iconSize, "text-green-400")} />, tooltipText: "Swiftness Aura: +3 Melee" }] : []),
+                      ...((card as MonsterCardData).hasMightInfusion ? [{ icon: <Flame className={cn(iconSize, "text-orange-400")} />, tooltipText: "Might Infusion: +4 Melee & Magic" }] : []),
+                    ]}
                   />
               )}
             </div>
@@ -250,11 +263,9 @@ export function CardView({
                     tooltipText="Magic Attack: Magical damage dealt." 
                     isDominant={dominantAttack === 'magic'}
                     dominantStatType="magic"
-                    extraIcon={
-                       (card as MonsterCardData).hasMightInfusion ?
-                       <Flame className={cn(iconSize, "text-orange-400")} title="Might Infusion active" /> :
-                       undefined
-                    }
+                    buffIcons={[
+                       ...((card as MonsterCardData).hasMightInfusion ? [{ icon: <Flame className={cn(iconSize, "text-orange-400")} />, tooltipText: "Might Infusion: +4 Melee & Magic" }] : []),
+                    ]}
                   />
               )}
                <StatDisplay
@@ -264,6 +275,9 @@ export function CardView({
                   label="HP"
                   animateStats={inBattleArena}
                   tooltipText={`Hit Points: Current ${Math.round((card as MonsterCardData).hp)} / Max ${Math.round((card as MonsterCardData).maxHp)}`}
+                  buffIcons={[
+                      ...((card as MonsterCardData).hasGrowthSpurt ? [{ icon: <Sprout className={cn(iconSize, "text-lime-400")} />, tooltipText: "Growth Spurt: +10 Max HP" }] : []),
+                  ]}
               />
             </div>
           </>
