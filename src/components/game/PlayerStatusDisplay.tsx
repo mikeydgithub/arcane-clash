@@ -8,15 +8,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { Heart, ShieldCheck } from 'lucide-react';
 import { DamageIndicator } from './DamageIndicator';
+import { HealingIndicator } from './HealingIndicator';
 
 interface PlayerStatusDisplayProps {
   player: PlayerData;
   isCurrentPlayer: boolean;
   isOpponent?: boolean;
   damage: number | null;
+  healing: number | null;
 }
 
-export function PlayerStatusDisplay({ player, isCurrentPlayer, isOpponent = false, damage }: PlayerStatusDisplayProps) {
+export function PlayerStatusDisplay({ player, isCurrentPlayer, isOpponent = false, damage, healing }: PlayerStatusDisplayProps) {
   const MAX_HP = 30; // Initial HP
 
   return (
@@ -26,6 +28,7 @@ export function PlayerStatusDisplay({ player, isCurrentPlayer, isOpponent = fals
       isOpponent ? "bg-card/70" : "bg-card"
     )}>
       <DamageIndicator damage={damage} />
+      <HealingIndicator healing={healing} />
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">

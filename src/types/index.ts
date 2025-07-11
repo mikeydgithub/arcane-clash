@@ -59,11 +59,15 @@ export type GamePhase =
   | "turn_resolution_phase" // After action: check defeated monsters, draw card, check game over
   | "game_over_phase";
 
-export interface DamageIndicatorState {
-  p1Monster: number | null;
-  p2Monster: number | null;
-  p1Player: number | null;
-  p2Player: number | null;
+export interface IndicatorState {
+  p1MonsterDamage: number | null;
+  p2MonsterDamage: number | null;
+  p1PlayerDamage: number | null;
+  p2PlayerDamage: number | null;
+  p1MonsterHeal: number | null;
+  p2MonsterHeal: number | null;
+  p1PlayerHeal: number | null;
+  p2PlayerHeal: number | null;
 }
 
 export type LogEntryType = 'system' | 'player1' | 'player2' | 'damage' | 'heal' | 'info';
@@ -84,5 +88,5 @@ export interface GameState {
   gameLogMessages: GameLogEntry[];
   isProcessingAction?: boolean; // To disable inputs during animations/AI calls
   isInitialMonsterEngagement: boolean; // True if no monster has been played yet, false otherwise
-  damageIndicators: DamageIndicatorState;
+  indicators: IndicatorState;
 }

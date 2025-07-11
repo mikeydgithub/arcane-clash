@@ -1,13 +1,14 @@
 
 'use client';
 
-import type { CardData, MonsterCardData, DamageIndicatorState, GameLogEntry } from '@/types';
+import type { CardData, MonsterCardData, IndicatorState, GameLogEntry } from '@/types';
 import { CardView } from './CardView';
 import { CoinFlipAnimation } from './CoinFlipAnimation';
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { DamageIndicator } from './DamageIndicator';
+import { HealingIndicator } from './HealingIndicator';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -19,7 +20,7 @@ interface BattleArenaProps {
   showClashAnimation?: boolean;
   gameLogMessages: GameLogEntry[];
   gamePhase: string;
-  damageIndicators: DamageIndicatorState;
+  indicators: IndicatorState;
 
   onCoinFlipAnimationComplete?: () => void;
   winningPlayerNameForCoinFlip?: string;
@@ -33,7 +34,7 @@ export function BattleArena({
   showClashAnimation,
   gameLogMessages,
   gamePhase,
-  damageIndicators,
+  indicators,
   onCoinFlipAnimationComplete,
   winningPlayerNameForCoinFlip,
 }: BattleArenaProps) {
@@ -214,7 +215,8 @@ export function BattleArena({
             transition={{ duration: 0.5 }}
             className="relative w-1/2 flex justify-center items-center h-full"
           >
-          <DamageIndicator damage={damageIndicators.p1Monster} />
+          <DamageIndicator damage={indicators.p1MonsterDamage} />
+          <HealingIndicator healing={indicators.p1MonsterHeal} />
             {player1Card && (
                 <div className={cn(isCombatPhase && 'box-left')}>
                   <CardView card={player1Card} inBattleArena={true} statusEffects={player1Card.statusEffects} />
@@ -231,7 +233,8 @@ export function BattleArena({
             transition={{ duration: 0.5 }}
             className="relative w-1/2 flex justify-center items-center h-full"
           >
-          <DamageIndicator damage={damageIndicators.p2Monster} />
+          <DamageIndicator damage={indicators.p2MonsterDamage} />
+          <HealingIndicator healing={indicators.p2MonsterHeal} />
             {player2Card && (
                 <div className={cn(isCombatPhase && 'box-right')}>
                   <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} statusEffects={player2Card.statusEffects} />
