@@ -3,7 +3,7 @@
 
 import type { StatusEffect } from '@/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Shield, HeartPulse, ZapOff, MicOff, Ghost, Power } from 'lucide-react';
+import { Shield, HeartPulse, ZapOff, MicOff, Ghost, Power, Snowflake } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +48,12 @@ const effectDetails = {
     description: (value: number) => `Next melee attack deals x${value} damage.`,
     color: 'text-orange-500',
   },
+  frostbite: {
+    icon: Snowflake,
+    label: 'Frostbite',
+    description: (value: number) => `Melee attack is reduced by ${value}.`,
+    color: 'text-cyan-300',
+  }
 };
 
 export function StatusEffectIcon({ effect }: StatusEffectIconProps) {

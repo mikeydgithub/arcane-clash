@@ -299,7 +299,7 @@ export function GameBoard() {
                 }
                 effect.duration -= 1;
             }
-            if(effect.type === 'stun' || effect.type === 'shield' || effect.type === 'silence' || effect.type === 'ethereal' || effect.type === 'empower'){
+            if(effect.type === 'stun' || effect.type === 'shield' || effect.type === 'silence' || effect.type === 'ethereal' || effect.type === 'empower' || effect.type === 'frostbite'){
                 effect.duration -= 1;
             }
 
@@ -820,15 +820,15 @@ export function GameBoard() {
                         const frostDamage = 12;
                         const meleeReduction = 2;
                         const originalHp = opponentPlayersMonsterRef.hp;
-                        const originalMelee = opponentPlayersMonsterRef.melee;
                         
                         opponentPlayersMonsterRef.hp = Math.max(0, opponentPlayersMonsterRef.hp - frostDamage);
                         const damageTaken = originalHp - opponentPlayersMonsterRef.hp;
                         if (currentPlayerIndex === 0) newIndicators.p2MonsterDamage = damageTaken; else newIndicators.p1MonsterDamage = damageTaken;
 
-                        opponentPlayersMonsterRef.melee = Math.max(0, opponentPlayersMonsterRef.melee - meleeReduction);
-
-                        logsToAppend.push({text: `${actingPlayer.name}'s Frost Nova hits ${opponentPlayersMonsterRef.title} for ${damageTaken} damage and reduces its Melee by ${meleeReduction}! HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp}, Melee: ${originalMelee} -> ${opponentPlayersMonsterRef.melee}.`, type: 'damage'});
+                        const newEffect: StatusEffect = { id: `frostbite-${Date.now()}`, type: 'frostbite', duration: 3, value: meleeReduction };
+                        opponentPlayersMonsterRef.statusEffects = [...(opponentPlayersMonsterRef.statusEffects || []), newEffect];
+                        
+                        logsToAppend.push({text: `${actingPlayer.name}'s Frost Nova hits ${opponentPlayersMonsterRef.title} for ${damageTaken} damage and applies Frostbite, reducing its Melee! (HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp})`, type: 'damage'});
                         
                         spellEffectApplied = true;
 
@@ -1104,12 +1104,19 @@ export function GameBoard() {
                 return { updatedMonster: monster, log: logs, damageDealt: totalDamageDealt };
             };
 
+            const getEffectiveMelee = (monster: MonsterCardData): number => {
+                const frostbiteEffect = monster.statusEffects?.find(e => e.type === 'frostbite');
+                const reduction = frostbiteEffect ? frostbiteEffect.value : 0;
+                return Math.max(0, monster.melee - reduction);
+            };
+
             logsToAppend.push({ text: `${players[currentPlayerIndex].name}'s ${currentAttackerMonster.title} attacks!`, type: attackerLogType});
 
             if (currentDefenderMonster && currentDefenderMonster.hp > 0) {
                 logsToAppend.push({ text: `${currentAttackerMonster.title} clashes with ${currentDefenderMonster.title}!`, type: 'system' });
-                let isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
-                let attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
+                const effectiveAttackerMelee = getEffectiveMelee(currentAttackerMonster);
+                let isMagicAttack = currentAttackerMonster.magic > effectiveAttackerMelee;
+                let attackValue = isMagicAttack ? currentAttackerMonster.magic : effectiveAttackerMelee;
                 const attackType = isMagicAttack ? "magic" : "melee";
 
                 // Check for Empower Weapon effect
@@ -1155,8 +1162,9 @@ export function GameBoard() {
 
                 if (currentDefenderMonster && currentDefenderMonster.hp > 0 && !currentDefenderMonster.statusEffects?.some(e => e.type === 'stun')) {
                     logsToAppend.push({ text: `${currentDefenderMonster.title} counter-attacks!`, type: defenderLogType });
-                    const isCounterMagic = currentDefenderMonster.magic > currentDefenderMonster.melee;
-                    const counterAttackValue = isCounterMagic ? currentDefenderMonster.magic : currentDefenderMonster.melee;
+                    const effectiveDefenderMelee = getEffectiveMelee(currentDefenderMonster);
+                    const isCounterMagic = currentDefenderMonster.magic > effectiveDefenderMelee;
+                    const counterAttackValue = isCounterMagic ? currentDefenderMonster.magic : effectiveDefenderMelee;
                     const counterAttackType = isCounterMagic ? "magic" : "melee";
                     logsToAppend.push({ text: `Counter-attack is ${counterAttackType}-based with a power of ${counterAttackValue}.`, type: 'info' });
                     
@@ -1191,8 +1199,9 @@ export function GameBoard() {
                     logsToAppend.push({ text: `${currentDefenderMonster.title} is stunned and cannot counter-attack!`, type: 'info' });
                 }
             } else {
-                let isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
-                let attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
+                const effectiveAttackerMelee = getEffectiveMelee(currentAttackerMonster);
+                let isMagicAttack = currentAttackerMonster.magic > effectiveAttackerMelee;
+                let attackValue = isMagicAttack ? currentAttackerMonster.magic : effectiveAttackerMelee;
                 const attackType = isMagicAttack ? "magic" : "melee";
 
                  // Check for Empower Weapon effect
