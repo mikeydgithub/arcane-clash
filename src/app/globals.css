@@ -154,6 +154,35 @@ body {
     animation: bounceRight 0.5s ease-in-out;
 }
 
+@keyframes glow-red {
+  0%, 100% {
+    text-shadow: 0 0 2px #fca5a5, 0 0 5px #ef4444;
+    color: #fca5a5;
+  }
+  50% {
+    text-shadow: 0 0 5px #fca5a5, 0 0 12px #ef4444;
+    color: #fee2e2;
+  }
+}
+
+@keyframes glow-blue {
+  0%, 100% {
+    text-shadow: 0 0 2px #93c5fd, 0 0 5px #3b82f6;
+    color: #93c5fd;
+  }
+  50% {
+    text-shadow: 0 0 5px #93c5fd, 0 0 12px #3b82f6;
+    color: #dbeafe;
+  }
+}
+
+.animate-glow-red {
+  animation: glow-red 2.5s ease-in-out infinite;
+}
+.animate-glow-blue {
+  animation: glow-blue 2.5s ease-in-out infinite;
+}
+
 
 @layer base {
   :root {

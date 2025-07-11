@@ -51,20 +51,28 @@ interface StatDisplayProps {
   animateStats?: boolean;
   tooltipText?: string;
   extraIcon?: React.ReactNode;
+  isDominant?: boolean;
+  dominantStatType?: 'melee' | 'magic';
 }
 
-function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false, tooltipText, extraIcon }: StatDisplayProps) {
+function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false, tooltipText, extraIcon, isDominant = false, dominantStatType }: StatDisplayProps) {
   const displayCurrentValueNode = animateStats ? <AnimatedNumber value={currentValue} /> : Math.round(currentValue);
   const ariaCurrentValue = Math.round(currentValue);
   const ariaMaxValue = maxValue !== undefined ? Math.round(maxValue) : undefined;
+  const glowClass = isDominant
+  ? dominantStatType === 'melee' ? 'animate-glow-red' : 'animate-glow-blue'
+  : '';
+
 
   const statElement = (
     <div
       className="flex items-center space-x-1 cursor-default"
       aria-label={`${label}: ${ariaCurrentValue}${!isSingleValue && ariaMaxValue !== undefined ? ` / ${ariaMaxValue}` : ''}`}
     >
-      {icon}
-      <span className="font-semibold">
+      <div className={cn('flex items-center', glowClass)}>
+        {icon}
+      </div>
+      <span className={cn('font-semibold', glowClass)}>
         {displayCurrentValueNode}
         {!isSingleValue && maxValue !== undefined && ` / ${Math.round(maxValue)}`}
       </span>
@@ -138,6 +146,17 @@ export function CardView({
 
   const isMonster = card.cardType === 'Monster';
 
+  let dominantAttack: 'melee' | 'magic' | 'none' = 'none';
+  if (isMonster && inBattleArena) {
+    const monsterCard = card as MonsterCardData;
+    if (monsterCard.magic > monsterCard.melee) {
+      dominantAttack = 'magic';
+    } else if (monsterCard.melee >= monsterCard.magic && monsterCard.melee > 0) {
+      dominantAttack = 'melee';
+    }
+  }
+
+
   const cardElementInner = (
     <MotionCard
       className={cn(
@@ -207,6 +226,8 @@ export function CardView({
                     isSingleValue={true} 
                     animateStats={inBattleArena} 
                     tooltipText="Melee Attack: Physical damage dealt."
+                    isDominant={dominantAttack === 'melee'}
+                    dominantStatType="melee"
                     extraIcon={
                       (card as MonsterCardData).hasSwiftnessAura ? 
                       <Wind className={cn(iconSize, "text-green-400")} title="Swiftness Aura active" /> : 
@@ -227,6 +248,8 @@ export function CardView({
                     isSingleValue={true} 
                     animateStats={inBattleArena} 
                     tooltipText="Magic Attack: Magical damage dealt." 
+                    isDominant={dominantAttack === 'magic'}
+                    dominantStatType="magic"
                     extraIcon={
                        (card as MonsterCardData).hasMightInfusion ?
                        <Flame className={cn(iconSize, "text-orange-400")} title="Might Infusion active" /> :
