@@ -73,7 +73,7 @@ export function StatusEffectIcon({ effect }: StatusEffectIconProps) {
           >
             <IconComponent className={cn('h-5 w-5', details.color)} />
             <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-              {effect.duration > 90 ? '∞' : effect.duration}
+              {effect.type === 'shield' ? effect.value : (effect.duration > 90 ? '∞' : effect.duration)}
             </div>
           </motion.div>
         </TooltipTrigger>
