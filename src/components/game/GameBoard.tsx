@@ -518,6 +518,9 @@ export function GameBoard() {
   const handlePlaySpellFromHand = (card: SpellCardData) => {
     const currentBoardGameState = gameStateRef.current;
     if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
+
+    logAndSetGameState(prev => ({ ...prev!, isProcessingAction: true }));
+
     const { players, currentPlayerIndex, activeMonsterP1: currentActiveP1, activeMonsterP2: currentActiveP2 } = currentBoardGameState;
     const player = players[currentPlayerIndex];
     const opponentActiveMonster = currentPlayerIndex === 0 ? currentActiveP2 : currentActiveP1;
@@ -525,11 +528,13 @@ export function GameBoard() {
 
     if (player.turnCount === 0 && !opponentActiveMonster) {
         toast({ title: "First Turn Restriction", description: "You cannot play spell cards on the first turn of the game.", variant: "destructive" });
+        logAndSetGameState(prev => ({ ...prev!, isProcessingAction: false }));
         return;
     }
 
     if (player.spellsPlayedThisTurn >= SPELLS_PER_TURN_LIMIT) {
         toast({ title: "Spell Limit Reached", description: `You can only play ${SPELLS_PER_TURN_LIMIT} spell(s) per turn.`, variant: "destructive" });
+        logAndSetGameState(prev => ({ ...prev!, isProcessingAction: false }));
         return;
     }
 
@@ -950,14 +955,15 @@ export function GameBoard() {
             newPlayers[currentPlayerIndex] = { ...actingPlayer, hasMulliganed: true }; // Playing a spell also counts as keeping hand
             newPlayers[currentPlayerIndex] = actingPlayer;
 
-            const finalState = {
+            const finalState: GameState = {
                 ...prev,
                 players: newPlayers,
                 activeMonsterP1: newActiveMonsterP1,
                 activeMonsterP2: newActiveMonsterP2,
                 gameLogMessages: [...(gameLogMessages || []), ...logsToAppend.map(log => ({...log, id: `log-${logIdCounter++}`}))],
-                isProcessingAction: true,
+                isProcessingAction: true, // Will be set to false shortly
                 damageIndicators: newDamageIndicators,
+                gamePhase: 'player_action_phase',
             };
 
             const currentStateAfterSpell = finalState;
@@ -971,15 +977,11 @@ export function GameBoard() {
             if (immediateTurnEnd) {
                 setTimeout(() => processTurnEnd(), 500); // Check for player defeat immediately
             } else {
-                finalState.gamePhase = 'player_action_phase';
-                finalState.isProcessingAction = false;
-                logsToAppend.push({text: `${actingPlayer.name} has cast a spell. Choose your next action or end turn.`, type: actingPlayerLogType});
+                 finalState.isProcessingAction = false;
+                 finalState.gameLogMessages.push({id: `log-${logIdCounter++}`, text: `${actingPlayer.name} has cast a spell. Choose your next action or end turn.`, type: actingPlayerLogType});
             }
 
-            return {
-                ...finalState,
-                gameLogMessages: [...(finalState.gameLogMessages || [])],
-            };
+            return finalState;
 
         } catch (error) {
             console.error("Error processing spell effect:", error);
