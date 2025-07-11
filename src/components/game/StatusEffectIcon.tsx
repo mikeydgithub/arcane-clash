@@ -3,7 +3,7 @@
 
 import type { StatusEffect } from '@/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Shield, HeartPulse, ZapOff, MicOff, Ghost } from 'lucide-react';
+import { Shield, HeartPulse, ZapOff, MicOff, Ghost, Power } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +42,12 @@ const effectDetails = {
     description: (value: number) => `Takes ${value}% reduced damage.`,
     color: 'text-slate-400',
   },
+  empower: {
+    icon: Power,
+    label: 'Empower Weapon',
+    description: (value: number) => `Next melee attack deals x${value} damage.`,
+    color: 'text-orange-500',
+  },
 };
 
 export function StatusEffectIcon({ effect }: StatusEffectIconProps) {
@@ -55,7 +61,7 @@ export function StatusEffectIcon({ effect }: StatusEffectIconProps) {
       <p className="font-bold">{details.label}</p>
       <p className="text-xs">{details.description(effect.value)}</p>
       <p className="text-xs text-muted-foreground italic">
-        {effect.duration > 90 ? 'Lasts until broken' : `Turns remaining: ${effect.duration}`}
+        {effect.duration > 90 ? 'Lasts until broken' : effect.type === 'empower' ? 'Consumed on next melee attack' : `Turns remaining: ${effect.duration}`}
       </p>
     </div>
   );
@@ -73,7 +79,7 @@ export function StatusEffectIcon({ effect }: StatusEffectIconProps) {
           >
             <IconComponent className={cn('h-5 w-5', details.color)} />
             <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-              {effect.type === 'shield' ? effect.value : (effect.duration > 90 ? '∞' : effect.duration)}
+              {effect.type === 'shield' ? effect.value : effect.type === 'empower' ? `x${effect.value}` : (effect.duration > 90 ? '∞' : effect.duration)}
             </div>
           </motion.div>
         </TooltipTrigger>

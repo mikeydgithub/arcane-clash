@@ -293,7 +293,7 @@ export function GameBoard() {
                 }
                 effect.duration -= 1;
             }
-            if(effect.type === 'stun' || effect.type === 'shield' || effect.type === 'silence' || effect.type === 'ethereal'){
+            if(effect.type === 'stun' || effect.type === 'shield' || effect.type === 'silence' || effect.type === 'ethereal' || effect.type === 'empower'){
                 effect.duration -= 1;
             }
 
@@ -877,6 +877,18 @@ export function GameBoard() {
                         }
                         spellEffectApplied = true;
                         break;
+                    case 'Empower Weapon':
+                        if(currentPlayersMonsterRef) {
+                            const newEffect: StatusEffect = { id: `empower-${Date.now()}`, type: 'empower', duration: 2, value: 2 }; // Duration of 2 = lasts until next turn's attack phase
+                            currentPlayersMonsterRef.statusEffects = [...(currentPlayersMonsterRef.statusEffects || []), newEffect];
+                            logsToAppend.push({text: `${actingPlayer.name}'s Empower Weapon causes ${currentPlayersMonsterRef.title}'s weapon to glow with power! Its next melee attack will deal double damage.`, type: 'info'});
+                            if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                            spellEffectApplied = true;
+                        } else {
+                            logsToAppend.push({text: `${actingPlayer.name}'s Empower Weapon fizzles with no active monster to target.`, type: 'system'});
+                            spellEffectApplied = true;
+                        }
+                        break;
                     default:
                         logsToAppend.push({text: `The spell ${card.title} fizzles, its effect not yet defined in the ancient tomes.`, type: 'system'});
                         spellEffectApplied = true; // Consider it "applied" to prevent re-trying
@@ -1041,9 +1053,20 @@ export function GameBoard() {
 
             if (currentDefenderMonster && currentDefenderMonster.hp > 0) {
                 logsToAppend.push({ text: `${currentAttackerMonster.title} clashes with ${currentDefenderMonster.title}!`, type: 'system' });
-                const isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
+                let isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
                 let attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
                 const attackType = isMagicAttack ? "magic" : "melee";
+
+                // Check for Empower Weapon effect
+                const empowerIndex = currentAttackerMonster.statusEffects?.findIndex(e => e.type === 'empower') ?? -1;
+                if (!isMagicAttack && empowerIndex > -1) {
+                    const empowerEffect = currentAttackerMonster.statusEffects![empowerIndex];
+                    attackValue *= empowerEffect.value;
+                    logsToAppend.push({ text: `${currentAttackerMonster.title}'s Empowered attack deals double damage!`, type: 'info' });
+                    // Remove the effect after use
+                    currentAttackerMonster.statusEffects!.splice(empowerIndex, 1);
+                }
+                
                 logsToAppend.push({ text: `Attack is ${attackType}-based with a power of ${attackValue}.`, type: 'info'});
                 
                 const defenderHpBefore = currentDefenderMonster.hp;
@@ -1113,9 +1136,20 @@ export function GameBoard() {
                     logsToAppend.push({ text: `${currentDefenderMonster.title} is stunned and cannot counter-attack!`, type: 'info' });
                 }
             } else {
-                const isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
-                const attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
+                let isMagicAttack = currentAttackerMonster.magic > currentAttackerMonster.melee;
+                let attackValue = isMagicAttack ? currentAttackerMonster.magic : currentAttackerMonster.melee;
                 const attackType = isMagicAttack ? "magic" : "melee";
+
+                 // Check for Empower Weapon effect
+                 const empowerIndex = currentAttackerMonster.statusEffects?.findIndex(e => e.type === 'empower') ?? -1;
+                 if (!isMagicAttack && empowerIndex > -1) {
+                     const empowerEffect = currentAttackerMonster.statusEffects![empowerIndex];
+                     attackValue *= empowerEffect.value;
+                     logsToAppend.push({ text: `${currentAttackerMonster.title}'s Empowered attack deals double damage!`, type: 'info' });
+                     // Remove the effect after use
+                     currentAttackerMonster.statusEffects!.splice(empowerIndex, 1);
+                 }
+                
                 const originalDefenderHp = newPlayers[defenderPlayerIndex].hp;
 
                 newPlayers[defenderPlayerIndex].hp = Math.max(0, newPlayers[defenderPlayerIndex].hp - attackValue);
