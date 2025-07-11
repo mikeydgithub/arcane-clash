@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Layers3, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAudio } from '@/contexts/AudioContext';
+import { SoundToggle } from './SoundToggle';
 
 
 const INITIAL_PLAYER_HP = 30;
@@ -42,6 +44,19 @@ export function GameBoard() {
   const hasInitialized = useRef(false);
   const gameStateRef = useRef<GameState | null>(null);
   const previousGameStateRef = useRef<GameState | null>(null);
+  const { isMuted } = useAudio();
+  const backgroundMusicRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (backgroundMusicRef.current) {
+        backgroundMusicRef.current.volume = 0.1;
+        if (!isMuted) {
+            backgroundMusicRef.current.play().catch(e => console.log("Audio play failed:", e));
+        } else {
+            backgroundMusicRef.current.pause();
+        }
+    }
+  }, [isMuted]);
 
 
   useEffect(() => {
@@ -1500,6 +1515,7 @@ export function GameBoard() {
 
   return (
     <div className="flex flex-col h-full w-full items-stretch">
+      <audio ref={backgroundMusicRef} src="/audio/background-music.mp3" loop />
       <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 md:gap-4 p-2 md:p-3">
         <div className="flex justify-start">
           <PlayerStatusDisplay player={players[0]} isCurrentPlayer={currentPlayerIndex === 0} damage={indicators.p1PlayerDamage} healing={indicators.p1PlayerHeal} />
@@ -1618,15 +1634,18 @@ export function GameBoard() {
                 Force End Turn (Dev)
             </Button>
         )}
-        <Button
-            onClick={handleRestartGame}
-            variant="outline"
-            size="sm"
-            className="absolute bottom-2 left-2 opacity-70 hover:opacity-100"
-            title="Restart Game"
-        >
-            <Trash2 className="mr-2 h-4 w-4" /> Restart
-        </Button>
+        <div className="absolute bottom-2 left-2 flex gap-2">
+            <Button
+                onClick={handleRestartGame}
+                variant="outline"
+                size="sm"
+                className="opacity-70 hover:opacity-100"
+                title="Restart Game"
+            >
+                <Trash2 className="mr-2 h-4 w-4" /> Restart
+            </Button>
+            <SoundToggle />
+        </div>
     </div>
   );
 }
