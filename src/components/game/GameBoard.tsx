@@ -843,21 +843,21 @@ export function GameBoard() {
                     }
                     break;
                 case 'Focused Mind':
-                     const cardsInDeck = actingPlayer.deck.length;
-                     if (cardsInDeck > 0) {
+                    const cardsInDeck = actingPlayer.deck.length;
+                    if (cardsInDeck > 0) {
                         const { dealtCards, remainingDeck } = dealCards(actingPlayer.deck, 1);
                         actingPlayer.deck = remainingDeck;
                         actingPlayer.hand.push(dealtCards[0]);
                         logsToAppend.push({text: `${actingPlayer.name} draws ${dealtCards[0].title}.`, type: actingPlayerLogType});
-                     } else {
+                    } else {
                         logsToAppend.push({text: `${actingPlayer.name} has no cards left to draw.`, type: 'system'});
-                     }
+                    }
                     if(currentPlayersMonsterRef) {
                         currentPlayersMonsterRef.magic += 2;
                         logsToAppend.push({text: `Focused Mind increases ${currentPlayersMonsterRef.title}'s Magic by 2. New Magic: ${currentPlayersMonsterRef.magic}.`, type: 'info'});
-                         if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                     }
-                     spellEffectApplied = true;
+                    spellEffectApplied = true;
                     break;
                 case 'Mage Armor':
                     if (currentPlayersMonsterRef) {
@@ -1618,5 +1618,3 @@ export function GameBoard() {
     </div>
   );
 }
-
-    
