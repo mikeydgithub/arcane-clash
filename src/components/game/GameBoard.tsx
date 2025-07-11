@@ -889,6 +889,34 @@ export function GameBoard() {
                             spellEffectApplied = true;
                         }
                         break;
+                    case 'Teleport Strike':
+                        const teleportDamage = 10;
+                        if (opponentPlayersMonsterRef) {
+                            const originalHp = opponentPlayersMonsterRef.hp;
+                            opponentPlayersMonsterRef.hp = Math.max(0, opponentPlayersMonsterRef.hp - teleportDamage);
+                            const damageTaken = originalHp - opponentPlayersMonsterRef.hp;
+                            if (currentPlayerIndex === 0) newDamageIndicators.p2Monster = damageTaken; else newDamageIndicators.p1Monster = damageTaken;
+                            
+                            logsToAppend.push({text: `${actingPlayer.name}'s Teleport Strike hits ${opponentPlayersMonsterRef.title} for ${damageTaken} damage, ignoring defenses! (HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp})`, type: 'damage'});
+                            
+                            if (opponentPlayersMonsterRef.hp <= 0) {
+                                logsToAppend.push({text: `${opponentPlayersMonsterRef.title} is defeated by the Teleport Strike!`, type: 'damage'});
+                                const defeatedMonsterCard = {...opponentPlayersMonsterRef, hp:0, statusEffects: []};
+                                newPlayers[opponentPlayerIndex].discardPile.push(defeatedMonsterCard);
+                                if (currentPlayerIndex === 0) newActiveMonsterP2 = undefined; else newActiveMonsterP1 = undefined;
+                            } else {
+                                if (currentPlayerIndex === 0) newActiveMonsterP2 = opponentPlayersMonsterRef; else newActiveMonsterP1 = opponentPlayersMonsterRef;
+                            }
+                        } else {
+                            const originalPlayerHp = newPlayers[opponentPlayerIndex].hp;
+                            newPlayers[opponentPlayerIndex].hp = Math.max(0, newPlayers[opponentPlayerIndex].hp - teleportDamage);
+                            const damageTaken = originalPlayerHp - newPlayers[opponentPlayerIndex].hp;
+                            if (currentPlayerIndex === 0) newDamageIndicators.p2Player = damageTaken; else newDamageIndicators.p1Player = damageTaken;
+
+                            logsToAppend.push({text: `${actingPlayer.name}'s Teleport Strike hits ${opponentPlayer.name} directly for ${damageTaken} damage! (HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp})`, type: 'damage'});
+                        }
+                        spellEffectApplied = true;
+                        break;
                     default:
                         logsToAppend.push({text: `The spell ${card.title} fizzles, its effect not yet defined in the ancient tomes.`, type: 'system'});
                         spellEffectApplied = true; // Consider it "applied" to prevent re-trying
@@ -937,10 +965,10 @@ export function GameBoard() {
         }, 2000); // Clear indicators after 2 seconds
 
         const currentStateAfterSpell = gameStateRef.current;
-        if(currentStateAfterSpell && currentStateAfterSpell.players[currentStateAfterSpell.currentPlayerIndex].hp <= 0) {
-            processTurnEnd(); // Check for player defeat immediately
-        } else if (currentStateAfterSpell && currentStateAfterSpell.players[1-currentStateAfterSpell.currentPlayerIndex].hp <= 0){
-             processTurnEnd(); // Check for opponent defeat immediately
+        if (currentStateAfterSpell) {
+            if (currentStateAfterSpell.players[currentStateAfterSpell.currentPlayerIndex].hp <= 0 || currentStateAfterSpell.players[1-currentStateAfterSpell.currentPlayerIndex].hp <= 0) {
+                processTurnEnd(); // Check for player defeat immediately
+            }
         }
   };
 
