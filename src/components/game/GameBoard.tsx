@@ -1520,7 +1520,6 @@ export function GameBoard() {
                 opponentActiveMonster={activeMonsterP2}
                 isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 0}
                 selectedCardIds={selectedForMulligan}
-                showDescriptionTooltip={true}
             />
         </div>
 
@@ -1551,7 +1550,6 @@ export function GameBoard() {
                 opponentActiveMonster={activeMonsterP1}
                 isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 1}
                 selectedCardIds={selectedForMulligan}
-                showDescriptionTooltip={true}
             />
         </div>
       </div>
