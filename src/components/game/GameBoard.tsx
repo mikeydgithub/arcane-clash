@@ -797,6 +797,7 @@ export function GameBoard() {
                         if(currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.melee += 4;
                             currentPlayersMonsterRef.magic += 4;
+                            currentPlayersMonsterRef.hasMightInfusion = true;
                             logsToAppend.push({text: `${actingPlayer.name}'s Might Infusion empowers ${currentPlayersMonsterRef.title}! Melee: ${currentPlayersMonsterRef.melee-4} -> ${currentPlayersMonsterRef.melee}, Magic: ${currentPlayersMonsterRef.magic-4} -> ${currentPlayersMonsterRef.magic}.`, type: 'info'});
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;

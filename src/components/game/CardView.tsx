@@ -6,7 +6,7 @@ import type { CardData, MonsterCardData, SpellCardData, StatusEffect } from '@/t
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, Heart, Zap, HelpCircle, Wind } from 'lucide-react';
+import { Swords, Sparkles, Heart, Zap, HelpCircle, Wind, Flame } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -210,6 +210,8 @@ export function CardView({
                     extraIcon={
                       (card as MonsterCardData).hasSwiftnessAura ? 
                       <Wind className={cn(iconSize, "text-green-400")} title="Swiftness Aura active" /> : 
+                      (card as MonsterCardData).hasMightInfusion ?
+                      <Flame className={cn(iconSize, "text-orange-400")} title="Might Infusion active" /> :
                       undefined
                     }
                   />
@@ -218,7 +220,19 @@ export function CardView({
             {/* Column 2 */}
             <div className="flex flex-col gap-y-0.5">
               {(card as MonsterCardData).magic > 0 && (
-                  <StatDisplay icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} currentValue={(card as MonsterCardData).magic} label="Magic" isSingleValue={true} animateStats={inBattleArena} tooltipText="Magic Attack: Magical damage dealt." />
+                  <StatDisplay 
+                    icon={<Sparkles className={cn(iconSize, "text-blue-400")} />} 
+                    currentValue={(card as MonsterCardData).magic} 
+                    label="Magic" 
+                    isSingleValue={true} 
+                    animateStats={inBattleArena} 
+                    tooltipText="Magic Attack: Magical damage dealt." 
+                    extraIcon={
+                       (card as MonsterCardData).hasMightInfusion ?
+                       <Flame className={cn(iconSize, "text-orange-400")} title="Might Infusion active" /> :
+                       undefined
+                    }
+                  />
               )}
                <StatDisplay
                   icon={<Heart className={cn(iconSize, "text-pink-400")} />}
