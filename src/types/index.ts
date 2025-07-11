@@ -23,6 +23,7 @@ export interface MonsterCardData extends BaseCardData {
   hp: number;
   maxHp: number;
   statusEffects?: StatusEffect[];
+  hasSwiftnessAura?: boolean;
 }
 
 export interface SpellCardData extends BaseCardData {

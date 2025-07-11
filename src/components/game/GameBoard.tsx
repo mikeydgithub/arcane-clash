@@ -696,6 +696,7 @@ export function GameBoard() {
                     case 'Swiftness Aura':
                         if (currentPlayersMonsterRef) {
                             currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 3);
+                            currentPlayersMonsterRef.hasSwiftnessAura = true;
                             logsToAppend.push({text: `${currentPlayersMonsterRef.title} gains +3 Melee from Swiftness Aura. New Melee: ${currentPlayersMonsterRef.melee}.`, type: 'info'});
                             if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                             spellEffectApplied = true;

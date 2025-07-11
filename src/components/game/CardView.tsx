@@ -6,7 +6,7 @@ import type { CardData, MonsterCardData, SpellCardData, StatusEffect } from '@/t
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, Heart, Zap, HelpCircle } from 'lucide-react';
+import { Swords, Sparkles, Heart, Zap, HelpCircle, Wind } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -50,9 +50,10 @@ interface StatDisplayProps {
   isSingleValue?: boolean;
   animateStats?: boolean;
   tooltipText?: string;
+  extraIcon?: React.ReactNode;
 }
 
-function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false, tooltipText }: StatDisplayProps) {
+function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = false, animateStats = false, tooltipText, extraIcon }: StatDisplayProps) {
   const displayCurrentValueNode = animateStats ? <AnimatedNumber value={currentValue} /> : Math.round(currentValue);
   const ariaCurrentValue = Math.round(currentValue);
   const ariaMaxValue = maxValue !== undefined ? Math.round(maxValue) : undefined;
@@ -67,6 +68,7 @@ function StatDisplay({ icon, currentValue, maxValue, label, isSingleValue = fals
         {displayCurrentValueNode}
         {!isSingleValue && maxValue !== undefined && ` / ${Math.round(maxValue)}`}
       </span>
+      {extraIcon}
     </div>
   );
 
@@ -198,7 +200,19 @@ export function CardView({
             {/* Column 1 */}
             <div className="flex flex-col gap-y-0.5">
               {(card as MonsterCardData).melee > 0 && (
-                  <StatDisplay icon={<Swords className={cn(iconSize, "text-red-400")} />} currentValue={(card as MonsterCardData).melee} label="Melee" isSingleValue={true} animateStats={inBattleArena} tooltipText="Melee Attack: Physical damage dealt." />
+                  <StatDisplay 
+                    icon={<Swords className={cn(iconSize, "text-red-400")} />} 
+                    currentValue={(card as MonsterCardData).melee} 
+                    label="Melee" 
+                    isSingleValue={true} 
+                    animateStats={inBattleArena} 
+                    tooltipText="Melee Attack: Physical damage dealt."
+                    extraIcon={
+                      (card as MonsterCardData).hasSwiftnessAura ? 
+                      <Wind className={cn(iconSize, "text-green-400")} title="Swiftness Aura active" /> : 
+                      undefined
+                    }
+                  />
               )}
             </div>
             {/* Column 2 */}
