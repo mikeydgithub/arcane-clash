@@ -290,11 +290,11 @@ export function CardView({
       </Tooltip>
   );
 
+  const shouldShowTooltip = (showDescriptionTooltip || (isMonster && inBattleArena)) && (card.description || card.isLoadingDescription);
+
   return (
     <TooltipProvider>
-      {showDescriptionTooltip && (card.description || card.isLoadingDescription)
-        ? cardWithMainTooltip
-        : cardElementInner}
+      {shouldShowTooltip ? cardWithMainTooltip : cardElementInner}
     </TooltipProvider>
   );
 }
