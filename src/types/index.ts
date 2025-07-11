@@ -56,7 +56,8 @@ export type GamePhase =
   | "player_action_phase" // Player decides to play monster, spell, attack, or initiate swap
   | "selecting_swap_monster_phase" // Player is selecting a monster from hand to swap with active one
   | "combat_phase"        // Monster vs Monster or Monster vs Player
-  | "game_over_phase";
+  | "game_over_phase"
+  | "turn_transition";
 
 export interface IndicatorState {
   p1MonsterDamage: number | null;

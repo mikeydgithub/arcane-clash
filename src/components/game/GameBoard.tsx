@@ -1332,12 +1332,11 @@ export function GameBoard() {
     const player = currentBoardGameState.players[currentBoardGameState.currentPlayerIndex];
     const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
 
-
     logAndSetGameState(prev => {
       if(!prev) return null;
       const newPlayers = [...prev.players] as [PlayerData, PlayerData];
       newPlayers[prev.currentPlayerIndex] = { ...newPlayers[prev.currentPlayerIndex], hasMulliganed: true };
-      return { ...prev, isProcessingAction: true, gamePhase: 'combat_phase', players: newPlayers }
+      return { ...prev, isProcessingAction: true, gamePhase: 'turn_transition', players: newPlayers };
     });
     appendLog(`${player.name} ends their turn.`, playerLogType);
     setTimeout(() => {
@@ -1549,7 +1548,7 @@ export function GameBoard() {
         </div>
       </div>
 
-      {gamePhase !== 'coin_flip_animation' && gamePhase !== 'loading_art' && gamePhase !== 'game_over_phase' && !isProcessingAction && (
+      {gamePhase !== 'coin_flip_animation' && gamePhase !== 'loading_art' && gamePhase !== 'game_over_phase' && !isProcessingAction && gamePhase !== 'turn_transition' && (
         <div className="flex justify-center w-full">
           <PlayerActions
             currentPlayer={currentPlayer}
