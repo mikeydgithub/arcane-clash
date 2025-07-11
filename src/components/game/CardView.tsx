@@ -242,15 +242,11 @@ export function CardView({
             {card.isLoadingDescription ? (
               <p className="text-xs text-muted-foreground italic">Generating info...</p>
             ) : card.cardType === 'Spell' ? (
-                card.description ? (
-                  <p className="text-xs text-muted-foreground italic">
-                    Effect: {card.description}
-                  </p>
-                ) : (
+                !card.description ? (
                   <p className="text-xs text-muted-foreground italic flex items-center">
                     <HelpCircle className="w-3 h-3 mr-1"/> Effect: No info yet.
                   </p>
-                )
+                ) : null
             ) : card.cardType === 'Monster' && !card.description ? (
               <p className="text-xs text-muted-foreground italic flex items-center">
                   <HelpCircle className="w-3 h-3 mr-1"/> Flavor: No info yet.
