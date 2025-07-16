@@ -108,7 +108,6 @@ export default function ArcaneClashPage() {
               objectFit: 'cover',
             }}
             data-ai-hint="abstract background"
-            priority
           />
         </div>
       </div>
