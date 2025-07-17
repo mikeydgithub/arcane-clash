@@ -44,7 +44,7 @@ export function GameBoard() {
   const hasInitialized = useRef(false);
   const gameStateRef = useRef<GameState | null>(null);
   const previousGameStateRef = useRef<GameState | null>(null);
-  const { isMuted } = useAudio();
+  const { isMuted, play } = useAudio();
   const backgroundMusicRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
@@ -213,6 +213,7 @@ export function GameBoard() {
         monsterJustPlayed: false,
       };
 
+      play('coin-flip');
       logAndSetGameState({
         players: [initialPlayer1, initialPlayer2],
         currentPlayerIndex: firstPlayerIndex,
@@ -249,7 +250,7 @@ export function GameBoard() {
     } finally {
       console.log('[GameBoard] Initializing game sequence finished.');
     }
-  }, [toast, logAndSetGameState]);
+  }, [toast, logAndSetGameState, play]);
 
   const handleCoinFlipAnimationComplete = useCallback(() => {
     logAndSetGameState(prev => {
@@ -309,6 +310,7 @@ export function GameBoard() {
                 activeMonsterForTurnPlayer.hp = Math.min(activeMonsterForTurnPlayer.maxHp, activeMonsterForTurnPlayer.hp + healAmount);
                 const actualHeal = activeMonsterForTurnPlayer.hp - originalHp;
                 if (actualHeal > 0) {
+                    play('heal');
                     newLogMessages.push({ id: `log-${logIdCounter++}`, text: `${playerWhoseTurnIsStarting.name}'s ${activeMonsterForTurnPlayer.title} regenerates ${actualHeal} HP. (HP: ${originalHp} -> ${activeMonsterForTurnPlayer.hp})`, type: 'heal' });
                     if (playerIndexForTurnStart === 0) newIndicators.p1MonsterHeal = actualHeal; else newIndicators.p2MonsterHeal = actualHeal;
                 }
@@ -404,6 +406,7 @@ export function GameBoard() {
 
       // Check for game over conditions AFTER applying status effects and drawing cards
       if (updatedPlayersArr[0].hp <= 0 && updatedPlayersArr[1].hp <= 0) {
+        play('lose');
         newLogs.push({ id: `log-${logIdCounter++}`, text: "It's a draw! Both players are defeated.", type: 'system' });
         return {
             ...prev,
@@ -418,6 +421,7 @@ export function GameBoard() {
             indicators: stateAfterStatusEffects.indicators,
          };
       } else if (updatedPlayersArr[0].hp <= 0) {
+        play('win');
         newLogs.push({ id: `log-${logIdCounter++}`, text: `${updatedPlayersArr[1].name} wins! ${updatedPlayersArr[0].name} is defeated.`, type: 'system' });
         return {
             ...prev,
@@ -432,6 +436,7 @@ export function GameBoard() {
             indicators: stateAfterStatusEffects.indicators,
         };
       } else if (updatedPlayersArr[1].hp <= 0) {
+        play('win');
         newLogs.push({ id: `log-${logIdCounter++}`, text: `${updatedPlayersArr[0].name} wins! ${updatedPlayersArr[1].name} is defeated.`, type: 'system' });
         return {
             ...prev,
@@ -481,6 +486,7 @@ export function GameBoard() {
   };
 
   const handlePlayMonsterFromHand = (card: MonsterCardData) => {
+    play('card-play');
     logAndSetGameState(prev => {
         if (!prev || prev.isProcessingAction) return prev;
 
@@ -512,6 +518,7 @@ export function GameBoard() {
 
 
   const handlePlaySpellFromHand = (card: SpellCardData) => {
+    play('card-play');
     const currentBoardGameState = gameStateRef.current;
     if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
 
@@ -587,6 +594,7 @@ export function GameBoard() {
                     }
                     break;
                 case 'Fireball':
+                    play('damage');
                     const fireDamage = 15;
                     const directPlayerDamage = 10;
                     if (opponentPlayersMonsterRef) {
@@ -627,6 +635,7 @@ export function GameBoard() {
                         currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + healAmount);
                         const actualHeal = currentPlayersMonsterRef.hp - originalHp;
                         if (actualHeal > 0) {
+                            play('heal');
                             logsToAppend.push({text: `${actingPlayer.name}'s Healing Light restores ${actualHeal} HP to ${currentPlayersMonsterRef.title}! HP: ${originalHp} -> ${currentPlayersMonsterRef.hp}.`, type: 'heal'});
                             if (currentPlayerIndex === 0) newIndicators.p1MonsterHeal = actualHeal; else newIndicators.p2MonsterHeal = actualHeal;
                         }
@@ -704,6 +713,7 @@ export function GameBoard() {
                     }
                     break;
                 case 'Chain Lightning':
+                    play('damage');
                     const chainLightningDmg = 10;
                     const chainPlayerDmg = 5;
                     if (opponentPlayersMonsterRef) {
@@ -730,6 +740,7 @@ export function GameBoard() {
                             newPlayers[opponentPlayerIndex].hp = Math.max(0, newPlayers[opponentPlayerIndex].hp - chainPlayerDmg);
                             const playerDamageTaken = originalPlayerHp - newPlayers[opponentPlayerIndex].hp;
                             if (currentPlayerIndex === 0) newIndicators.p2PlayerDamage = playerDamageTaken; else newIndicators.p1PlayerDamage = playerDamageTaken;
+                            if(playerDamageTaken > 0) play('damage');
 
                             logsToAppend.push({text: `${opponentPlayer.name} takes ${playerDamageTaken} lightning damage! (HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp})`, type: 'damage'});
                         } else {
@@ -746,6 +757,7 @@ export function GameBoard() {
                         const actualHeal = currentPlayersMonsterRef.hp - originalHp;
                         currentPlayersMonsterRef.hasGrowthSpurt = true;
                         if (actualHeal > 0) {
+                            play('heal');
                             if (currentPlayerIndex === 0) newIndicators.p1MonsterHeal = actualHeal; else newIndicators.p2MonsterHeal = actualHeal;
                         }
                         logsToAppend.push({text: `${currentPlayersMonsterRef.title}'s Growth Spurt increases Max HP to ${currentPlayersMonsterRef.maxHp} and heals ${actualHeal} HP. Current HP: ${currentPlayersMonsterRef.hp}.`, type: 'heal'});
@@ -762,6 +774,7 @@ export function GameBoard() {
 
                         opponentPlayersMonsterRef.hp = Math.max(0, opponentPlayersMonsterRef.hp - damageToDeal);
                         const damageTaken = originalOpponentHp - opponentPlayersMonsterRef.hp;
+                        if(damageTaken > 0) play('damage');
                         if (currentPlayerIndex === 0) newIndicators.p2MonsterDamage = damageTaken; else newIndicators.p1MonsterDamage = damageTaken;
 
                         message += `Takes ${damageTaken} magic damage to HP. HP: ${originalOpponentHp} -> ${opponentPlayersMonsterRef.hp}. `;
@@ -775,6 +788,7 @@ export function GameBoard() {
                             currentPlayersMonsterRef.hp = Math.min(currentPlayersMonsterRef.maxHp, currentPlayersMonsterRef.hp + lifeGained);
                             const actualHeal = currentPlayersMonsterRef.hp - originalOwnHp;
                             if (actualHeal > 0) {
+                               play('heal');
                                message += `${currentPlayersMonsterRef.title} is healed for ${actualHeal} HP. HP: ${originalOwnHp} -> ${currentPlayersMonsterRef.hp}.`;
                                if(currentPlayerIndex === 0) newIndicators.p1MonsterHeal = actualHeal; else newIndicators.p2MonsterHeal = actualHeal;
                             }
@@ -832,6 +846,7 @@ export function GameBoard() {
                     break;
                 case 'Frost Nova':
                     if (opponentPlayersMonsterRef) {
+                        play('damage');
                         const frostDamage = 12;
                         const meleeReduction = 2;
                         const originalHp = opponentPlayersMonsterRef.hp;
@@ -890,6 +905,7 @@ export function GameBoard() {
                     const originalPlayerHp = actingPlayer.hp;
                     actingPlayer.hp = Math.max(0, actingPlayer.hp - selfDamage);
                     const selfDamageTaken = originalPlayerHp - actingPlayer.hp;
+                    if (selfDamageTaken > 0) play('damage');
                     if (currentPlayerIndex === 0) newIndicators.p1PlayerDamage = selfDamageTaken; else newIndicators.p2PlayerDamage = selfDamageTaken;
                     logsToAppend.push({text: `${actingPlayer.name} makes a Dark Pact, taking ${selfDamageTaken} damage! (HP: ${originalPlayerHp} -> ${actingPlayer.hp})`, type: 'damage'});
 
@@ -917,6 +933,7 @@ export function GameBoard() {
                     }
                     break;
                 case 'Teleport Strike':
+                    play('damage');
                     const teleportDamage = 10;
                     if (opponentPlayersMonsterRef) {
                         const originalHp = opponentPlayersMonsterRef.hp;
@@ -939,6 +956,7 @@ export function GameBoard() {
                         newPlayers[opponentPlayerIndex].hp = Math.max(0, newPlayers[opponentPlayerIndex].hp - teleportDamage);
                         const damageTaken = originalPlayerHp - newPlayers[opponentPlayerIndex].hp;
                         if (currentPlayerIndex === 0) newIndicators.p2PlayerDamage = damageTaken; else newIndicators.p1PlayerDamage = damageTaken;
+                        if(damageTaken > 0) play('damage');
 
                         logsToAppend.push({text: `${actingPlayer.name}'s Teleport Strike hits ${opponentPlayer.name} directly for ${damageTaken} damage! (HP: ${originalPlayerHp} -> ${newPlayers[opponentPlayerIndex].hp})`, type: 'damage'});
                     }
@@ -1012,6 +1030,7 @@ export function GameBoard() {
 
   const handleAttack = () => {
     try {
+        play('attack');
         const currentBoardGameState = gameStateRef.current;
         if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
 
@@ -1112,6 +1131,7 @@ export function GameBoard() {
                 totalDamageDealt = originalHp - monster.hp;
 
                 if (totalDamageDealt > 0) {
+                    play('damage');
                     logs.push({ text: `${monster.title} takes ${totalDamageDealt} ${damageType} damage. (HP: ${originalHp} -> ${monster.hp})`, type: 'damage' });
                 } else if (damage > 0) {
                     logs.push({ text: `${monster.title} takes no damage.`, type: 'info' });
@@ -1165,6 +1185,7 @@ export function GameBoard() {
                         newPlayers[defenderPlayerIndex].hp = Math.max(0, originalPlayerHp - overkillDamage);
                         const playerDamageTaken = originalPlayerHp - newPlayers[defenderPlayerIndex].hp;
                         if (playerDamageTaken > 0) {
+                            play('damage');
                             logsToAppend.push({ text: `Overkill! ${players[defenderPlayerIndex].name} takes ${playerDamageTaken} trample damage! (HP: ${originalPlayerHp} -> ${newPlayers[defenderPlayerIndex].hp})`, type: 'damage' });
                             if(defenderPlayerIndex === 0) finalIndicators.p1PlayerDamage = playerDamageTaken; else finalIndicators.p2PlayerDamage = playerDamageTaken;
                         }
@@ -1201,6 +1222,7 @@ export function GameBoard() {
                              newPlayers[currentPlayerIndex].hp = Math.max(0, originalPlayerHp - overkillDamage);
                              const playerDamageTaken = originalPlayerHp - newPlayers[currentPlayerIndex].hp;
                              if (playerDamageTaken > 0) {
+                                play('damage');
                                 logsToAppend.push({ text: `Overkill! ${players[currentPlayerIndex].name} takes ${playerDamageTaken} trample damage! (HP: ${originalPlayerHp} -> ${newPlayers[currentPlayerIndex].hp})`, type: 'damage' });
                                 if(currentPlayerIndex === 0) finalIndicators.p1PlayerDamage = playerDamageTaken;
                                 else finalIndicators.p2PlayerDamage = playerDamageTaken;
@@ -1235,6 +1257,7 @@ export function GameBoard() {
                 const playerDamageTaken = originalDefenderHp - newPlayers[defenderPlayerIndex].hp;
 
                 if (playerDamageTaken > 0) {
+                    play('damage');
                     logsToAppend.push({ text: `${players[defenderPlayerIndex].name}'s HP is targeted directly for ${playerDamageTaken} ${attackType} damage! (HP: ${originalDefenderHp} -> ${newPlayers[defenderPlayerIndex].hp})`, type: 'damage' });
                     if(defenderPlayerIndex === 0) finalIndicators.p1PlayerDamage = playerDamageTaken; else finalIndicators.p2PlayerDamage = playerDamageTaken;
                 }
@@ -1279,6 +1302,7 @@ export function GameBoard() {
 
 
   const handleSwapMonster = (selectedMonsterFromHand: MonsterCardData) => {
+    play('card-play');
     logAndSetGameState(prev => {
       if (!prev || prev.isProcessingAction) return prev;
       const { players, currentPlayerIndex, activeMonsterP1, activeMonsterP2 } = prev;
@@ -1325,6 +1349,7 @@ export function GameBoard() {
   };
 
   const handleInitiateSwap = () => {
+    play('click');
     const currentState = gameStateRef.current;
     if (!currentState || currentState.isProcessingAction) return;
 
@@ -1354,6 +1379,7 @@ export function GameBoard() {
   };
 
   const handleEndTurn = () => {
+    play('click');
     const currentBoardGameState = gameStateRef.current;
     if (!currentBoardGameState || currentBoardGameState.isProcessingAction) return;
     const player = currentBoardGameState.players[currentBoardGameState.currentPlayerIndex];
@@ -1372,6 +1398,7 @@ export function GameBoard() {
   };
 
   const handleInitiateMulligan = () => {
+    play('click');
     const player = gameStateRef.current?.players[gameStateRef.current.currentPlayerIndex];
     if (!player) return;
     const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
@@ -1383,6 +1410,7 @@ export function GameBoard() {
   };
 
   const handleCancelAction = () => {
+    play('click');
     const player = gameStateRef.current?.players[gameStateRef.current.currentPlayerIndex];
     if (!player) return;
     const playerLogType = player.id === 'p1' ? 'player1' : 'player2';
@@ -1399,6 +1427,7 @@ export function GameBoard() {
   };
 
   const handleConfirmMulligan = () => {
+    play('click');
     if (selectedForMulligan.length !== MULLIGAN_CARD_COUNT) {
       toast({ title: "Invalid Selection", description: `You must select exactly ${MULLIGAN_CARD_COUNT} cards to mulligan.`, variant: "destructive" });
       return;
@@ -1442,6 +1471,7 @@ export function GameBoard() {
   };
 
   const handleRestartGame = () => {
+    play('click');
     console.log("[GameBoard] Restarting game...");
     logIdCounter = 0;
     setGameState(null); // This will trigger the useEffect to re-initialize
