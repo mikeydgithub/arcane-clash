@@ -41,6 +41,7 @@ export const dealCards = (deck: CardData[], count: number): { dealtCards: CardDa
   
   const updatedDealtCards = dealtCards.map(card => ({
     ...card,
+    id: `${card.id}-${Math.random().toString(36).substring(2, 9)}`, // Assign a unique instance ID
     isLoadingArt: false, 
     isLoadingDescription: false,
   }));
