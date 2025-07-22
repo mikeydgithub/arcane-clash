@@ -25,6 +25,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     'coin-flip': null,
     'click': null,
   });
+  const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
+  const hasInteracted = useRef(false);
 
   useEffect(() => {
     // Pre-load audio elements on the client
@@ -42,11 +44,50 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (audio) {
             audio.volume = 0.3; // Set a default volume for sound effects
         }
-    })
-  }, []);
+    });
+
+    // Get the background music element from the DOM
+    const musicElement = document.getElementById('background-music');
+    if (musicElement instanceof HTMLAudioElement) {
+        backgroundMusicRef.current = musicElement;
+        backgroundMusicRef.current.volume = 0.1;
+    }
+
+    const handleFirstInteraction = () => {
+        if (!hasInteracted.current) {
+            hasInteracted.current = true;
+            if (backgroundMusicRef.current && !isMuted) {
+                backgroundMusicRef.current.play().catch(e => console.error("BG music play failed on interaction:", e));
+            }
+        }
+        window.removeEventListener('click', handleFirstInteraction);
+        window.removeEventListener('keydown', handleFirstInteraction);
+    };
+    
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('keydown', handleFirstInteraction);
+
+    return () => {
+        window.removeEventListener('click', handleFirstInteraction);
+        window.removeEventListener('keydown', handleFirstInteraction);
+    };
+
+  }, [isMuted]);
+
+  useEffect(() => {
+    const music = backgroundMusicRef.current;
+    if (music) {
+        if (isMuted) {
+            music.pause();
+        } else if (hasInteracted.current) {
+            music.play().catch(e => console.error("Error playing background music:", e));
+        }
+    }
+  }, [isMuted]);
+
 
   const play = useCallback((sound: SoundEffect) => {
-    if (!isMuted) {
+    if (!isMuted && hasInteracted.current) {
       const audio = audioRefs.current[sound];
       if (audio) {
         audio.currentTime = 0;
@@ -57,7 +98,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleMute = () => {
     setIsMuted(prev => !prev);
-    play('click');
+    // No click sound on toggle, as it might be the first interaction
   };
 
   return (

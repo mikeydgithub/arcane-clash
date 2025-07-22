@@ -44,20 +44,7 @@ export function GameBoard() {
   const hasInitialized = useRef(false);
   const gameStateRef = useRef<GameState | null>(null);
   const previousGameStateRef = useRef<GameState | null>(null);
-  const { isMuted, play } = useAudio();
-  const backgroundMusicRef = useRef<HTMLAudioElement>(null);
-
-  useEffect(() => {
-    if (backgroundMusicRef.current) {
-        backgroundMusicRef.current.volume = 0.1;
-        if (!isMuted) {
-            backgroundMusicRef.current.play().catch(e => console.log("Audio play failed:", e));
-        } else {
-            backgroundMusicRef.current.pause();
-        }
-    }
-  }, [isMuted]);
-
+  const { play } = useAudio();
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -250,7 +237,7 @@ export function GameBoard() {
     } finally {
       console.log('[GameBoard] Initializing game sequence finished.');
     }
-  }, [toast, logAndSetGameState, play]);
+  }, [toast, logAndSetGameState]);
 
   const handleCoinFlipAnimationComplete = useCallback(() => {
     logAndSetGameState(prev => {
@@ -1545,7 +1532,7 @@ export function GameBoard() {
 
   return (
     <div className="flex flex-col h-full w-full items-stretch">
-      <audio ref={backgroundMusicRef} src="/audio/background-music.mp3" loop />
+      
       <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 md:gap-4 p-2 md:p-3">
         <div className="flex justify-start">
           <PlayerStatusDisplay player={players[0]} isCurrentPlayer={currentPlayerIndex === 0} damage={indicators.p1PlayerDamage} healing={indicators.p1PlayerHeal} />

@@ -32,6 +32,8 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning={true}>
         <AudioProvider>
           {children}
+          {/* Background music element is now here, controlled by AudioProvider */}
+          <audio id="background-music" src="/audio/arcane-clash-theme-2.mp3" loop />
         </AudioProvider>
         <Toaster />
       </body>
