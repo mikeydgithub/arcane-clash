@@ -5,31 +5,38 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 
 type SoundEffect = 'card-play' | 'attack' | 'damage' | 'heal' | 'win' | 'lose' | 'coin-flip' | 'click';
 
+interface AudioVolumes {
+  master: number;
+  music: number;
+  sfx: number;
+}
+
 interface AudioContextType {
+  volumes: AudioVolumes;
+  setVolume: (type: keyof AudioVolumes, volume: number) => void;
   isMuted: boolean;
-  toggleMute: () => void;
   play: (sound: SoundEffect) => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
 
 export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isMuted, setIsMuted] = useState(false);
-  const audioRefs = useRef<Record<SoundEffect, HTMLAudioElement | null>>({
-    'card-play': null,
-    'attack': null,
-    'damage': null,
-    'heal': null,
-    'win': null,
-    'lose': null,
-    'coin-flip': null,
-    'click': null,
+  const [volumes, setVolumes] = useState<AudioVolumes>({
+    master: 1,
+    music: 0.1,
+    sfx: 0.3,
   });
+
+  const audioRefs = useRef<Record<SoundEffect, HTMLAudioElement | null>>({
+    'card-play': null, 'attack': null, 'damage': null, 'heal': null,
+    'win': null, 'lose': null, 'coin-flip': null, 'click': null,
+  });
+
   const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
   const hasInteracted = useRef(false);
 
   useEffect(() => {
-    // Pre-load audio elements on the client
+    // Pre-load audio elements
     audioRefs.current = {
       'card-play': new Audio('/audio/card-play.wav'),
       'attack': new Audio('/audio/attack.wav'),
@@ -40,23 +47,16 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       'coin-flip': new Audio('/audio/coin-flip.wav'),
       'click': new Audio('/audio/click.wav'),
     };
-    Object.values(audioRefs.current).forEach(audio => {
-        if (audio) {
-            audio.volume = 0.3; // Set a default volume for sound effects
-        }
-    });
-
-    // Get the background music element from the DOM
+    
     const musicElement = document.getElementById('background-music');
     if (musicElement instanceof HTMLAudioElement) {
         backgroundMusicRef.current = musicElement;
-        backgroundMusicRef.current.volume = 0.1;
     }
 
     const handleFirstInteraction = () => {
         if (!hasInteracted.current) {
             hasInteracted.current = true;
-            if (backgroundMusicRef.current && !isMuted) {
+            if (backgroundMusicRef.current) {
                 backgroundMusicRef.current.play().catch(e => console.error("BG music play failed on interaction:", e));
             }
         }
@@ -71,38 +71,47 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         window.removeEventListener('click', handleFirstInteraction);
         window.removeEventListener('keydown', handleFirstInteraction);
     };
+  }, []);
 
-  }, [isMuted]);
+  const isMuted = volumes.master === 0;
 
   useEffect(() => {
     const music = backgroundMusicRef.current;
     if (music) {
-        if (isMuted) {
-            music.pause();
-        } else if (hasInteracted.current) {
-            music.play().catch(e => console.error("Error playing background music:", e));
-        }
+      const effectiveMusicVolume = volumes.music * volumes.master;
+      music.volume = effectiveMusicVolume;
+      if (effectiveMusicVolume > 0 && hasInteracted.current && music.paused) {
+        music.play().catch(e => console.error("Error playing background music:", e));
+      } else if (effectiveMusicVolume === 0) {
+        music.pause();
+      }
     }
-  }, [isMuted]);
+  }, [volumes]);
 
+  useEffect(() => {
+    Object.values(audioRefs.current).forEach(audio => {
+      if (audio) {
+        audio.volume = volumes.sfx * volumes.master;
+      }
+    });
+  }, [volumes.sfx, volumes.master]);
 
   const play = useCallback((sound: SoundEffect) => {
-    if (!isMuted && hasInteracted.current) {
+    if (volumes.master > 0 && volumes.sfx > 0 && hasInteracted.current) {
       const audio = audioRefs.current[sound];
       if (audio) {
         audio.currentTime = 0;
         audio.play().catch(e => console.error(`Error playing sound: ${sound}`, e));
       }
     }
-  }, [isMuted]);
+  }, [volumes]);
 
-  const toggleMute = () => {
-    setIsMuted(prev => !prev);
-    // No click sound on toggle, as it might be the first interaction
+  const setVolume = (type: keyof AudioVolumes, volume: number) => {
+    setVolumes(prev => ({ ...prev, [type]: volume }));
   };
 
   return (
-    <AudioContext.Provider value={{ isMuted, toggleMute, play }}>
+    <AudioContext.Provider value={{ volumes, setVolume, isMuted, play }}>
       {children}
     </AudioContext.Provider>
   );

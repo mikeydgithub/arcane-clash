@@ -14,7 +14,7 @@ import { Loader2, Layers3, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAudio } from '@/contexts/AudioContext';
-import { SoundToggle } from './SoundToggle';
+import { AudioController } from './AudioController';
 
 
 const INITIAL_PLAYER_HP = 30;
@@ -1661,7 +1661,7 @@ export function GameBoard() {
             >
                 <Trash2 className="mr-2 h-4 w-4" /> Restart
             </Button>
-            <SoundToggle />
+            <AudioController />
         </div>
     </div>
   );
