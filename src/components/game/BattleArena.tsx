@@ -41,6 +41,11 @@ export function BattleArena({
   winningPlayerNameForCoinFlip,
 }: BattleArenaProps) {
 
+  // DEBUGGING: Log the current player index to the console whenever it changes.
+  useEffect(() => {
+    console.log(`[BattleArena] Current player index updated to: ${currentPlayerIndex}`);
+  }, [currentPlayerIndex]);
+
   const [displayedLogEntries, setDisplayedLogEntries] = useState<GameLogEntry[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -210,7 +215,7 @@ export function BattleArena({
       <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
         <div
           className={cn(
-            "relative w-1/2 flex justify-center items-center h-full",
+            "relative w-1/2 flex justify-center items-center h-full p-4", // Added padding
             currentPlayerIndex === 0 && 'player1-turn-glow'
           )}
         >
@@ -232,7 +237,7 @@ export function BattleArena({
 
         <div
           className={cn(
-            "relative w-1/2 flex justify-center items-center h-full",
+            "relative w-1/2 flex justify-center items-center h-full p-4", // Added padding
             currentPlayerIndex === 1 && 'player2-turn-glow'
           )}
         >
