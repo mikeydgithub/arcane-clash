@@ -194,27 +194,30 @@ body {
   }
 }
 
-/* Simplified Turn Glow for Debugging */
-.player1-turn-glow::after {
+.player1-turn-glow::after, .player2-turn-glow::after {
   content: '';
   position: absolute;
-  inset: 0px;
-  border-radius: 1rem;
-  border: 4px solid red; /* Bright red for P1 */
-  animation: battlefield-glow 3s ease-in-out infinite;
-  z-index: 10; /* Bring to front for visibility */
+  inset: -4px; /* A bit outside the parent bounds */
+  border-radius: 1.25rem; /* Slightly larger than the parent's rounded-lg */
+  z-index: -1; /* Behind the parent's content */
   pointer-events: none;
+  animation: battlefield-glow 2.5s ease-in-out infinite;
+}
+
+.player1-turn-glow::after {
+  background-image: radial-gradient(
+    circle at 50% 100%, /* Start gradient from bottom center */
+    hsla(var(--primary), 0.5) 0%,
+    transparent 70%
+  );
 }
 
 .player2-turn-glow::after {
-  content: '';
-  position: absolute;
-  inset: 0px;
-  border-radius: 1rem;
-  border: 4px solid blue; /* Bright blue for P2 */
-  animation: battlefield-glow 3s ease-in-out infinite;
-  z-index: 10; /* Bring to front for visibility */
-  pointer-events: none;
+  background-image: radial-gradient(
+    circle at 50% 100%, /* Start gradient from bottom center */
+    hsla(var(--accent), 0.5) 0%,
+    transparent 70%
+  );
 }
 
 

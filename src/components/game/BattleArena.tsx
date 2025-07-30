@@ -215,7 +215,7 @@ export function BattleArena({
       <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
         <div
           className={cn(
-            "relative w-1/2 flex justify-center items-center h-full p-4", // Added padding
+            "relative w-1/2 flex justify-center items-center h-full rounded-lg p-4 transition-all duration-300",
             currentPlayerIndex === 0 && 'player1-turn-glow'
           )}
         >
@@ -237,7 +237,7 @@ export function BattleArena({
 
         <div
           className={cn(
-            "relative w-1/2 flex justify-center items-center h-full p-4", // Added padding
+            "relative w-1/2 flex justify-center items-center h-full rounded-lg p-4 transition-all duration-300",
             currentPlayerIndex === 1 && 'player2-turn-glow'
           )}
         >
