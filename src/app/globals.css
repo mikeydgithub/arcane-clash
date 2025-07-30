@@ -183,6 +183,39 @@ body {
   animation: glow-blue 2.5s ease-in-out infinite;
 }
 
+@keyframes battlefield-glow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.02);
+  }
+}
+
+.player1-turn-glow::after {
+  content: '';
+  position: absolute;
+  inset: -10px; /* Glow extends slightly beyond the container */
+  border-radius: 1rem;
+  background: radial-gradient(circle at 50% 90%, hsla(var(--primary), 0.4) 0%, transparent 60%);
+  animation: battlefield-glow 3s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.player2-turn-glow::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 1rem;
+  background: radial-gradient(circle at 50% 90%, hsla(var(--accent), 0.4) 0%, transparent 60%);
+  animation: battlefield-glow 3s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
 
 @layer base {
   :root {

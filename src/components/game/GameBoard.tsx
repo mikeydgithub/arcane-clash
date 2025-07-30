@@ -1648,6 +1648,7 @@ export function GameBoard() {
           showClashAnimation={gamePhase === 'combat_phase'}
           gameLogMessages={gameLogMessages}
           gamePhase={gamePhase}
+          currentPlayerIndex={currentPlayerIndex}
           onCoinFlipAnimationComplete={gamePhase === 'coin_flip_animation' ? handleCoinFlipAnimationComplete : undefined}
           winningPlayerNameForCoinFlip={gamePhase === 'coin_flip_animation' ? players[currentPlayerIndex].name : undefined}
           indicators={indicators}
