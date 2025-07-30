@@ -166,7 +166,7 @@ export function BattleArena({
           winningPlayerName={winningPlayerNameForCoinFlip}
           player1Name={player1Name}
           player2Name={player2Name}
-          onAnimationComplete={onAnimationComplete}
+          onAnimationComplete={onCoinFlipAnimationComplete}
         />
         <div className="w-full max-w-xl h-[30%] max-h-40 md:max-h-48 mb-1 md:mb-2 mt-4">
           <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
@@ -208,12 +208,7 @@ export function BattleArena({
         )}
       </AnimatePresence>
       <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
-        <motion.div
-          key={player1Card ? `p1-active-${player1Card.id}` : 'p1-empty'}
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-          transition={{ duration: 0.5 }}
+        <div
           className={cn(
             "relative w-1/2 flex justify-center items-center h-full",
             currentPlayerIndex === 0 && 'player1-turn-glow'
@@ -222,18 +217,20 @@ export function BattleArena({
           <DamageIndicator damage={indicators.p1MonsterDamage} />
           <HealingIndicator healing={indicators.p1MonsterHeal} />
           {player1Card && (
-            <div className={cn(isCombatPhase && 'box-left')}>
+            <motion.div
+              key={player1Card ? `p1-active-${player1Card.id}` : 'p1-empty'}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
+              transition={{ duration: 0.5 }}
+              className={cn(isCombatPhase && 'box-left')}
+            >
               <CardView card={player1Card} inBattleArena={true} statusEffects={player1Card.statusEffects} />
-            </div>
+            </motion.div>
           )}
-        </motion.div>
+        </div>
 
-        <motion.div
-          key={player2Card ? `p2-active-${player2Card.id}` : 'p2-empty'}
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-          transition={{ duration: 0.5 }}
+        <div
           className={cn(
             "relative w-1/2 flex justify-center items-center h-full",
             currentPlayerIndex === 1 && 'player2-turn-glow'
@@ -242,11 +239,18 @@ export function BattleArena({
           <DamageIndicator damage={indicators.p2MonsterDamage} />
           <HealingIndicator healing={indicators.p2MonsterHeal} />
           {player2Card && (
-            <div className={cn(isCombatPhase && 'box-right')}>
+             <motion.div
+              key={player2Card ? `p2-active-${player2Card.id}` : 'p2-empty'}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
+              transition={{ duration: 0.5 }}
+              className={cn(isCombatPhase && 'box-right')}
+            >
               <CardView card={player2Card} inBattleArena={true} isOpponentCard={true} statusEffects={player2Card.statusEffects} />
-            </div>
+            </motion.div>
           )}
-        </motion.div>
+        </div>
       </div>
 
 
