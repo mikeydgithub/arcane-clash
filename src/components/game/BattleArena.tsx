@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { DamageIndicator } from './DamageIndicator';
 import { HealingIndicator } from './HealingIndicator';
+import { TurnIndicator } from './TurnIndicator';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -214,10 +215,7 @@ export function BattleArena({
       </AnimatePresence>
       <div className="flex-grow flex justify-around items-center w-full max-w-3xl relative min-h-[50%] md:min-h-[60%]">
         <div
-          className={cn(
-            "relative w-1/2 flex justify-center items-center h-full rounded-lg p-4 transition-all duration-300",
-            currentPlayerIndex === 0 && 'player1-turn-glow'
-          )}
+          className="relative w-1/2 flex justify-center items-center h-full rounded-lg"
         >
           <DamageIndicator damage={indicators.p1MonsterDamage} />
           <HealingIndicator healing={indicators.p1MonsterHeal} />
@@ -235,11 +233,10 @@ export function BattleArena({
           )}
         </div>
 
+        <TurnIndicator currentPlayerIndex={currentPlayerIndex} />
+
         <div
-          className={cn(
-            "relative w-1/2 flex justify-center items-center h-full rounded-lg p-4 transition-all duration-300",
-            currentPlayerIndex === 1 && 'player2-turn-glow'
-          )}
+          className="relative w-1/2 flex justify-center items-center h-full rounded-lg"
         >
           <DamageIndicator damage={indicators.p2MonsterDamage} />
           <HealingIndicator healing={indicators.p2MonsterHeal} />
