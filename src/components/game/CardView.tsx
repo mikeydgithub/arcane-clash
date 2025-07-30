@@ -317,7 +317,7 @@ export function CardView({
                 <HelpCircle className="w-3 h-3 mr-1"/> Flavor: No info yet.
             </p>
           ) : null}
-          {hasAbilities && !inBattleArena && (
+          {hasAbilities && (
             <div className="flex items-center text-xs text-amber-400 italic">
               <Sparkles className="w-3 h-3 mr-1" />
               <span>Special Ability</span>
@@ -365,3 +365,5 @@ export function CardView({
     </TooltipProvider>
   );
 }
+
+    
