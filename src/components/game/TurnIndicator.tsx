@@ -2,7 +2,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowBigLeft, ArrowBigRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TurnIndicatorProps {
@@ -25,7 +25,7 @@ export function TurnIndicator({ currentPlayerIndex }: TurnIndicatorProps) {
           transition={{ duration: 0.5, ease: 'easeInOut' }}
           className={cn('flex-1 text-right', isPlayer1Turn && 'indicator-active')}
         >
-          <ChevronLeft className="w-12 h-12" />
+          <ArrowBigLeft className="w-12 h-12" />
         </motion.div>
 
         {/* Separator */}
@@ -40,7 +40,7 @@ export function TurnIndicator({ currentPlayerIndex }: TurnIndicatorProps) {
           transition={{ duration: 0.5, ease: 'easeInOut' }}
           className={cn('flex-1 text-left', isPlayer2Turn && 'indicator-active')}
         >
-          <ChevronRight className="w-12 h-12" />
+          <ArrowBigRight className="w-12 h-12" />
         </motion.div>
       </div>
     </div>
