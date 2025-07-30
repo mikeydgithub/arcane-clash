@@ -303,29 +303,27 @@ export function CardView({
                 </div>
             </div>
         )}
-        {!inBattleArena && (
-          <CardFooter className="p-1.5 flex items-center justify-center text-center leading-tight">
-            {card.isLoadingDescription ? (
-              <p className="text-xs text-muted-foreground italic">Generating info...</p>
-            ) : card.cardType === 'Spell' ? (
-                !card.description ? (
-                  <p className="text-xs text-muted-foreground italic flex items-center">
-                    <HelpCircle className="w-3 h-3 mr-1"/> Effect: No info yet.
-                  </p>
-                ) : null
-            ) : (card.cardType === 'Monster' && !card.description && !hasAbilities) ? (
-              <p className="text-xs text-muted-foreground italic flex items-center">
-                  <HelpCircle className="w-3 h-3 mr-1"/> Flavor: No info yet.
-              </p>
-            ) : null}
-            {hasAbilities && (
-              <div className="flex items-center text-xs text-amber-400 italic">
-                <Sparkles className="w-3 h-3 mr-1" />
-                <span>Special Ability</span>
-              </div>
-            )}
-          </CardFooter>
-        )}
+        <CardFooter className="p-1.5 flex items-center justify-center text-center leading-tight">
+          {card.isLoadingDescription ? (
+            <p className="text-xs text-muted-foreground italic">Generating info...</p>
+          ) : card.cardType === 'Spell' ? (
+              !card.description ? (
+                <p className="text-xs text-muted-foreground italic flex items-center">
+                  <HelpCircle className="w-3 h-3 mr-1"/> Effect: No info yet.
+                </p>
+              ) : null
+          ) : (card.cardType === 'Monster' && !card.description && !hasAbilities) ? (
+            <p className="text-xs text-muted-foreground italic flex items-center">
+                <HelpCircle className="w-3 h-3 mr-1"/> Flavor: No info yet.
+            </p>
+          ) : null}
+          {hasAbilities && !inBattleArena && (
+            <div className="flex items-center text-xs text-amber-400 italic">
+              <Sparkles className="w-3 h-3 mr-1" />
+              <span>Special Ability</span>
+            </div>
+          )}
+        </CardFooter>
       </div>
     </MotionCard>
   );
