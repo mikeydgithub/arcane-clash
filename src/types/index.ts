@@ -26,6 +26,10 @@ export interface MonsterCardData extends BaseCardData {
   hasSwiftnessAura?: boolean;
   hasMightInfusion?: boolean;
   hasGrowthSpurt?: boolean;
+  hasAmbush?: boolean; // On Play
+  hasLifeSteal?: boolean; // On Attack
+  hasSpikedArmor?: boolean; // On Damage
+  hasFinalGift?: boolean; // On Death
 }
 
 export interface SpellCardData extends BaseCardData {

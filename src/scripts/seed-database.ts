@@ -8,16 +8,16 @@ const monsterCards = [
       "id": "Flame Serpent", "title": "Flame Serpent", "cardType": "Monster", "melee": 7, "magic": 2, "hp": 20, "maxHp": 20, "description": "A swift serpent wreathed in roaring flames."
     },
     {
-      "id": "Iron Golem", "title": "Iron Golem", "cardType": "Monster", "melee": 5, "magic": 0, "hp": 30, "maxHp": 30, "description": "A lumbering construct of solid iron, nearly impervious to physical harm."
+      "id": "Iron Golem", "title": "Iron Golem", "cardType": "Monster", "melee": 5, "magic": 0, "hp": 30, "maxHp": 30, "description": "A lumbering construct of solid iron, nearly impervious to physical harm.", "hasSpikedArmor": true
     },
     {
-      "id": "Shadow Stalker", "title": "Shadow Stalker", "cardType": "Monster", "melee": 8, "magic": 4, "hp": 18, "maxHp": 18, "description": "A creature of darkness that strikes from unseen angles."
+      "id": "Shadow Stalker", "title": "Shadow Stalker", "cardType": "Monster", "melee": 8, "magic": 4, "hp": 18, "maxHp": 18, "description": "A creature of darkness that strikes from unseen angles.", "hasAmbush": true
     },
     {
       "id": "Celestial Guardian", "title": "Celestial Guardian", "cardType": "Monster", "melee": 4, "magic": 6, "hp": 25, "maxHp": 25, "description": "A divine protector whose armor shimmers with starlight."
     },
     {
-      "id": "Mystic Owl", "title": "Mystic Owl", "cardType": "Monster", "melee": 1, "magic": 8, "hp": 15, "maxHp": 15, "description": "A wise avian that commands potent, ancient magic."
+      "id": "Mystic Owl", "title": "Mystic Owl", "cardType": "Monster", "melee": 1, "magic": 8, "hp": 15, "maxHp": 15, "description": "A wise avian that commands potent, ancient magic.", "hasFinalGift": true
     },
     {
       "id": "Stone Titan", "title": "Stone Titan", "cardType": "Monster", "melee": 9, "magic": 0, "hp": 40, "maxHp": 40, "description": "A colossal being of living rock and earth."
@@ -29,7 +29,7 @@ const monsterCards = [
       "id": "Forest Sprite", "title": "Forest Sprite", "cardType": "Monster", "melee": 2, "magic": 5, "hp": 12, "maxHp": 12, "description": "A small, nimble fairy with a mischievous and magical nature."
     },
     {
-      "id": "Abyssal Fiend", "title": "Abyssal Fiend", "cardType": "Monster", "melee": 8, "magic": 8, "hp": 22, "maxHp": 22, "description": "A demon from the depths, wielding both shadow and flame."
+      "id": "Abyssal Fiend", "title": "Abyssal Fiend", "cardType": "Monster", "melee": 8, "magic": 8, "hp": 22, "maxHp": 22, "description": "A demon from the depths, wielding both shadow and flame.", "hasLifeSteal": true
     },
     {
       "id": "Sunstone Paladin", "title": "Sunstone Paladin", "cardType": "Monster", "melee": 6, "magic": 3, "hp": 30, "maxHp": 30, "description": "A holy warrior whose faith is as strong as her armor."
@@ -108,7 +108,7 @@ const spellCards = [
     { "id": "Drain Life", "title": "Drain Life", "cardType": "Spell", "description": "Deals 8 damage to opponent's monster and heals your active monster for the same amount." },
     { "id": "Blinding Flash", "title": "Blinding Flash", "cardType": "Spell", "description": "Stuns opponent's monster for 1 turn." },
     { "id": "Might Infusion", "title": "Might Infusion", "cardType": "Spell", "description": "Increases your active monster's Melee and Magic by 4." },
-    { "id": "Frost Nova", "title": "Frost Nova", "cardType": "Spell", "description": "Deals 12 magic damage to opponent's monster and slows it for 1 turn (Reduces Melee by 2)." },
+    { "id": "Frost Nova", "title": "Frost Nova", "cardType": "Spell", "description": "Deals 12 magic damage to opponent's monster and applies Frostbite, reducing its Melee by 2 for 2 turns." },
     { "id": "Regenerate", "title": "Regenerate", "cardType": "Spell", "description": "Your active monster heals 5 HP at the start of your next 3 turns." },
     { "id": "Silence", "title": "Silence", "cardType": "Spell", "description": "Prevents opponent's active monster from using abilities for 2 turns." },
     { "id": "Teleport Strike", "title": "Teleport Strike", "cardType": "Spell", "description": "Deals 10 melee damage ignoring defense." },
