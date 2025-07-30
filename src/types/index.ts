@@ -23,7 +23,8 @@ export interface MonsterCardData extends BaseCardData {
   hp: number;
   maxHp: number;
   statusEffects?: StatusEffect[];
-  hasSwiftnessAura?: boolean;
+  hasDominantStatAura?: boolean;
+  hasFocusedMindBuff?: boolean;
   hasMightInfusion?: boolean;
   hasGrowthSpurt?: boolean;
   hasAmbush?: boolean; // On Play

@@ -6,7 +6,7 @@ import type { CardData, MonsterCardData, SpellCardData, StatusEffect } from '@/t
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Swords, Sparkles, Heart, Zap, HelpCircle, Wind, Flame, Sprout } from 'lucide-react';
+import { Swords, Sparkles, Heart, Zap, HelpCircle, Wind, Flame, Sprout, BrainCircuit } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
 import React, { useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -246,7 +246,7 @@ export function CardView({
                     isDominant={dominantAttack === 'melee'}
                     dominantStatType="melee"
                     buffIcons={[
-                      ...((card as MonsterCardData).hasSwiftnessAura ? [{ icon: <Wind className={cn(iconSize, "text-green-400")} />, tooltipText: "Swiftness Aura: +3 Melee" }] : []),
+                      ...((card as MonsterCardData).hasDominantStatAura ? [{ icon: <Wind className={cn(iconSize, "text-green-400")} />, tooltipText: "Aura: +3 to highest attack stat" }] : []),
                       ...((card as MonsterCardData).hasMightInfusion ? [{ icon: <Flame className={cn(iconSize, "text-orange-400")} />, tooltipText: "Might Infusion: +4 Melee & Magic" }] : []),
                     ]}
                   />
@@ -266,6 +266,7 @@ export function CardView({
                     dominantStatType="magic"
                     buffIcons={[
                        ...((card as MonsterCardData).hasMightInfusion ? [{ icon: <Flame className={cn(iconSize, "text-orange-400")} />, tooltipText: "Might Infusion: +4 Melee & Magic" }] : []),
+                       ...((card as MonsterCardData).hasFocusedMindBuff ? [{ icon: <BrainCircuit className={cn(iconSize, "text-purple-400")} />, tooltipText: "Focused Mind: +2 to highest attack stat" }] : []),
                     ]}
                   />
               )}

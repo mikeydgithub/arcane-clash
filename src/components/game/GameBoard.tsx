@@ -735,9 +735,17 @@ export function GameBoard() {
                     break;
                 case 'Swiftness Aura':
                     if (currentPlayersMonsterRef) {
-                        currentPlayersMonsterRef.melee = Math.max(0, currentPlayersMonsterRef.melee + 3);
-                        currentPlayersMonsterRef.hasSwiftnessAura = true;
-                        logsToAppend.push({text: `${currentPlayersMonsterRef.title} gains +3 Melee from Swiftness Aura. New Melee: ${currentPlayersMonsterRef.melee}.`, type: 'info'});
+                        const buff = 3;
+                        let buffedStat: 'melee' | 'magic';
+                        if (currentPlayersMonsterRef.magic > currentPlayersMonsterRef.melee) {
+                            currentPlayersMonsterRef.magic += buff;
+                            buffedStat = 'magic';
+                        } else {
+                            currentPlayersMonsterRef.melee += buff;
+                            buffedStat = 'melee';
+                        }
+                        currentPlayersMonsterRef.hasDominantStatAura = true;
+                        logsToAppend.push({text: `${currentPlayersMonsterRef.title} gains +${buff} to its highest stat (${buffedStat}) from Swiftness Aura.`, type: 'info'});
                         if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                         spellEffectApplied = true;
                     }
@@ -900,6 +908,21 @@ export function GameBoard() {
                     }
                     break;
                 case 'Focused Mind':
+                    const buffAmount = 2;
+                    let buffedStat: 'melee' | 'magic' | undefined;
+                    if (currentPlayersMonsterRef) {
+                        if (currentPlayersMonsterRef.magic > currentPlayersMonsterRef.melee) {
+                            currentPlayersMonsterRef.magic += buffAmount;
+                            buffedStat = 'magic';
+                        } else {
+                            currentPlayersMonsterRef.melee += buffAmount;
+                            buffedStat = 'melee';
+                        }
+                        currentPlayersMonsterRef.hasFocusedMindBuff = true;
+                        logsToAppend.push({ text: `Focused Mind increases ${currentPlayersMonsterRef.title}'s highest stat (${buffedStat}) by ${buffAmount}.`, type: 'info' });
+                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
+                    }
+
                     if (actingPlayer.hand.length < CARDS_IN_HAND) {
                         const { dealtCards, remainingDeck } = dealCards(actingPlayer.deck, 1);
                         if (dealtCards.length > 0) {
@@ -911,12 +934,6 @@ export function GameBoard() {
                         }
                     } else {
                         logsToAppend.push({text: `${actingPlayer.name}'s hand is full, cannot draw.`, type: 'system'});
-                    }
-
-                    if(currentPlayersMonsterRef) {
-                        currentPlayersMonsterRef.magic += 2;
-                        logsToAppend.push({text: `Focused Mind increases ${currentPlayersMonsterRef.title}'s Magic by 2. New Magic: ${currentPlayersMonsterRef.magic}.`, type: 'info'});
-                        if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                     }
                     spellEffectApplied = true;
                     break;

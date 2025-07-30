@@ -101,7 +101,7 @@ const spellCards = [
     { "id": "Fireball", "title": "Fireball", "cardType": "Spell", "description": "Deals 15 damage to opponent's monster, or 10 damage to opponent if no monster." },
     { "id": "Arcane Shield", "title": "Arcane Shield", "cardType": "Spell", "description": "Grants your active monster a shield that absorbs 15 damage. Lasts until broken." },
     { "id": "Weakening Curse", "title": "Weakening Curse", "cardType": "Spell", "description": "Reduces opponent's monster's Melee and Magic by 3." },
-    { "id": "Swiftness Aura", "title": "Swiftness Aura", "cardType": "Spell", "description": "Increases your active monster's Melee by 3." },
+    { "id": "Swiftness Aura", "title": "Swiftness Aura", "cardType": "Spell", "description": "Increases your active monster's highest attack stat (Melee or Magic) by 3." },
     { "id": "Stone Skin", "title": "Stone Skin", "cardType": "Spell", "description": "Grants your active monster a temporary shield of 5 health for 1 turn." },
     { "id": "Chain Lightning", "title": "Chain Lightning", "cardType": "Spell", "description": "Deals 10 damage to opponent's monster. If it's defeated, deal 5 damage to the opponent." },
     { "id": "Growth Spurt", "title": "Growth Spurt", "cardType": "Spell", "description": "Increases your active monster's Max HP and current HP by 10." },
@@ -120,7 +120,7 @@ const spellCards = [
     { "id": "Empower Weapon", "title": "Empower Weapon", "cardType": "Spell", "description": "Your active monster's next melee attack deals double damage." },
     { "id": "Mage Armor", "title": "Mage Armor", "cardType": "Spell", "description": "Grants your active monster a shield that absorbs 20 magic damage. Lasts until broken." },
     { "id": "Terrify", "title": "Terrify", "cardType": "Spell", "description": "Returns opponent's active monster to their hand. If hand is full, it's discarded." },
-    { "id": "Focused Mind", "title": "Focused Mind", "cardType": "Spell", "description": "Draw 1 card and increase your Magic by 2 for the rest of the game." }
+    { "id": "Focused Mind", "title": "Focused Mind", "cardType": "Spell", "description": "Draw 1 card and increase your active monster's highest attack stat by 2." }
 ];
 
 const firebaseConfig = {
