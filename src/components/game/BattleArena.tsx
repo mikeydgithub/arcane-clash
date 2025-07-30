@@ -166,7 +166,7 @@ export function BattleArena({
           winningPlayerName={winningPlayerNameForCoinFlip}
           player1Name={player1Name}
           player2Name={player2Name}
-          onAnimationComplete={onCoinFlipAnimationComplete}
+          onAnimationComplete={onAnimationComplete}
         />
         <div className="w-full max-w-xl h-[30%] max-h-40 md:max-h-48 mb-1 md:mb-2 mt-4">
           <ScrollArea className="h-full w-full bg-background/70 border border-border rounded-md p-2 md:p-3 shadow-inner">
