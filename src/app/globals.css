@@ -198,6 +198,12 @@ body {
   animation: indicator-glow 2s ease-in-out infinite;
 }
 
+.animate-energy-stream {
+  background: linear-gradient(120deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary)));
+  background-size: 200% 200%;
+  animation: gradientShift 6s ease infinite;
+}
+
 
 @layer base {
   :root {

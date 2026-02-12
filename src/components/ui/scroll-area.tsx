@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -40,7 +41,7 @@ const ScrollBar = React.forwardRef<
     )}
     {...props}
   >
-    <ScrollAreaPrimitive.ScrollAreaThumb className={cn("relative flex-1 rounded-sm bg-accent text-accent indicator-active")} />
+    <ScrollAreaPrimitive.ScrollAreaThumb className={cn("relative flex-1 rounded-sm animate-energy-stream")} />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ))
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
