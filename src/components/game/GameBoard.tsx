@@ -1657,19 +1657,21 @@ export function GameBoard() {
 
       <div className="flex-grow grid grid-cols-[220px_1fr_220px] md:grid-cols-[250px_1fr_250px] gap-1 md:gap-2 overflow-hidden min-h-0 px-1 md:px-2">
         {/* Player 1 Hand (Current Player if P1, Opponent if P2) */}
-         <ScrollArea className={cn("player-hand-container h-full border border-border/30 rounded-lg shadow-inner", currentPlayerIndex === 0 ? "bg-primary/5" : "bg-card/20")}>
-            <PlayerHand
-                cards={players[0].hand}
-                onCardSelect={currentPlayerIndex === 0 ? handleCardSelect : () => {}}
-                isPlayerTurn={currentPlayerIndex === 0}
-                canPlayMonster={!activeMonsterP1 && (gamePhase === 'player_action_phase')}
-                currentPhase={gamePhase}
-                spellsPlayedThisTurn={players[0].spellsPlayedThisTurn}
-                opponentActiveMonster={activeMonsterP2}
-                isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 0}
-                selectedCardIds={selectedForMulligan}
-                player={players[0]}
-            />
+         <ScrollArea dir="rtl" className={cn("player-hand-container h-full border border-border/30 rounded-lg shadow-inner", currentPlayerIndex === 0 ? "bg-primary/5" : "bg-card/20")}>
+            <div dir="ltr">
+              <PlayerHand
+                  cards={players[0].hand}
+                  onCardSelect={currentPlayerIndex === 0 ? handleCardSelect : () => {}}
+                  isPlayerTurn={currentPlayerIndex === 0}
+                  canPlayMonster={!activeMonsterP1 && (gamePhase === 'player_action_phase')}
+                  currentPhase={gamePhase}
+                  spellsPlayedThisTurn={players[0].spellsPlayedThisTurn}
+                  opponentActiveMonster={activeMonsterP2}
+                  isMulliganPhase={gamePhase === 'mulligan_phase' && currentPlayerIndex === 0}
+                  selectedCardIds={selectedForMulligan}
+                  player={players[0]}
+              />
+            </div>
         </ScrollArea>
 
         <BattleArena
@@ -1781,4 +1783,5 @@ export function GameBoard() {
     
 
     
+
 
