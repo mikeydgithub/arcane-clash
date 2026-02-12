@@ -740,16 +740,21 @@ export function GameBoard() {
                 case 'Swiftness Aura':
                     if (currentPlayersMonsterRef) {
                         const buff = 3;
+                        let originalStatValue;
                         let buffedStat: 'melee' | 'magic';
                         if (currentPlayersMonsterRef.magic > currentPlayersMonsterRef.melee) {
+                            originalStatValue = currentPlayersMonsterRef.magic;
                             currentPlayersMonsterRef.magic += buff;
                             buffedStat = 'magic';
                         } else {
+                            originalStatValue = currentPlayersMonsterRef.melee;
                             currentPlayersMonsterRef.melee += buff;
                             buffedStat = 'melee';
                         }
                         currentPlayersMonsterRef.hasDominantStatAura = true;
-                        logsToAppend.push({text: `${currentPlayersMonsterRef.title} gains +${buff} to its highest stat (${buffedStat}) from Swiftness Aura.`, type: 'info'});
+                        const newStatValue = buffedStat === 'magic' ? currentPlayersMonsterRef.magic : currentPlayersMonsterRef.melee;
+                        logsToAppend.push({text: `${currentPlayersMonsterRef.title}'s Swiftness Aura increases its ${buffedStat}! ${buffedStat.charAt(0).toUpperCase() + buffedStat.slice(1)}: ${originalStatValue} -> ${newStatValue}.`, type: 'info'});
+
                         if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                         spellEffectApplied = true;
                     }
@@ -858,10 +863,12 @@ export function GameBoard() {
                     break;
                 case 'Might Infusion':
                     if(currentPlayersMonsterRef) {
+                        const originalMelee = currentPlayersMonsterRef.melee;
+                        const originalMagic = currentPlayersMonsterRef.magic;
                         currentPlayersMonsterRef.melee += 4;
                         currentPlayersMonsterRef.magic += 4;
                         currentPlayersMonsterRef.hasMightInfusion = true;
-                        logsToAppend.push({text: `${actingPlayer.name}'s Might Infusion empowers ${currentPlayersMonsterRef.title}! Melee: ${currentPlayersMonsterRef.melee-4} -> ${currentPlayersMonsterRef.melee}, Magic: ${currentPlayersMonsterRef.magic-4} -> ${currentPlayersMonsterRef.magic}.`, type: 'info'});
+                        logsToAppend.push({text: `${actingPlayer.name}'s Might Infusion empowers ${currentPlayersMonsterRef.title}! Melee: ${originalMelee} -> ${currentPlayersMonsterRef.melee}, Magic: ${originalMagic} -> ${currentPlayersMonsterRef.magic}.`, type: 'info'});
                         if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                         spellEffectApplied = true;
                     }
@@ -915,15 +922,19 @@ export function GameBoard() {
                     const buffAmount = 2;
                     let buffedStat: 'melee' | 'magic' | undefined;
                     if (currentPlayersMonsterRef) {
+                        let originalStatValue;
                         if (currentPlayersMonsterRef.magic > currentPlayersMonsterRef.melee) {
+                            originalStatValue = currentPlayersMonsterRef.magic;
                             currentPlayersMonsterRef.magic += buffAmount;
                             buffedStat = 'magic';
                         } else {
+                            originalStatValue = currentPlayersMonsterRef.melee;
                             currentPlayersMonsterRef.melee += buffAmount;
                             buffedStat = 'melee';
                         }
                         currentPlayersMonsterRef.hasFocusedMindBuff = true;
-                        logsToAppend.push({ text: `Focused Mind increases ${currentPlayersMonsterRef.title}'s highest stat (${buffedStat}) by ${buffAmount}.`, type: 'info' });
+                        const newStatValue = buffedStat === 'magic' ? currentPlayersMonsterRef.magic : currentPlayersMonsterRef.melee;
+                        logsToAppend.push({ text: `Focused Mind increases ${currentPlayersMonsterRef.title}'s ${buffedStat}! ${buffedStat.charAt(0).toUpperCase() + buffedStat.slice(1)}: ${originalStatValue} -> ${newStatValue}.`, type: 'info' });
                         if (currentPlayerIndex === 0) newActiveMonsterP1 = currentPlayersMonsterRef; else newActiveMonsterP2 = currentPlayersMonsterRef;
                     }
 
