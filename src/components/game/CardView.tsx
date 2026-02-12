@@ -119,6 +119,7 @@ interface CardViewProps {
   isPlayerTurnForThisCard?: boolean;
   showDescriptionTooltip?: boolean;
   statusEffects?: StatusEffect[];
+  isDimmed?: boolean;
 }
 
 const MotionCard = motion.create(Card);
@@ -149,6 +150,7 @@ export function CardView({
   isPlayerTurnForThisCard = false,
   showDescriptionTooltip = false,
   statusEffects = [],
+  isDimmed = false,
 }: CardViewProps) {
   const baseCardSize = "w-40 h-56 md:w-48 md:h-64";
   const cardHoverEffect = isPlayable && !inBattleArena ? "hover:scale-105 hover:shadow-lg transition-transform duration-200 cursor-pointer" : "";
@@ -181,8 +183,6 @@ export function CardView({
         baseCardSize,
         cardHoverEffect,
         isSelected && !inBattleArena ? "ring-2 ring-accent" : "",
-        isOpponentCard && !inBattleArena && !isSelected && !isPlayerTurnForThisCard ? "opacity-70" : "",
-        isOpponentCard && isPlayerTurnForThisCard && !inBattleArena ? "opacity-100" : "",
         !isMonster ? "border-purple-500/50 ring-purple-500/30" : ""
       )}
       onClick={isPlayable ? onClick : undefined}
@@ -305,6 +305,12 @@ export function CardView({
             </div>
         )}
         <CardFooter className="p-1.5 flex items-center justify-center text-center leading-tight">
+          {hasAbilities && (
+            <div className="flex items-center text-xs text-amber-400 italic">
+              <Sparkles className="w-3 h-3 mr-1" />
+              <span>Special Ability</span>
+            </div>
+          )}
           {card.isLoadingDescription ? (
             <p className="text-xs text-muted-foreground italic">Generating info...</p>
           ) : card.cardType === 'Spell' ? (
@@ -318,14 +324,11 @@ export function CardView({
                 <HelpCircle className="w-3 h-3 mr-1"/> Flavor: No info yet.
             </p>
           ) : null}
-          {hasAbilities && (
-            <div className="flex items-center text-xs text-amber-400 italic">
-              <Sparkles className="w-3 h-3 mr-1" />
-              <span>Special Ability</span>
-            </div>
-          )}
         </CardFooter>
       </div>
+      {isDimmed && (
+        <div className="absolute inset-0 bg-black/40 rounded-lg pointer-events-none z-10" />
+      )}
     </MotionCard>
   );
 
@@ -366,5 +369,3 @@ export function CardView({
     </TooltipProvider>
   );
 }
-
-    

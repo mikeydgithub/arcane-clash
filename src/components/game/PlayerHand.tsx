@@ -73,8 +73,8 @@ export function PlayerHand({
 
         return (
           <div key={card.id} className={cn(
-            "transition-opacity duration-300",
-            cardIsActuallyPlayable ? "cursor-pointer" : "cursor-not-allowed opacity-80"
+            "transition-all duration-300",
+            cardIsActuallyPlayable ? "cursor-pointer" : "cursor-not-allowed"
           )}>
             <CardView 
               card={card}
@@ -84,6 +84,7 @@ export function PlayerHand({
               isOpponentCard={isOpponent}
               isPlayerTurnForThisCard={isPlayerTurn && isOpponent} 
               showDescriptionTooltip={true}
+              isDimmed={!cardIsActuallyPlayable || (isOpponent && !isPlayerTurn)}
             />
           </div>
         );
@@ -96,5 +97,3 @@ export function PlayerHand({
     </div>
   );
 }
-
-    
