@@ -484,8 +484,10 @@ export function GameBoard() {
         const opponentPlayerIndex = 1 - currentPlayerIndex;
         let opponentMonster = currentPlayerIndex === 0 ? activeMonsterP2 : activeMonsterP1;
 
+        const isFirstMonsterOfGame = !activeMonsterP1 && !activeMonsterP2;
+
         let newHand = player.hand.filter(c => c.id !== card.id);
-        const updatedPlayer = { ...player, hand: newHand, hasMulliganed: true, monsterJustPlayed: true };
+        const updatedPlayer = { ...player, hand: newHand, hasMulliganed: true, monsterJustPlayed: isFirstMonsterOfGame };
         let newPlayers = [...players] as [PlayerData, PlayerData];
         newPlayers[currentPlayerIndex] = updatedPlayer;
 
@@ -520,7 +522,9 @@ export function GameBoard() {
             }
         }
         
-        logs.push({ text: `${card.title} cannot act this turn due to summoning sickness.`, type: 'info' });
+        if (isFirstMonsterOfGame) {
+            logs.push({ text: `${card.title} has summoning sickness and cannot act this turn.`, type: 'info' });
+        }
         appendLogs(logs);
 
         return {
@@ -1384,7 +1388,7 @@ export function GameBoard() {
         }
       }
 
-      newPlayers[currentPlayerIndex] = { ...player, hand: newPlayerHand, hasMulliganed: true, monsterJustPlayed: true };
+      newPlayers[currentPlayerIndex] = { ...player, hand: newPlayerHand, hasMulliganed: true, monsterJustPlayed: false };
       
       let newIndicators = {...indicators};
 
@@ -1413,7 +1417,6 @@ export function GameBoard() {
       }
 
       logsToAppend.push({text: `${player.name} summons ${selectedMonsterFromHand.title} to replace it!`, type: playerLogType});
-      logsToAppend.push({text: `${selectedMonsterFromHand.title} cannot act this turn due to summoning sickness.`, type: 'info'});
 
       const updatedState = {
         ...prev,
