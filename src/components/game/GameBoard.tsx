@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAudio } from '@/contexts/AudioContext';
 import { AudioController } from './AudioController';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const INITIAL_PLAYER_HP = 30;
@@ -1656,7 +1657,7 @@ export function GameBoard() {
 
       <div className="flex-grow grid grid-cols-[220px_1fr_220px] md:grid-cols-[250px_1fr_250px] gap-1 md:gap-2 overflow-hidden min-h-0 px-1 md:px-2">
         {/* Player 1 Hand (Current Player if P1, Opponent if P2) */}
-         <div className={cn("player-hand-container overflow-y-auto h-full border border-border/30 rounded-lg shadow-inner", currentPlayerIndex === 0 ? "bg-primary/5" : "bg-card/20")}>
+         <ScrollArea className={cn("player-hand-container h-full border border-border/30 rounded-lg shadow-inner", currentPlayerIndex === 0 ? "bg-primary/5" : "bg-card/20")}>
             <PlayerHand
                 cards={players[0].hand}
                 onCardSelect={currentPlayerIndex === 0 ? handleCardSelect : () => {}}
@@ -1669,7 +1670,7 @@ export function GameBoard() {
                 selectedCardIds={selectedForMulligan}
                 player={players[0]}
             />
-        </div>
+        </ScrollArea>
 
         <BattleArena
           player1Card={activeMonsterP1}
@@ -1686,7 +1687,7 @@ export function GameBoard() {
         />
 
         {/* Player 2 Hand (Current Player if P2, Opponent if P1) */}
-         <div className={cn("player-hand-container overflow-y-auto h-full border border-border/30 rounded-lg shadow-inner", currentPlayerIndex === 1 ? "bg-primary/5" : "bg-card/20")}>
+         <ScrollArea className={cn("player-hand-container h-full border border-border/30 rounded-lg shadow-inner", currentPlayerIndex === 1 ? "bg-primary/5" : "bg-card/20")}>
             <PlayerHand
                 cards={players[1].hand}
                 onCardSelect={currentPlayerIndex === 1 ? handleCardSelect : () => {}}
@@ -1700,7 +1701,7 @@ export function GameBoard() {
                 selectedCardIds={selectedForMulligan}
                 player={players[1]}
             />
-        </div>
+        </ScrollArea>
       </div>
 
       {gamePhase !== 'coin_flip_animation' && gamePhase !== 'loading_art' && gamePhase !== 'game_over_phase' && !isProcessingAction && gamePhase !== 'turn_transition' && (
@@ -1780,3 +1781,4 @@ export function GameBoard() {
     
 
     
+
