@@ -1030,7 +1030,7 @@ export function GameBoard() {
             actingPlayer.discardPile.push(card); // Spell goes to discard
             newPlayers[currentPlayerIndex] = { ...actingPlayer, hasMulliganed: true }; // Playing a spell also counts as keeping hand
 
-            logsToAppend.push({text: `${actingPlayer.name} has cast a spell. Choose your next action or end turn.`, type: actingPlayerLogType});
+            logsToAppend.push({text: `${actingPlayer.name} has cast a spell. Only ${SPELLS_PER_TURN_LIMIT} spell${SPELLS_PER_TURN_LIMIT > 1 ? 's' : ''} can be played per turn. Choose your next action or end turn.`, type: actingPlayerLogType});
             
             const finalState: GameState = {
                 ...prev,
@@ -1765,3 +1765,5 @@ export function GameBoard() {
     </div>
   );
 }
+
+    
