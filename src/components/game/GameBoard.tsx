@@ -898,7 +898,7 @@ export function GameBoard() {
                         const newEffect: StatusEffect = { id: `frostbite-${Date.now()}`, type: 'frostbite', duration: 3, value: meleeReduction };
                         opponentPlayersMonsterRef.statusEffects = [...(opponentPlayersMonsterRef.statusEffects || []), newEffect];
                         
-                        logsToAppend.push({text: `${actingPlayer.name}'s Frost Nova hits ${opponentPlayersMonsterRef.title} for ${damageTaken} damage and applies Frostbite, reducing its Melee! (HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp})`, type: 'damage'});
+                        logsToAppend.push({text: `${actingPlayer.name}'s Frost Nova hits ${opponentPlayersMonsterRef.title} for ${damageTaken} damage and applies Frostbite, reducing its Melee by ${meleeReduction} for 2 turns! (HP: ${originalHp} -> ${opponentPlayersMonsterRef.hp})`, type: 'damage'});
                         
                         spellEffectApplied = true;
 
@@ -1765,5 +1765,7 @@ export function GameBoard() {
     </div>
   );
 }
+
+    
 
     
