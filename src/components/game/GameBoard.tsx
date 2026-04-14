@@ -1655,7 +1655,7 @@ export function GameBoard() {
         </div>
       </div>
 
-      <div className="flex-grow grid grid-cols-[220px_1fr_220px] md:grid-cols-[250px_1fr_250px] gap-1 md:gap-2 overflow-hidden min-h-0 px-1 md:px-2">
+      <div className="flex-grow grid grid-cols-[220px_1fr_220px] md:grid-cols-[250px_1fr_250px] gap-1 md:gap-2 min-h-0 px-1 md:px-2">
         {/* Player 1 Hand (Current Player if P1, Opponent if P2) */}
          <ScrollArea dir="rtl" className={cn("player-hand-container h-full border border-border/30 rounded-lg shadow-inner", currentPlayerIndex === 0 ? "bg-primary/5" : "bg-card/20")}>
             <div dir="ltr">
@@ -1779,9 +1779,3 @@ export function GameBoard() {
     </div>
   );
 }
-
-    
-
-    
-
-
