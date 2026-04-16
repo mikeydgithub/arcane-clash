@@ -77,7 +77,24 @@ const monsterCards = [
       "id": "Vanguard Sentinel", "title": "Vanguard Sentinel", "cardType": "Monster", "melee": 5, "magic": 0, "hp": 32, "maxHp": 32, "description": "The unbreachable first line of defense."
     },
     {
-      "id": "Arcane Familiar", "title": "Arcane Familiar", "cardType": "Monster", "melee": 1, "magic": 3, "hp": 8, "maxHp": 8, "description": "A small magical companion that aids its master."
+      "id": "Arcane Familiar",
+      "title": "Arcane Familiar",
+      "cardType": "Monster",
+      "melee": 1,
+      "magic": 3,
+      "hp": 8,
+      "maxHp": 8,
+      "description": "Summons a 2/2/5 Arcane Protector with Taunt.",
+      "summonsOnPlay": {
+        "title": "Arcane Protector",
+        "cardType": "Monster",
+        "melee": 2,
+        "magic": 2,
+        "hp": 5,
+        "maxHp": 5,
+        "hasTaunt": true,
+        "artUrl": "/card-art/arcane-protector.png"
+      }
     },
     {
       "id": "Earthshaker Behemoth", "title": "Earthshaker Behemoth", "cardType": "Monster", "melee": 10, "magic": 0, "hp": 45, "maxHp": 45, "description": "Its roar is an earthquake, its charge a landslide."
@@ -98,29 +115,43 @@ const monsterCards = [
 
 const spellCards = [
     { "id": "Healing Light", "title": "Healing Light", "cardType": "Spell", "description": "Heals your active monster for 20 HP." },
-    { "id": "Fireball", "title": "Fireball", "cardType": "Spell", "description": "Deals 15 damage to opponent's monster, or 10 damage to opponent if no monster." },
+    { "id": "Fireball", "title": "Fireball", "cardType": "Spell", "description": "Deals 15 damage to opponent\'s monster, or 10 damage to opponent if no monster." },
     { "id": "Arcane Shield", "title": "Arcane Shield", "cardType": "Spell", "description": "Grants your active monster a shield that absorbs 15 damage. Lasts until broken." },
-    { "id": "Weakening Curse", "title": "Weakening Curse", "cardType": "Spell", "description": "Reduces opponent's monster's Melee and Magic by 3." },
-    { "id": "Swiftness Aura", "title": "Swiftness Aura", "cardType": "Spell", "description": "Increases your active monster's highest attack stat (Melee or Magic) by 3." },
+    { "id": "Weakening Curse", "title": "Weakening Curse", "cardType": "Spell", "description": "Reduces opponent\'s monster\'s Melee and Magic by 3." },
+    { "id": "Swiftness Aura", "title": "Swiftness Aura", "cardType": "Spell", "description": "Increases your active monster\'s highest attack stat (Melee or Magic) by 3." },
     { "id": "Stone Skin", "title": "Stone Skin", "cardType": "Spell", "description": "Grants your active monster a temporary shield of 5 health for 1 turn." },
-    { "id": "Chain Lightning", "title": "Chain Lightning", "cardType": "Spell", "description": "Deals 10 damage to opponent's monster. If it's defeated, deal 5 damage to the opponent." },
-    { "id": "Growth Spurt", "title": "Growth Spurt", "cardType": "Spell", "description": "Increases your active monster's Max HP and current HP by 10." },
-    { "id": "Drain Life", "title": "Drain Life", "cardType": "Spell", "description": "Deals 8 damage to opponent's monster and heals your active monster for the same amount." },
-    { "id": "Blinding Flash", "title": "Blinding Flash", "cardType": "Spell", "description": "Stuns opponent's monster for 1 turn." },
-    { "id": "Might Infusion", "title": "Might Infusion", "cardType": "Spell", "description": "Increases your active monster's Melee and Magic by 4." },
-    { "id": "Frost Nova", "title": "Frost Nova", "cardType": "Spell", "description": "Deals 12 magic damage to opponent's monster and applies Frostbite, reducing its Melee by 2 for 2 turns." },
+    { "id": "Chain Lightning", "title": "Chain Lightning", "cardType": "Spell", "description": "Deals 10 damage to opponent\'s monster. If it\'s defeated, deal 5 damage to the opponent." },
+    { "id": "Growth Spurt", "title": "Growth Spurt", "cardType": "Spell", "description": "Increases your active monster\'s Max HP and current HP by 10." },
+    { "id": "Drain Life", "title": "Drain Life", "cardType": "Spell", "description": "Deals 8 damage to opponent\'s monster and heals your active monster for the same amount." },
+    { "id": "Blinding Flash", "title": "Blinding Flash", "cardType": "Spell", "description": "Stuns opponent\'s monster for 1 turn." },
+    { "id": "Might Infusion", "title": "Might Infusion", "cardType": "Spell", "description": "Increases your active monster\'s Melee and Magic by 4." },
+    { "id": "Frost Nova", "title": "Frost Nova", "cardType": "Spell", "description": "Deals 12 magic damage to opponent\'s monster and applies Frostbite, reducing its Melee by 2 for 2 turns." },
     { "id": "Regenerate", "title": "Regenerate", "cardType": "Spell", "description": "Your active monster heals 5 HP at the start of your next 3 turns." },
-    { "id": "Silence", "title": "Silence", "cardType": "Spell", "description": "Prevents opponent's active monster from using abilities for 2 turns." },
+    { "id": "Silence", "title": "Silence", "cardType": "Spell", "description": "Prevents opponent\'s active monster from using abilities for 2 turns." },
     { "id": "Teleport Strike", "title": "Teleport Strike", "cardType": "Spell", "description": "Deals 10 melee damage ignoring defense." },
-    { "id": "Quicksand Trap", "title": "Quicksand Trap", "cardType": "Spell", "description": "Reduces opponent's active monster's Melee by 4 and prevents it from attacking next turn." },
+    { "id": "Quicksand Trap", "title": "Quicksand Trap", "cardType": "Spell", "description": "Reduces opponent\'s active monster\'s Melee by 4 and prevents it from attacking next turn." },
     { "id": "Ethereal Form", "title": "Ethereal Form", "cardType": "Spell", "description": "Your active monster takes 50% reduced damage for 1 turn." },
     { "id": "Counterspell", "title": "Counterspell", "cardType": "Spell", "description": "If opponent plays a spell, negate it and draw a card." },
-    { "id": "Summon Minor Spirit", "title": "Summon Minor Spirit", "cardType": "Spell", "description": "Summons a 5/5/10 (Melee/Magic/HP) spirit monster to your side." },
+    {
+        "id": "Summon Minor Spirit",
+        "title": "Summon Minor Spirit",
+        "cardType": "Spell",
+        "description": "Summons a 5/5/10 (Melee/Magic/HP) spirit monster to your side.",
+        "summonsOnPlay": {
+          "title": "Minor Spirit",
+          "cardType": "Monster",
+          "melee": 5,
+          "magic": 5,
+          "hp": 10,
+          "maxHp": 10,
+          "artUrl": "/card-art/minor-spirit.png"
+        }
+    },
     { "id": "Dark Pact", "title": "Dark Pact", "cardType": "Spell", "description": "Deal 5 damage to yourself and draw 2 cards." },
-    { "id": "Empower Weapon", "title": "Empower Weapon", "cardType": "Spell", "description": "Your active monster's next melee attack deals double damage." },
+    { "id": "Empower Weapon", "title": "Empower Weapon", "cardType": "Spell", "description": "Your active monster\'s next melee attack deals double damage." },
     { "id": "Mage Armor", "title": "Mage Armor", "cardType": "Spell", "description": "Grants your active monster a shield that absorbs 20 magic damage. Lasts until broken." },
-    { "id": "Terrify", "title": "Terrify", "cardType": "Spell", "description": "Returns opponent's active monster to their hand. If hand is full, it's discarded." },
-    { "id": "Focused Mind", "title": "Focused Mind", "cardType": "Spell", "description": "Draw 1 card and increase your active monster's highest attack stat by 2." }
+    { "id": "Terrify", "title": "Terrify", "cardType": "Spell", "description": "Returns opponent\'s active monster to their hand. If hand is full, it\'s discarded." },
+    { "id": "Focused Mind", "title": "Focused Mind", "cardType": "Spell", "description": "Draw 1 card and increase your active monster\'s highest attack stat by 2." }
 ];
 
 const firebaseConfig = {

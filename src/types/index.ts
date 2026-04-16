@@ -16,6 +16,17 @@ export interface BaseCardData {
   isLoadingDescription?: boolean;
 }
 
+export interface SummonData {
+  title: string;
+  cardType: 'Monster';
+  melee: number;
+  magic: number;
+  hp: number;
+  maxHp: number;
+  hasTaunt?: boolean;
+  artUrl?: string;
+}
+
 export interface MonsterCardData extends BaseCardData {
   cardType: 'Monster';
   melee: number;
@@ -31,6 +42,8 @@ export interface MonsterCardData extends BaseCardData {
   hasLifeSteal?: boolean; // On Attack
   hasSpikedArmor?: boolean; // On Damage
   hasFinalGift?: boolean; // On Death
+  hasTaunt?: boolean;
+  summonsOnPlay?: SummonData;
 }
 
 export interface SpellCardData extends BaseCardData {
@@ -88,11 +101,11 @@ export interface GameState {
   currentPlayerIndex: 0 | 1; // Index of the player whose turn it is to act
   gamePhase: GamePhase;
   activeMonsterP1?: MonsterCardData; // Monster P1 has in the arena
+  activeTokenP1?: MonsterCardData; // The summoned token for player 1
   activeMonsterP2?: MonsterCardData; // Monster P2 has in the arena
+  activeTokenP2?: MonsterCardData; // The summoned token for player 2
   winner?: PlayerData;
   gameLogMessages: GameLogEntry[];
   isProcessingAction?: boolean; // To disable inputs during animations/AI calls
   indicators: IndicatorState;
 }
-
-    

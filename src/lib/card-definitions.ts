@@ -1,3 +1,7 @@
+import type { MonsterCard, SpellCard } from './types';
+
+
+// A more structured way to define cards, making it easier to manage and scale.
 
 export const MONSTER_CARD_TITLES: string[] = [
   "Flame Serpent",
@@ -24,9 +28,8 @@ export const MONSTER_CARD_TITLES: string[] = [
   "Phoenix Hatchling",
   "Spectral Assassin",
   "Vanguard Sentinel",
-  "Arcane Familiar",
+  "Arcane Familiar", // Summons a token
   "Earthshaker Behemoth",
-  // Add more to ensure enough unique monsters for two players (at least 26 for 13 each)
   "Thunderbird Sovereign",
   "Grove Protector",
   "Netherworld Impaler",
@@ -52,8 +55,8 @@ export const SPELL_CARD_TITLES: string[] = [
   "Quicksand Trap",
   "Ethereal Form",
   "Counterspell",
-  "Summon Minor Spirit", // Will be flavor for now
-  "Dark Pact", // Will be flavor for now
+  "Summon Minor Spirit",
+  "Dark Pact",
   // Add more to ensure enough unique spells for two players (at least 24 for 12 each)
   "Empower Weapon",
   "Mage Armor",

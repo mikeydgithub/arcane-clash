@@ -473,6 +473,35 @@ export function GameBoard() {
     });
   };
 
+  const handleSummonToken = (tokenData: MonsterCardData, player: PlayerData) => {
+    logAndSetGameState(prev => {
+        if (!prev) return prev;
+        console.log(`[GameBoard] handleSummonToken: Summoning ${tokenData.title} for ${player.name}`);
+
+        const { activeMonsterP1, activeMonsterP2, players, currentPlayerIndex } = prev;
+        const playerIndex = players.findIndex(p => p.id === player.id);
+        const activeMonsterSlot = playerIndex === 0 ? 'activeMonsterP1' : 'activeMonsterP2';
+
+        if ((playerIndex === 0 && activeMonsterP1) || (playerIndex === 1 && activeMonsterP2)) {
+            appendLog(`${player.name} tries to summon a token, but their monster slot is already occupied!`, 'system');
+            return prev;
+        }
+
+        const newMonster: MonsterCardData = {
+            ...tokenData,
+            id: `${tokenData.title.replace(/\s+/g, '-')}-${Date.now()}`,
+            isToken: true,
+        };
+
+        appendLog(`${player.name} summons a ${newMonster.title} token to the field!`, 'system');
+
+        return {
+            ...prev,
+            [activeMonsterSlot]: newMonster,
+        };
+    });
+  };
+
   const handlePlayMonsterFromHand = (card: MonsterCardData) => {
     play('card-play');
     logAndSetGameState(prev => {
@@ -521,6 +550,11 @@ export function GameBoard() {
                 newPlayers[opponentPlayerIndex].discardPile.push(defeatedCard);
                 opponentMonster = undefined;
             }
+        }
+
+        if (card.summonsOnPlay) {
+            console.log(`[GameBoard] ${card.title} has summonsOnPlay. Calling handleSummonToken.`);
+            handleSummonToken(card.summonsOnPlay, player);
         }
         
         if (isFirstMonsterOfGame) {
@@ -593,6 +627,11 @@ export function GameBoard() {
             let opponentPlayersMonsterRef = currentPlayerIndex === 0 ? newActiveMonsterP2 : newActiveMonsterP1;
 
             let spellEffectApplied = false;
+
+            if (card.summonsOnPlay) {
+              console.log(`[GameBoard] ${card.title} has summonsOnPlay. Calling handleSummonToken.`);
+              handleSummonToken(card.summonsOnPlay, actingPlayer);
+            }
 
             const handleMonsterDefeat = (defeatedMonster: MonsterCardData, ownerIndex: number) => {
                 const defeatedPlayer = newPlayers[ownerIndex];
