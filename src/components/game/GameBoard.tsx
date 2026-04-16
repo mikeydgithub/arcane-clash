@@ -183,7 +183,7 @@ export function GameBoard() {
         hand: p1InitialHand,
         deck: p1DeckAfterDeal,
         discardPile: [],
-        avatarUrl: 'https://placehold.co/64x64.png?text=P1',
+        avatarUrl: '/avatars/arcane-warrior.png',
         spellsPlayedThisTurn: 0,
         turnCount: 0,
         hasMulliganed: false,
@@ -194,7 +194,7 @@ export function GameBoard() {
         hand: p2InitialHand,
         deck: p2DeckAfterDeal,
         discardPile: [],
-        avatarUrl: 'https://placehold.co/64x64.png?text=P2',
+        avatarUrl: '/avatars/arcane-mage.png',
         spellsPlayedThisTurn: 0,
         turnCount: 0,
         hasMulliganed: false,
@@ -1460,7 +1460,7 @@ export function GameBoard() {
     }
 
     if (player.monsterJustPlayed) {
-      toast({ title: "Summoning Sickness", description: "A monster that was just played cannot be swapped out in the same turn.", variant: "destructive" });
+      toast({ title: "Summoning Sickness", description: "A monster that was just played cannot be swapped out in the same turn." });
       return;
     }
 

@@ -1,12 +1,10 @@
-
 'use client';
 
 import type { PlayerData } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
-import { Heart, ShieldCheck } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { DamageIndicator } from './DamageIndicator';
 import { HealingIndicator } from './HealingIndicator';
 
@@ -22,42 +20,38 @@ export function PlayerStatusDisplay({ player, isCurrentPlayer, isOpponent = fals
   const MAX_HP = 30; // Initial HP
 
   return (
-    <Card className={cn(
-      "relative w-full md:w-72 shadow-lg transition-all duration-300", // Added relative positioning
-      isCurrentPlayer ? "border-accent ring-2 ring-accent" : "border-transparent",
-      isOpponent ? "bg-card/70" : "bg-card"
-    )}>
-      <DamageIndicator damage={damage} />
-      <HealingIndicator healing={healing} />
-      <CardHeader className="pb-2 pt-4 px-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Avatar className="h-10 w-10">
-              <AvatarImage 
-                src={player.avatarUrl || `https://placehold.co/64x64.png?text=${player.name.substring(0,1)}`} 
-                alt={player.name} 
-                data-ai-hint="player avatar" 
-              />
-              <AvatarFallback>{player.name.substring(0, 1).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <CardTitle className={cn(
-              "text-xl",
-              isCurrentPlayer ? "text-accent-foreground" : "", // This applies to the text color of the name based on current player
-              isOpponent && !isCurrentPlayer ? "text-muted-foreground" : "" // Muted if opponent and not current turn
-            )}>
-              {player.name}
-            </CardTitle>
+      <Card 
+        className={cn(
+          "w-full md:w-72 shadow-lg transition-all duration-300 relative bg-cover bg-center",
+          isCurrentPlayer ? "bg-primary/10 border-accent ring-2 ring-accent" : "bg-card/60 border-transparent",
+        )}
+        style={{ backgroundImage: `url(${player.avatarUrl})` }}
+      >
+         <div className="absolute inset-0 bg-black/50" />
+         <DamageIndicator damage={damage} />
+         <HealingIndicator healing={healing} />
+        <CardHeader className="pb-2 pt-4 px-4 relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+                <CardTitle className={cn(
+                    "text-xl text-white",
+                    isOpponent && "text-right"
+                )}>
+                    {player.name}
+                </CardTitle>
+            </div>
+            <div className="flex items-center text-lg font-bold text-white">
+              <Heart className="mr-1.5 h-5 w-5 text-red-500" />
+              <span>{player.hp}</span>
+            </div>
           </div>
-          {isCurrentPlayer && <ShieldCheck className="w-6 h-6 text-accent animate-pulse" />}
-        </div>
-      </CardHeader>
-      <CardContent className="px-4 pb-4">
-        <div className="flex items-center space-x-2 mb-2">
-          <Heart className="w-5 h-5 text-red-500" />
-          <span className="font-semibold text-lg">{player.hp} / {MAX_HP}</span>
-        </div>
-        <Progress value={(player.hp / MAX_HP) * 100} className="h-3 bg-destructive/30 [&>div]:bg-red-500" aria-label={`${player.name} HP`} />
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 relative">
+          <Progress value={(player.hp / MAX_HP) * 100} className="h-2 w-full" />
+           <div className="text-xs text-muted-foreground mt-1 text-white/80">
+                Deck: {player.deck.length} | Discard: {player.discardPile.length}
+            </div>
+        </CardContent>
+      </Card>
   );
 }
