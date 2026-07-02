@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import type { CardData, GameState, PlayerData, GamePhase, MonsterCardData, SpellCardData, StatusEffect, IndicatorState, GameLogEntry, LogEntryType } from '@/types';
 import { generateMonsterCards, generateSpellCards, shuffleDeck, dealCards } from '@/lib/game-utils';
 import { PlayerHand } from './PlayerHand';
@@ -10,7 +11,7 @@ import { BattleArena } from './BattleArena';
 import { GameOverModal } from './GameOverModal';
 import { PlayerActions } from './PlayerActions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Layers3, Trash2 } from 'lucide-react';
+import { Loader2, Layers3, Trash2, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAudio } from '@/contexts/AudioContext';
@@ -1813,6 +1814,16 @@ export function GameBoard() {
             >
                 <Trash2 className="mr-2 h-4 w-4" /> Restart
             </Button>
+            <Link href="/playground" passHref>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="opacity-70 hover:opacity-100"
+                    title="Card Playground"
+                >
+                    <Swords className="mr-2 h-4 w-4" /> Playground
+                </Button>
+            </Link>
             <AudioController />
         </div>
     </div>
